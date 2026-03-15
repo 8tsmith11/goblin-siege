@@ -1,0 +1,9 @@
+# Claude
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dev servers (if used)
+node_modules/

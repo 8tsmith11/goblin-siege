@@ -1,0 +1,239 @@
+'use strict';
+import { state, startGame, startWave, resetGame } from './main.js';
+import { TD, TOWER_SKILLS } from './towers.js';
+import { SD, spawnBees } from './support.js';
+import { SP, castSpell } from './spells.js';
+import { SKILLS, renderSk, showTowerSkill } from './skills.js';
+import { sfxPlace } from './audio.js';
+import * as api from './api.js';
+
+export function hudU() {
+  const { lives, gold, enemies, spawnQueue, wave, phase } = state;
+  document.getElementById('hHP').textContent = lives;
+  document.getElementById('hG').textContent = gold;
+  const l = enemies.length + spawnQueue.length;
+  document.getElementById('wl').textContent = phase === 'active' ? 'W' + wave + ' · ' + l + ' left' : 'Wave ' + wave;
+  document.getElementById('hI').textContent = '+' + state.fIncome();
+  document.getElementById('hSP').textContent = state.skillPts;
+}
+
+export function showOv(t, d, b, go) {
+  document.getElementById('oT').textContent = t;
+  document.getElementById('oD').innerHTML = d;
+  document.getElementById('oS').textContent = go ? 'Wave ' + state.wave + ' · Gold ' + state.gold : '';
+  const btn = document.getElementById('oB');
+  btn.textContent = b;
+  btn.onclick = go ? () => { resetGame(); startGame(); } : () => startWave();
+  document.getElementById('ov').classList.remove('hid');
+}
+
+export function hideOv() { document.getElementById('ov').classList.add('hid'); }
+
+export function showBanner(t) {
+  const b = document.getElementById('wb'); b.textContent = t; b.classList.add('sh');
+  setTimeout(() => b.classList.remove('sh'), 1500);
+}
+
+export function showBL(t) {
+  const b = document.getElementById('bL'); b.textContent = '"' + t + '"'; b.classList.add('sh');
+  import('./audio.js').then(m => m.speak(t));
+  setTimeout(() => b.classList.remove('sh'), 3000);
+}
+
+let tipTmr = 0;
+export function showTip(t) {
+  const el = document.getElementById('tip'); el.textContent = t; el.classList.add('sh');
+  clearTimeout(tipTmr); tipTmr = setTimeout(() => el.classList.remove('sh'), 2000);
+}
+
+export function panelU() {
+  const pc = document.getElementById('pc'); pc.innerHTML = '';
+  const { gold, phase } = state;
+  const tab = state.tab;
+
+  if (tab === 'towers') {
+    for (const k in TD) {
+      const d = TD[k];
+      pc.appendChild(mkIB(d.icon, k.slice(0, 6), d.cost, gold >= d.cost, state.sel?.key === k, () => { state.sel = state.sel?.key === k ? null : { key:k, type:'tower', cost:d.cost }; state.ttTower = null; hideTT(); panelU(); }));
+    }
+  } else if (tab === 'support') {
+    for (const k in SD) {
+      const d = SD[k];
+      pc.appendChild(mkIB(d.icon, k.slice(0, 6), d.cost, gold >= d.cost, state.sel?.key === k, () => { state.sel = state.sel?.key === k ? null : { key:k, type:'support', cost:d.cost }; state.ttTower = null; hideTT(); panelU(); }));
+    }
+  } else if (tab === 'spells') {
+    for (const k in SP) {
+      const s = SP[k];
+      const cost = SKILLS.spellMaster?.owned ? Math.floor(s.cost * 0.75) : s.cost;
+      pc.appendChild(mkIB(s.icon, s.name.slice(0, 6), cost, gold >= cost && phase === 'active', false, () => castSpell(k)));
+    }
+  } else if (tab === 'factory') {
+    const cnt = state.towers.filter(t => t.type === 'factory').length;
+    const cost = 50 + cnt * 25;
+    pc.appendChild(mkIB('🏭', 'Factory', cost, gold >= cost, state.sel?.key === 'factory', () => { state.sel = state.sel?.key === 'factory' ? null : { key:'factory', type:'factory', cost }; state.ttTower = null; hideTT(); panelU(); }));
+    const i = document.createElement('div');
+    i.style.cssText = 'font-size:8px;color:#64748b;padding:0 3px;line-height:1.3';
+    i.innerHTML = '×' + cnt + ' Inc:<b style="color:#10b981">+' + state.fIncome() + '</b>/w<br>Tap→Upgrade/Laser'; pc.appendChild(i);
+  } else if (tab === 'skills') {
+    const i = document.createElement('div');
+    i.style.cssText = 'font-size:9px;color:#94a3b8;padding:3px;text-align:center';
+    i.innerHTML = '⚡' + state.skillPts + ' pts (every 3 waves)'; pc.appendChild(i);
+  }
+}
+
+export function mkIB(icon, name, cost, ok, sl2, fn) {
+  const b = document.createElement('div');
+  b.className = 'ib' + (sl2 ? ' sel' : '') + (ok ? '' : ' off');
+  b.innerHTML = '<span class="ic">' + icon + '</span><span class="nm">' + name + '</span><span class="ct">💰' + cost + '</span>';
+  b.onclick = fn; return b;
+}
+
+export function mkF(px, py, val, clr) {
+  const el = document.createElement('div'); el.className = 'flt';
+  const gcR = document.getElementById('gc').getBoundingClientRect(), cvR = state.cv.getBoundingClientRect();
+  el.style.left = (cvR.left - gcR.left + px) + 'px';
+  el.style.top = (cvR.top - gcR.top + py) + 'px';
+  el.style.color = clr;
+  el.textContent = typeof val === 'number' ? '-' + val : val;
+  document.getElementById('gc').appendChild(el);
+  setTimeout(() => el.remove(), 600);
+}
+
+export function hideTT() { document.getElementById('tt').style.display = 'none'; }
+
+export function showTT(tw, px, py) {
+  state.ttTower = tw;
+  const el = document.getElementById('tt');
+  const isF = tw.type === 'factory', def = TD[tw.type] || SD[tw.type];
+  document.getElementById('ttT').textContent = (isF ? 'Factory' : def?.name || tw.type) + (tw.level > 0 ? ' ★' + tw.level : '');
+  let s = '';
+  if (isF) { s = 'Inc:+' + (10 + tw.level * 8) + '/w' + (tw.hasLaser ? ' 🔴Laser Lv' + tw.laserLvl + ' Rng:' + (tw.laserRange || 3) : ''); }
+  else if (tw.type === 'clam') { s = 'Buff radius: ' + ((tw.level + 1) * 1.5).toFixed(1) + ' · +50%DMG -15%CD'; }
+  else if (tw.type === 'beehive') { s = 'Bees: ' + (tw.beeCount || 3) + ' · Bee DMG: ' + (tw.beeDmg || 4); }
+  else if (tw.type === 'clown') { s = 'Reverse rng:' + (tw.reverseRange || 3) + ' dur:' + (tw.reverseDur || 80); }
+  else if (tw.type === 'monkey') { s = 'Buffs factories +25% each'; }
+  else if (tw.type === 'robot') { s = 'Auto-casts spells!'; }
+  else { s = 'DMG:' + tw.dmg + ' RNG:' + tw.range?.toFixed(1) + ' CD:' + tw.rate; if (tw.slow > 0) s += ' Slow:' + Math.floor(tw.slow * 100) + '%'; if (tw.splash > 0) s += ' Spl:' + tw.splash.toFixed(1); if (tw.pierce) s += ' Prc:' + tw.pierce; if (tw.chain) s += ' Chn:' + tw.chain; if (tw._buffed) s += ' 🐚'; }
+  document.getElementById('ttS').textContent = s;
+
+  const a = document.getElementById('ttA'); a.innerHTML = '';
+  if (TD[tw.type]) {
+    const upg = genUpg(TD[tw.type], tw.level);
+    addTTB(a, upg.l + ' 💰' + upg.c, 'ttu', state.gold >= upg.c, async () => {
+      try { const r = await api.upgradeTower(tw.id); state.gold = r.gold; tw.level++; applyUpgStat(tw, upg); sfxPlace(); } catch(e) {} hideTT(); state.ttTower = null;
+    });
+  }
+  if (isF) {
+    if (!tw.hasLaser) { const lc = 60; addTTB(a, '🔴Laser 💰' + lc, 'tts2', state.gold >= lc, async () => { try { const r = await api.addLaser(tw.id); state.gold = r.gold; tw.hasLaser = true; tw.laserCD = 0; tw.laserLvl = 1; tw.laserRange = 3; sfxPlace(); } catch(e) {} hideTT(); state.ttTower = null; }); }
+    if (tw.hasLaser) { const lc = 30 + tw.laserLvl * 15; addTTB(a, '⬆Laser 💰' + lc, 'tts2', state.gold >= lc, async () => { try { const r = await api.upgradeLaser(tw.id); state.gold = r.gold; tw.laserLvl++; tw.laserRange = 3 + tw.laserLvl * 0.5; sfxPlace(); } catch(e) {} hideTT(); state.ttTower = null; }); }
+    const uc = 30 + tw.level * 20; addTTB(a, '+Inc 💰' + uc, 'ttu', state.gold >= uc, async () => { try { const r = await api.upgradeFactoryIncome(tw.id); state.gold = r.gold; tw.level++; } catch(e) {} hideTT(); state.ttTower = null; });
+  }
+  if (tw.type === 'clam') { const uc = 35 + tw.level * 20; addTTB(a, '+Buff 💰' + uc, 'ttu', state.gold >= uc, async () => { try { const r = await api.upgradeTower(tw.id); state.gold = r.gold; tw.level++; } catch(e) {} hideTT(); state.ttTower = null; }); }
+  if (tw.type === 'beehive') {
+    const uc = 40 + tw.level * 25;
+    addTTB(a, '+Bees 💰' + uc, 'ttu', state.gold >= uc, async () => { try { const r = await api.upgradeTower(tw.id); state.gold = r.gold; tw.level++; tw.beeCount = (tw.beeCount || 3) + 1; tw.beeDmg = (tw.beeDmg || 4) + 2; spawnBees(tw); } catch(e) {} hideTT(); state.ttTower = null; });
+  }
+  if (tw.type === 'clown') { const uc = 40 + tw.level * 25; addTTB(a, '+Range 💰' + uc, 'ttu', state.gold >= uc, async () => { try { const r = await api.upgradeTower(tw.id); state.gold = r.gold; tw.level++; tw.reverseRange = (tw.reverseRange || 3) + 0.5; tw.reverseDur = (tw.reverseDur || 80) + 20; } catch(e) {} hideTT(); state.ttTower = null; }); }
+  if (TD[tw.type] && TOWER_SKILLS[tw.type]) { addTTB(a, '⚡Skill', 'ttc', state.skillPts > 0, () => { showTowerSkill(tw); hideTT(); state.ttTower = null; }); }
+  const sv = Math.floor((isF ? 50 : def?.cost || 50) * 0.5);
+  addTTB(a, 'Sell +💰' + sv, 'ttl', true, async () => {
+    try { const r = await api.sellTower(tw.id); state.gold = r.gold; state.grid[tw.y][tw.x] = 0; state.towers = state.towers.filter(x => x !== tw); state.bees = state.bees.filter(b => b.hive !== tw); } catch(e) {} hideTT(); state.ttTower = null;
+  });
+
+  const { W } = state;
+  el.style.display = 'block';
+  let tx = px - el.offsetWidth / 2, ty = py - el.offsetHeight - 10;
+  if (ty < 2) ty = py + state.CELL + 4;
+  if (tx < 2) tx = 2;
+  if (tx + el.offsetWidth > W) tx = W - el.offsetWidth - 2;
+  el.style.left = tx + 'px'; el.style.top = ty + 'px';
+}
+
+function addTTB(parent, txt, cls, ok, fn) {
+  const b = document.createElement('button');
+  b.className = 'ttb ' + cls + (ok ? '' : ' off2');
+  b.textContent = txt; b.onclick = e => { e.stopPropagation(); fn(); };
+  parent.appendChild(b);
+}
+
+function genUpg(def, lvl) {
+  const r = m32(state.wave * 7 + lvl * 13 + def.cost);
+  const ts = ['dmg', 'range', 'rate'], t = ts[Math.floor(r() * ts.length)];
+  const c = Math.floor(def.cost * 0.5 * (1 + lvl * 0.4));
+  if (t === 'dmg') { const v = Math.ceil(def.dmg * 0.3 * (1 + lvl * 0.15)); return { l:'+'+v+'DMG', s:'dmg', v, c }; }
+  if (t === 'range') { const v = +(0.3 + lvl * 0.1).toFixed(1); return { l:'+'+v+'RNG', s:'range', v, c }; }
+  const v = Math.max(2, Math.floor(def.rate * 0.12)); return { l:'-'+v+'CD', s:'rate', v, c };
+}
+
+function m32(a) {
+  return function() {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a); t ^= t + Math.imul(t ^ t >>> 7, 61 | t);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+export function applyUpgStat(tw, upg) {
+  if (upg.s === 'dmg') tw.dmg += upg.v;
+  else if (upg.s === 'range') tw.range += upg.v;
+  else if (upg.s === 'rate') tw.rate = Math.max(5, tw.rate - upg.v);
+}
+
+export function hideAuthOverlay() {
+  const el = document.getElementById('authOv');
+  if (el) el.classList.add('hid');
+}
+
+export function showAuthOverlay() {
+  const el = document.getElementById('authOv');
+  if (!el) return;
+  el.classList.remove('hid');
+
+  let mode = 'login';
+  const tabLogin = document.getElementById('tabLogin');
+  const tabReg = document.getElementById('tabReg');
+  const submit = document.getElementById('authSubmit');
+  const err = document.getElementById('authErr');
+
+  function setMode(m) {
+    mode = m;
+    tabLogin.classList.toggle('on', m === 'login');
+    tabReg.classList.toggle('on', m === 'register');
+    submit.textContent = m === 'login' ? 'Login' : 'Register';
+    err.textContent = '';
+  }
+
+  tabLogin.onclick = () => setMode('login');
+  tabReg.onclick = () => setMode('register');
+
+  submit.onclick = async () => {
+    const user = document.getElementById('authUser').value.trim();
+    const pass = document.getElementById('authPass').value;
+    if (!user || !pass) { err.textContent = 'Enter username and password.'; return; }
+    err.textContent = '';
+    submit.disabled = true;
+    try {
+      if (mode === 'register') await api.register(user, pass);
+      await api.login(user, pass);
+      hideAuthOverlay();
+      const { startGame } = await import('./main.js');
+      startGame();
+    } catch (e) {
+      err.textContent = e.message || 'Failed. Try again.';
+    } finally {
+      submit.disabled = false;
+    }
+  };
+}
+
+export function initTabs() {
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+    state.tab = t.dataset.t;
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
+    state.sel = null; state.ttTower = null; hideTT();
+    if (state.tab === 'skills') { renderSk(); document.getElementById('skP').classList.add('sh'); }
+    else document.getElementById('skP').classList.remove('sh');
+    panelU();
+  }));
+  document.getElementById('skClose').addEventListener('click', () => document.getElementById('skP').classList.remove('sh'));
+}
