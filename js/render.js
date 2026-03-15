@@ -1,7 +1,12 @@
 'use strict';
 import { state } from './main.js';
-import { TD, TOWER_SKILLS } from './towers.js';
+import { TD } from './towers.js';
 import { SD } from './support.js';
+
+const _imgPath = new Image(); _imgPath.src = 'assets/tiles/path.png';
+const _imgGrassL = new Image(); _imgGrassL.src = 'assets/tiles/lightgrass.png';
+const _imgGrassD = new Image(); _imgGrassD.src = 'assets/tiles/darkgrass.png';
+const _imgCastle = new Image(); _imgCastle.src = 'assets/tiles/castle.png';
 
 export function canPlace(cx2, cy2) {
   const { COLS, ROWS, pathSet, grid } = state;
@@ -15,24 +20,29 @@ export function render() {
   const { cx, W, H, CELL, COLS, ROWS, path, ticks, freezeActive, volcanoActive,
           towers, bees, enemies, projectiles, beams, particles, sel, gCell, ttTower } = state;
 
-  cx.clearRect(0, 0, W, H); cx.fillStyle = '#151b2b'; cx.fillRect(0, 0, W, H);
+  cx.clearRect(0, 0, W, H);
+  const grassReady = _imgGrassL.complete && _imgGrassL.naturalWidth && _imgGrassD.complete && _imgGrassD.naturalWidth;
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-    if ((r + c) % 2 === 0) { cx.fillStyle = '#131929'; cx.fillRect(c * CELL, r * CELL, CELL, CELL); }
+    if (grassReady) {
+      cx.drawImage((r + c) % 2 === 0 ? _imgGrassD : _imgGrassL, c * CELL, r * CELL, CELL, CELL);
+    } else {
+      cx.fillStyle = (r + c) % 2 === 0 ? '#131929' : '#151b2b';
+      cx.fillRect(c * CELL, r * CELL, CELL, CELL);
+    }
   }
 
   // Path
-  path.forEach((p, idx) => {
-    const b = 0.12 + 0.03 * Math.sin(idx * 0.2 + ticks * 0.02);
-    cx.fillStyle = `rgb(${58 + b * 40 | 0},${37 + b * 20 | 0},${24 + b * 10 | 0})`;
-    cx.fillRect(p.x * CELL, p.y * CELL, CELL, CELL);
+  path.forEach(p => {
+    if (_imgPath.complete && _imgPath.naturalWidth) {
+      cx.drawImage(_imgPath, p.x * CELL, p.y * CELL, CELL, CELL);
+    } else {
+      cx.fillStyle = '#3a2518'; cx.fillRect(p.x * CELL, p.y * CELL, CELL, CELL);
+    }
   });
   if (path.length > 2) {
     cx.fillStyle = 'rgba(34,197,94,.12)'; cx.fillRect(path[0].x * CELL, path[0].y * CELL, CELL, CELL);
-    const lp = path[path.length - 1];
-    cx.fillStyle = 'rgba(239,68,68,.12)'; cx.fillRect(lp.x * CELL, lp.y * CELL, CELL, CELL);
     cx.font = Math.floor(CELL * 0.4) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
     cx.fillStyle = '#22c55e77'; cx.fillText('▶', path[0].x * CELL + CELL / 2, path[0].y * CELL + CELL / 2);
-    cx.fillStyle = '#ef444477'; cx.fillText('🏰', lp.x * CELL + CELL / 2, lp.y * CELL + CELL / 2);
   }
   if (freezeActive > 0) { cx.fillStyle = 'rgba(56,189,248,' + (0.06 + 0.03 * Math.sin(ticks * 0.2)) + ')'; cx.fillRect(0, 0, W, H); }
 
@@ -80,6 +90,13 @@ export function render() {
     if (isF && tw.hasLaser) { cx.fillStyle = '#ef4444'; cx.beginPath(); cx.arc(px + CELL * 0.28, py - CELL * 0.28, 2 + Math.sin(ticks * 0.15), 0, Math.PI * 2); cx.fill(); }
     if (tw.level > 0) { cx.font = 'bold ' + Math.floor(CELL * 0.16) + 'px Anybody,sans-serif'; cx.fillStyle = '#fbbf24'; cx.fillText('★'.repeat(Math.min(tw.level, 5)), px, tw.y * CELL + CELL - 2); }
   });
+
+  // Castle (end of path) — drawn oversized so it overlaps surrounding tiles
+  if (path.length > 2 && _imgCastle.naturalWidth) {
+    const lp = path[path.length - 1];
+    const cs = CELL * 1.9;
+    cx.drawImage(_imgCastle, lp.x * CELL + CELL / 2 - cs / 2, lp.y * CELL + CELL / 2 - cs / 2, cs, cs);
+  }
 
   // Bees
   bees.forEach(bee => {
