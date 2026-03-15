@@ -20,10 +20,7 @@ export function hudU() {
   document.getElementById('hI').textContent = '+' + state.fIncome();
   document.getElementById('hSP').textContent = state.skillPts;
   const goBtn = document.getElementById('goBtn');
-  if (goBtn) {
-    goBtn.style.display = phase === 'prep' ? '' : 'none';
-    wlEl.style.flex = phase === 'prep' ? '0 0 auto' : '1';
-  }
+  if (goBtn) goBtn.style.display = phase === 'prep' ? '' : 'none';
 }
 
 export function showOv(t, d, b, go, fn) {
