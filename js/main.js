@@ -1,34 +1,49 @@
 'use strict';
 import { buildPath } from './path.js';
-import { updateEnemies, mkEFromServer } from './enemies.js';
+import { updateEnemies, genWave } from './enemies.js';
 import { updateTowers } from './towers.js';
 import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser } from './support.js';
 import { render } from './render.js';
-import { SKILLS, syncSkillsFromServer } from './skills.js';
+import { SKILLS } from './skills.js';
 import { triggerEvent } from './events.js';
 import { sfxBoss, sfxWave, sfxKill, sfxHit } from './audio.js';
-import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, initTabs, showAuthOverlay } from './ui.js';
+import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, initTabs } from './ui.js';
 import { initInput } from './input.js';
-import * as api from './api.js';
+
+// ─── Protected state internals ───────────────────────────────────────────────
+// _gg/_ll/_ss: actual gold / lives / skillPts stored in module scope.
+// Writes are gated by _φ; any external assignment to state.gold etc. is dropped.
+let _gg = 200, _ll = 20, _ss = 0, _φ = false;
+let _ηG = (_gg * 0x9E3779B9) >>> 16; // integrity markers — updated alongside every write
+let _ηL = (_ll * 0xC2B2AE35) >>> 16;
+let _ηS = (_ss * 0x85EBCA77) >>> 16;
+function _wG(v) { _gg = v | 0; _ηG = (_gg * 0x9E3779B9) >>> 16; }
+function _wL(v) { _ll = Math.max(0, v | 0); _ηL = (_ll * 0xC2B2AE35) >>> 16; }
+function _wS(v) { _ss = Math.max(0, v | 0); _ηS = (_ss * 0x85EBCA77) >>> 16; }
+// Trusted write executor — pass a fn that may read/write gold/lives/skillPts
+export function _ΨΔ(fn) { const p = _φ; _φ = true; try { fn(); } finally { _φ = p; } }
 
 /* ═══ Shared game state ═══ */
 export const state = {
-  gold: 200, lives: 20, wave: 0, phase: 'idle', ticks: 0,
+  wave: 0, phase: 'idle', ticks: 0, prepTicks: 0,
   enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
   spawnQueue: [], spawnTimer: 0,
   sel: null, tab: 'towers',
   volcanoActive: null, freezeActive: 0,
   gameOver: false, started: false,
   ttTower: null,
-  skillPts: 0,
   W: 0, H: 0, CELL: 0, COLS: 0, ROWS: 0, pathReady: false,
   cv: null, cx: null,
   path: [], pathSet: new Set(), grid: [],
   gCell: null,
-  // Wave outcome tracking (reported to server at wave end)
-  waveKills: {},   // { enemy_type: count }
-  waveLeaks: {},   // { enemy_type: count }
+  _Σ: 0, _Ω: 0,  // frame consistency markers (internal use)
 };
+// Protected accessors — console writes are silently discarded
+Object.defineProperties(state, {
+  gold:     { get: () => _gg, set: v => { if (_φ) _wG(v); }, enumerable: true },
+  lives:    { get: () => _ll, set: v => { if (_φ) _wL(v); }, enumerable: true },
+  skillPts: { get: () => _ss, set: v => { if (_φ) _wS(v); }, enumerable: true },
+});
 
 /* ═══ Canvas ═══ */
 const cv = document.getElementById('cv');
@@ -39,7 +54,7 @@ function measure() {
   const gc = document.getElementById('gc'), hud = document.getElementById('hud'), bp = document.getElementById('bp');
   state.W = cv.width = gc.clientWidth;
   state.H = cv.height = gc.clientHeight - hud.offsetHeight - bp.offsetHeight;
-  state.CELL = Math.floor(Math.min(state.W / 16, state.H / 10));
+  state.CELL = Math.floor(Math.min(state.W / 16, state.H / 9));
   if (state.CELL < 18) state.CELL = 18;
   state.COLS = Math.floor(state.W / state.CELL);
   state.ROWS = Math.floor(state.H / state.CELL);
@@ -55,7 +70,6 @@ window.addEventListener('resize', () => {
   if ((state.COLS !== oc || state.ROWS !== or2) && state.towers.length === 0) buildPath();
 });
 
-/* ═══ Income display (local estimate for HUD only — server is authoritative) ═══ */
 export function fIncome() {
   let t = 0;
   const mc = state.towers.filter(tw => tw.type === 'monkey').length;
@@ -66,74 +80,22 @@ export function fIncome() {
   if (SKILLS.megaFactory?.owned) t = Math.floor(t * 1.5);
   return t;
 }
-
-/* ═══ Sync server tower state into frontend state.towers ═══ */
-export function applyServerState(data) {
-  state.gold = data.gold;
-  state.lives = data.lives;
-  state.wave = data.wave;
-  state.phase = data.phase;
-  state.skillPts = data.skill_pts;
-  syncSkillsFromServer(data.player_skills || []);
-  if (data.towers) {
-    // Rebuild tower objects from server data, preserving runtime fields
-    state.towers = data.towers.map(st => towerFromServer(st));
-  }
-}
-
-export function towerFromServer(st) {
-  // Merge server-authoritative fields with frontend runtime fields
-  const existing = state.towers.find(t => t.id === st.id);
-  return {
-    ...(existing || {}),
-    id: st.id,
-    type: st.type,
-    x: st.x,
-    y: st.y,
-    level: st.level,
-    has_laser: st.has_laser,
-    hasLaser: st.has_laser,
-    laserLvl: st.laser_lvl,
-    laserRange: st.laser_range,
-    ownedSkills: st.owned_skills || [],
-    disabled: st.disabled,
-    // Runtime-computed defaults (will be overridden by apply*Skill calls)
-    cd: existing?.cd ?? 0,
-    _buffed: false, _rateBuff: 1,
-    // Stats derived from type (frontend computes these)
-    ...deriveStats(st.type, st.level, st.owned_skills || []),
-  };
-}
-
-function deriveStats(type, _level, ownedSkills) {
-  // Import TD lazily to avoid circular at eval time
-  const { TD } = window._gs_TD_ref || {};
-  if (!TD || !TD[type]) return {};
-  const def = TD[type];
-  const stats = {
-    dmg: def.dmg, range: def.range, rate: def.rate,
-    splash: def.splash || 0, slow: def.slow || 0,
-    pierce: def.pierce || 0, chain: def.chain || 0,
-    stun: 0, poison: null, blind: false, bloodlust: false,
-    blizzard: false, seeInvis: false, chainStun: 0, megaSpeed: false,
-    frenzy: false, disabledWave: -1,
-  };
-  // Apply skills
-  const { TOWER_SKILLS } = window._gs_TOWER_SKILLS_ref || {};
-  if (TOWER_SKILLS?.[type]) {
-    for (const sk of ownedSkills) {
-      TOWER_SKILLS[type][sk]?.apply(stats);
-    }
-  }
-  // Apply level bonuses (deterministic — matches server upgrade_cost formula)
-  // Upgrades are tracked by level count; exact stat delta is frontend-side
-  return stats;
-}
+state.fIncome = fIncome;
 
 /* ═══ Update ═══ */
 function update() {
   if (!state.started || state.gameOver) return;
+  _φ = true;
   state.ticks++;
+
+  // Prep phase — player places towers, no enemies yet
+  if (state.phase === 'prep') {
+    state.prepTicks--;
+    if (state.prepTicks <= 0) { _φ = false; startWave(); return; }
+    if (state.ticks % 60 === 0) { _φ = false; hudU(); }
+    else _φ = false;
+    return;
+  }
   if (state.freezeActive > 0) state.freezeActive--;
 
   // Spawn
@@ -168,13 +130,10 @@ function update() {
   updateClam(); updateClown(); updateRobot(); updateBees(); updateFactoryLaser(); updateTowers();
   updateProjectiles();
 
-  // Kill check — track for server report
+  // Kill check
   for (const e of state.enemies) {
     if (!e.dead && e.hp <= 0) {
       e.dead = true;
-      const eType = e.boss ? 'boss' : (e.enemyType || 'normal');
-      state.waveKills[eType] = (state.waveKills[eType] || 0) + 1;
-      // Optimistic gold update for responsive feel; server confirms at wave end
       let rew = e.rew; if (SKILLS.greed?.owned) rew += 3;
       state.gold += rew; sfxKill();
       for (let j = 0; j < (e.boss ? 18 : 6); j++) state.particles.push({ x: e.x * state.CELL + state.CELL / 2, y: e.y * state.CELL + state.CELL / 2, vx: (Math.random() - 0.5) * (e.boss ? 7 : 4), vy: (Math.random() - 0.5) * (e.boss ? 7 : 4), life: e.boss ? 28 : 16, clr: e.clr, sz: e.boss ? 4 : 2.5 });
@@ -191,33 +150,28 @@ function update() {
 
   if (state.lives <= 0) {
     state.lives = 0; state.gameOver = true;
-    // Still report to server so it marks session inactive
-    api.completeWave({ kills: state.waveKills, leaks: state.waveLeaks }).catch(() => {});
+    _φ = false;
     showOv('💀 Game Over', 'Survived ' + state.wave + ' waves!', 'Retry', true); return;
   }
 
-  // Wave complete — hand off to server
+  // Wave complete
   if (state.phase === 'active' && state.spawnQueue.length === 0 && state.enemies.length === 0) {
-    state.phase = 'settling'; // prevent re-trigger
     if (state.volcanoActive) { state.volcanoActive.rds--; if (state.volcanoActive.rds <= 0) state.volcanoActive = null; }
+    const inc = fIncome(); state.gold += inc;
+    if (inc > 0) mkF(state.W / 2, state.H / 2, '+' + inc + ' 🏭', '#10b981');
+    if (state.wave % 3 === 0) { state.skillPts++; mkF(state.W / 2, state.H / 3, '+1 ⚡ Skill!', '#a78bfa'); }
+    state.phase = 'idle'; sfxWave();
+    _φ = false;
     if (Math.random() < 0.4 && state.wave > 1) setTimeout(() => triggerEvent(), 500);
-    api.completeWave({ kills: state.waveKills, leaks: state.waveLeaks }).then(result => {
-      state.gold = result.gold;
-      state.lives = result.lives;
-      state.skillPts = result.skill_pts;
-      state.wave = result.wave;
-      if (result.skill_pts > state.skillPts) mkF(state.W / 2, state.H / 3, '+1 ⚡ Skill!', '#a78bfa');
-      const inc = fIncome();
-      if (inc > 0) mkF(state.W / 2, state.H / 2, '+' + inc + ' 🏭', '#10b981');
-      state.phase = 'idle'; sfxWave();
-      showOv('✅ Wave ' + state.wave, (state.wave + 1) % 5 === 0 ? '⚠️ BOSS next!' : 'Build & prepare.', 'Next Wave', false);
-      hudU(); panelU();
-    }).catch(err => {
-      console.error('Wave complete failed:', err);
-      state.phase = 'idle'; sfxWave();
-      showOv('✅ Wave ' + state.wave, 'Build & prepare.', 'Next Wave', false);
-    });
+    showOv('✅ Wave ' + state.wave, (state.wave + 1) % 5 === 0 ? '⚠️ BOSS next!' : 'Build & prepare.', 'Next Wave', false);
+    hudU(); panelU();
+    return;
   }
+
+  // Update frame consistency markers
+  state._Σ = (state.ticks * _ηG ^ _ηL) & 0xFFFF;
+  state._Ω = (_ηS * state.wave + _ηG ^ state.ticks) & 0xFFFF;
+  _φ = false;
   hudU();
 }
 
@@ -259,63 +213,38 @@ function updateProjectiles() {
 }
 
 /* ═══ Game flow ═══ */
-export async function startGame() {
-  try {
-    const data = await api.newGame();
-    applyServerState(data);
-    state.started = true; initSz(); hideOv();
-    setTimeout(() => showOv('⚔️ Prepare!', 'Place towers on dark tiles. Support tab has Clam, Beehive, Clown, Monkey & AI Robot!', 'Start Wave 1', false), 200);
-  } catch (e) {
-    if (e.message === 'auth') { showAuthOverlay(); return; }
-    console.error(e);
-  }
+export function startGame() {
+  _ΨΔ(() => { _wG(200); _wL(20); _wS(0); });
+  state.started = true; state.phase = 'prep'; state.prepTicks = 1800;
+  initSz(); hideOv(); hudU(); panelU();
 }
 
-export async function startWave() {
-  try {
-    const waveData = await api.startWave();
-    state.wave = waveData.wave;
-    state.waveKills = {}; state.waveLeaks = {};
-    // Build spawn queue from server-provided enemy list
-    state.spawnQueue = buildSpawnQueue(waveData);
-    state.spawnTimer = 30; state.phase = 'active';
-    hideOv();
-    const boss = waveData.is_boss;
-    showBanner(boss ? '👑 BOSS W' + state.wave : '⚔️ Wave ' + state.wave);
-    if (boss) sfxBoss();
-    hudU(); panelU();
-  } catch (e) {
-    if (e.message === 'auth') { showAuthOverlay(); return; }
-    console.error(e);
-  }
+export function startWave() {
+  state.wave++;
+  state.spawnQueue = genWave(state.wave);
+  state.spawnTimer = 30; state.phase = 'active';
+  hideOv();
+  const boss = state.wave % 5 === 0 && state.wave > 0;
+  showBanner(boss ? '👑 BOSS W' + state.wave : '⚔️ Wave ' + state.wave);
+  if (boss) sfxBoss();
+  hudU(); panelU();
 }
 
-function buildSpawnQueue(waveData) {
-  const queue = [];
-  const bHP = 25 + waveData.wave * 20 + Math.pow(waveData.wave, 1.5) * 5;
-  const bSpd = 0.55 + Math.min(waveData.wave * 0.035, 0.9);
-  for (const entry of waveData.enemies) {
-    for (let i = 0; i < entry.count; i++) {
-      queue.push(mkEFromServer(entry.type, bHP, bSpd, waveData.wave));
-    }
-  }
-  return queue;
-}
-
-export async function resetGame() {
+export function resetGame() {
   import('./towers.js').then(({ TOWER_SKILLS }) => {
     for (const k in TOWER_SKILLS) for (const sk of Object.values(TOWER_SKILLS[k])) sk.owned = false;
   });
+  _ΨΔ(() => { _wG(200); _wL(20); _wS(0); });
   Object.assign(state, {
-    gold: 200, lives: 20, wave: 0, phase: 'idle', ticks: 0,
+    wave: 0, phase: 'idle', ticks: 0, prepTicks: 0,
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
-    gameOver: false, started: false, pathReady: false, sel: null, ttTower: null, skillPts: 0,
-    waveKills: {}, waveLeaks: {},
+    gameOver: false, started: false, pathReady: false, sel: null, ttTower: null,
+    _Σ: 0, _Ω: 0,
   });
   state.pathSet.clear(); state.grid = [];
   Object.values(SKILLS).forEach(s => s.owned = false);
-  hideTT(); await startGame();
+  hideTT(); startGame();
 }
 
 /* ═══ Loop ═══ */
@@ -328,10 +257,6 @@ function loop() {
 
 /* ═══ Boot ═══ */
 document.getElementById('snd').addEventListener('click', () => import('./audio.js').then(m => m.toggleSound()));
+document.getElementById('goBtn').addEventListener('click', () => { if (state.phase === 'prep') startWave(); });
 initTabs(); initInput(); initSz(); panelU(); hudU(); loop();
-// Show auth overlay or jump straight in if already logged in
-if (api.isLoggedIn()) {
-  showOv('⚔️ Goblin Siege ⚔️', '11 towers · Boss waves · Skill trees · Spells · Random events<br>Build, upgrade, survive!', 'Begin Battle', false);
-} else {
-  showAuthOverlay();
-}
+showOv('⚔️ Goblin Siege v4 ⚔️', '', 'Begin Battle', false, startGame);

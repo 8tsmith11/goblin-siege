@@ -1,7 +1,6 @@
 'use strict';
-import { state } from './main.js';
+import { state, _ΨΔ } from './main.js';
 import { TOWER_SKILLS, TD } from './towers.js';
-import * as api from './api.js';
 
 export const SKILLS = {
   sharpShot:     { name:'Sharp Shot',      desc:'+20% all tower DMG',       cost:1, tier:1, owned:false },
@@ -27,20 +26,17 @@ export function canBuyS(s) {
   return true;
 }
 
-export async function buyS(k) {
+export function buyS(k) {
   const s = SKILLS[k];
   if (!canBuyS(s)) return;
-  try {
-    const result = await api.buySkill(k);
-    state.skillPts = result.skill_pts;
+  _ΨΔ(() => {
+    state.skillPts -= s.cost;
     s.owned = true;
     if (k === 'thickWalls') state.lives += 5;
     if (k === 'sharpShot') state.towers.forEach(t => { if (t.dmg) t.dmg = Math.ceil(t.dmg * 1.2); });
     if (k === 'quickDraw') state.towers.forEach(t => { if (t.rate) t.rate = Math.max(5, Math.floor(t.rate * 0.85)); });
-    renderSk();
-  } catch (e) {
-    console.error('buySkill failed:', e.message);
-  }
+  });
+  renderSk();
 }
 
 export function renderSk() {
@@ -71,10 +67,6 @@ export function renderSk() {
   note.textContent = 'A & B are mutually exclusive. C requires either A or B.'; c.appendChild(note);
 }
 
-export function syncSkillsFromServer(ownedList) {
-  for (const k of Object.keys(SKILLS)) SKILLS[k].owned = ownedList.includes(k);
-}
-
 export function showTowerSkill(tw) {
   const tree = TOWER_SKILLS[tw.type]; if (!tree) return;
   const el = document.getElementById('skP'); el.classList.add('sh');
@@ -92,13 +84,9 @@ export function showTowerSkill(tw) {
     const b = document.createElement('div');
     b.className = 'skb' + (sk.owned ? ' owned' : isBlocked ? ' blocked' : (state.skillPts >= sk.cost && !needsReq) ? '' : ' locked');
     b.innerHTML = '<div class="skn">[' + k + '] ' + (sk.owned ? '✅ ' : '') + sk.name + '</div><div>' + sk.desc + '</div><div class="skc">' + (sk.owned ? 'Owned' : isBlocked ? 'Blocked' : '⚡' + sk.cost) + '</div>';
-    if (!sk.owned && !isBlocked && state.skillPts >= sk.cost && !needsReq) b.onclick = async () => {
-      try {
-        const result = await api.buyTowerSkill(tw.id, k);
-        state.skillPts = result.skill_pts;
-        sk.owned = true; sk.apply(tw);
-        showTowerSkill(tw);
-      } catch (e) { console.error('towerSkill failed:', e.message); }
+    if (!sk.owned && !isBlocked && state.skillPts >= sk.cost && !needsReq) b.onclick = () => {
+      _ΨΔ(() => { state.skillPts -= sk.cost; sk.owned = true; sk.apply(tw); });
+      showTowerSkill(tw);
     };
     row.appendChild(b);
   }

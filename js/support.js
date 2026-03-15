@@ -5,11 +5,11 @@ import { SKILLS } from './skills.js';
 import { mkF } from './ui.js';
 
 export const SD = {
-  clam:    { name:'Intuitive Clam',    icon:'🐚', clr:'#14b8a6', cost:80,  cat:'support', buffRange:2,  buffDmg:1.5, buffRate:.85, buffDesc:'+50% DMG, -15% CD to nearby' },
-  beehive: { name:'Beehive',           icon:'🐝', clr:'#eab308', cost:90,  cat:'support', beeCount:3,  beeDmg:4,    beeRange:3,   beeRate:30 },
-  clown:   { name:'Entertaining Clown',icon:'🤡', clr:'#f472b6', cost:100, cat:'support', reverseRange:3, reverseDur:80, reverseCD:200 },
-  monkey:  { name:'Resourceful Monkey',icon:'🐵', clr:'#fb923c', cost:70,  cat:'support', factoryBuff:true },
-  robot:   { name:'AI Agent',          icon:'🤖', clr:'#38bdf8', cost:110, cat:'support', autoSpell:true },
+  clam:    { name:'Intuitive Clam',    icon:'🐚', clr:'#14b8a6', cost:80,  cat:'support', buffRange:2,  buffDmg:1.5, buffRate:.85, buffDesc:'+50% DMG, -15% CD to nearby', desc:'Buffs nearby towers: +50% DMG, -15% cooldown' },
+  beehive: { name:'Beehive',           icon:'🐝', clr:'#eab308', cost:90,  cat:'support', beeCount:3,  beeDmg:4,    beeRange:3,   beeRate:30,  desc:'Deploys bees that swarm and sting enemies' },
+  clown:   { name:'Magnificent Clown',icon:'🤡', clr:'#f472b6', cost:100, cat:'support', reverseRange:3, reverseDur:80, reverseCD:200, desc:'Reverses nearby enemy movement direction' },
+  monkey:  { name:'Resourceful Monkey',icon:'🐵', clr:'#fb923c', cost:70,  cat:'support', factoryBuff:true, desc:'Boosts all factory income by +25% each' },
+  robot:   { name:'AI Agent',          icon:'🤖', clr:'#38bdf8', cost:110, cat:'support', autoSpell:true,  desc:'Automatically casts spells during waves' },
 };
 
 export function spawnBees(hive) {
@@ -83,7 +83,7 @@ export function updateRobot() {
 }
 
 export function updateBees() {
-  const { bees, enemies, projectiles, ticks, CELL } = state;
+  const { bees, enemies, projectiles, CELL } = state;
   for (const bee of bees) {
     const hive = state.towers.find(t => t === bee.hive);
     if (!hive) { bee.dead = true; continue; }
@@ -99,7 +99,7 @@ export function updateBees() {
 }
 
 export function updateFactoryLaser() {
-  const { towers, enemies, beams, wave, CELL, particles, ticks } = state;
+  const { towers, enemies, beams, wave, CELL, particles } = state;
   towers.filter(tw => tw.type === 'factory' && tw.hasLaser).forEach(tw => {
     if (tw.laserCD > 0) { tw.laserCD--; return; }
     const lr = tw.laserRange || 3;

@@ -50,9 +50,14 @@ export function render() {
   towers.forEach(tw => {
     const px = tw.x * CELL + CELL / 2, py = tw.y * CELL + CELL / 2;
     if (ttTower === tw && tw.range) {
-      cx.beginPath(); cx.arc(px, py, (tw.range || 2) * CELL, 0, Math.PI * 2);
+      cx.beginPath(); cx.arc(px, py, tw.range * CELL, 0, Math.PI * 2);
       cx.fillStyle = 'rgba(244,63,94,.04)'; cx.fill();
       cx.strokeStyle = 'rgba(244,63,94,.15)'; cx.lineWidth = 1; cx.stroke();
+    }
+    if (ttTower === tw && tw.type === 'factory' && tw.hasLaser) {
+      cx.beginPath(); cx.arc(px, py, (tw.laserRange || 3) * CELL, 0, Math.PI * 2);
+      cx.fillStyle = 'rgba(239,68,68,.07)'; cx.fill();
+      cx.strokeStyle = '#ef4444'; cx.lineWidth = 1.5; cx.stroke();
     }
     if (tw.type === 'clam') {
       const br = (tw.level + 1) * 1.5;
@@ -127,11 +132,23 @@ export function render() {
 
   // Ghost placement preview
   if (sel && sel.type !== 'spell' && gCell) {
-    const gx = gCell.x * CELL, gy = gCell.y * CELL, ok = canPlace(gCell.x, gCell.y);
+    const gx = gCell.x * CELL, gy = gCell.y * CELL, gpx = gx + CELL / 2, gpy = gy + CELL / 2;
+    const ok = canPlace(gCell.x, gCell.y);
+    // Range preview
+    if (ok) {
+      const def = TD[sel.key] || SD[sel.key];
+      const previewRange = sel.key === 'factory' ? 0 : (def?.range || 0);
+      if (previewRange) {
+        cx.beginPath(); cx.arc(gpx, gpy, previewRange * CELL, 0, Math.PI * 2);
+        cx.fillStyle = 'rgba(244,63,94,.04)'; cx.fill();
+        cx.strokeStyle = 'rgba(244,63,94,.15)';
+        cx.lineWidth = 1; cx.stroke();
+      }
+    }
     cx.globalAlpha = ok ? 0.4 : 0.15;
     cx.fillStyle = ok ? '#ffffff11' : '#ff000022'; cx.fillRect(gx, gy, CELL, CELL);
     cx.font = Math.floor(CELL * 0.4) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
     const icon = sel.key === 'factory' ? '🏭' : (TD[sel.key] || SD[sel.key])?.icon || '?';
-    cx.fillText(icon, gx + CELL / 2, gy + CELL / 2); cx.globalAlpha = 1;
+    cx.fillText(icon, gpx, gpy); cx.globalAlpha = 1;
   }
 }

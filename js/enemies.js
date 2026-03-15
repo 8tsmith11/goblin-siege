@@ -29,21 +29,6 @@ export function mkE(et, bHP, bSpd) {
   };
 }
 
-// Create enemy from server wave data (type string + wave-derived HP/speed)
-export function mkEFromServer(type, bHP, bSpd, wave) {
-  if (type === 'boss') {
-    return {
-      tp: 'boss', hp: Math.floor(bHP * 8 + wave * 50), mhp: Math.floor(bHP * 8 + wave * 50),
-      spd: bSpd * 0.35, sz: 0.65, rew: 50 + wave * 5, clr: '#ef4444', em: '👑',
-      pi: 0, x: 0, y: 0, slow: 0, st: 0, dead: false, spdBuff: 0, frozen: 0,
-      stealth: false, stealthTimer: 0, healCD: 0, boss: true,
-      line: BOSS_LINES[Math.floor(wave / 5) % BOSS_LINES.length],
-      reversed: false, reverseTimer: 0, poison: null, stunned: 0, enemyType: 'boss',
-    };
-  }
-  const et = ETYPES[type] || ETYPES.normal;
-  return { ...mkE(et, bHP, bSpd), enemyType: type };
-}
 
 export function genWave(w) {
   const q = [], isBoss = w % 5 === 0 && w > 0;
@@ -81,9 +66,7 @@ export function updateEnemies() {
     if (e.dead) continue;
     if (e.pi >= path.length - 1 && !e.reversed) {
       e.dead = true;
-      const lt = e.boss ? 'boss' : (e.enemyType || 'normal');
-      state.waveLeaks[lt] = (state.waveLeaks[lt] || 0) + 1;
-      state.lives -= e.boss ? 3 : 1;  // optimistic; server confirms at wave end
+      state.lives -= e.boss ? 3 : 1;
       continue;
     }
     if (e.pi <= 0 && e.reversed) { e.reversed = false; e.reverseTimer = 0; }

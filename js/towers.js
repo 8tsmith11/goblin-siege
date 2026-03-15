@@ -3,13 +3,13 @@ import { state } from './main.js';
 import { sfxShoot } from './audio.js';
 
 export const TD = {
-  squirrel: { name:'Thoughtful Squirrel', icon:'🐿️', clr:'#8b5cf6', cost:40,  dmg:8,  range:3.2, rate:50, pClr:'#a78bfa', pSpd:4,   splash:0,   slow:0,  target:'weakest', cat:'tower' },
-  lion:     { name:'Rash Lion',           icon:'🦁',  clr:'#ef4444', cost:60,  dmg:15, range:2.0, rate:25, pClr:'#f87171', pSpd:6,   splash:0,   slow:0,  target:'first',   cat:'tower' },
-  penguin:  { name:'Ambitious Penguin',   icon:'🐧',  clr:'#06b6d4', cost:55,  dmg:5,  range:2.8, rate:35, pClr:'#67e8f9', pSpd:3,   splash:0,   slow:.4, target:'first',   cat:'tower' },
-  fish:     { name:'Arrogant Fish',       icon:'🐟',  clr:'#f59e0b', cost:75,  dmg:12, range:2.5, rate:60, pClr:'#fcd34d', pSpd:3.5, splash:1.2, slow:0,  target:'first',   cat:'tower' },
-  seahorse: { name:'Insightful Seahorse', icon:'🦑',  clr:'#ec4899', cost:65,  dmg:6,  range:3.5, rate:40, pClr:'#f472b6', pSpd:3,   splash:0,   slow:0,  target:'strongest',pierce:3, cat:'tower' },
-  lizard:   { name:'Abhorrent Lizard',    icon:'🦎',  clr:'#84cc16', cost:85,  dmg:45, range:2.5, rate:65, pClr:'#a3e635', pSpd:5,   splash:1.0, slow:0,  target:'first',   speedUp:true, voiceLine:"I DESPISE YOU ALL!", cat:'tower' },
-  heron:    { name:'Clever Heron',        icon:'🦩',  clr:'#6366f1', cost:70,  dmg:10, range:3.0, rate:45, pClr:'#818cf8', pSpd:4,   splash:0,   slow:0,  target:'last',    chain:3, cat:'tower' },
+  squirrel: { name:'Thoughtful Squirrel', icon:'🐿️', clr:'#8b5cf6', cost:40,  dmg:8,  range:3.2, rate:50, pClr:'#a78bfa', pSpd:4,   splash:0,   slow:0,  target:'weakest', cat:'tower', desc:'Long range · targets weakest enemy' },
+  lion:     { name:'Rash Lion',           icon:'🦁',  clr:'#ef4444', cost:60,  dmg:15, range:2.0, rate:25, pClr:'#f87171', pSpd:6,   splash:0,   slow:0,  target:'first',   cat:'tower', desc:'Very fast · high single-target DPS' },
+  penguin:  { name:'Ambitious Penguin',   icon:'🐧',  clr:'#06b6d4', cost:55,  dmg:5,  range:2.8, rate:35, pClr:'#67e8f9', pSpd:3,   splash:0,   slow:.4, target:'first',   cat:'tower', desc:'Slows enemies on hit' },
+  fish:     { name:'Arrogant Fish',       icon:'🐟',  clr:'#f59e0b', cost:75,  dmg:12, range:2.5, rate:60, pClr:'#fcd34d', pSpd:3.5, splash:1.2, slow:0,  target:'first',   cat:'tower', desc:'Splash damage · hits nearby enemies' },
+  seahorse: { name:'Insightful Seahorse', icon:'🦑',  clr:'#ec4899', cost:65,  dmg:6,  range:3.5, rate:40, pClr:'#f472b6', pSpd:3,   splash:0,   slow:0,  target:'strongest',pierce:3, cat:'tower', desc:'Piercing shots · passes through enemies' },
+  lizard:   { name:'Abhorrent Lizard',    icon:'🦎',  clr:'#84cc16', cost:85,  dmg:45, range:2.5, rate:65, pClr:'#a3e635', pSpd:5,   splash:1.0, slow:0,  target:'first',   speedUp:true, voiceLine:"I DESPISE YOU ALL!", cat:'tower', desc:'Massive damage · splash · speeds up enemies' },
+  heron:    { name:'Clever Heron',        icon:'🦩',  clr:'#6366f1', cost:70,  dmg:10, range:3.0, rate:45, pClr:'#818cf8', pSpd:4,   splash:0,   slow:0,  target:'last',    chain:3, cat:'tower', desc:'Chain lightning · hits up to 3 targets' },
 };
 
 export const TOWER_SKILLS = {
@@ -49,10 +49,6 @@ export const TOWER_SKILLS = {
     C: { name:'Thunderstrike', desc:'Chain hits stun 30 ticks',  cost:2, owned:false, req:'any',    apply:tw=>{ tw.chainStun=30; } },
   },
 };
-
-// Expose TD and TOWER_SKILLS for deriveStats in main.js (avoids circular eval-time import)
-window._gs_TD_ref = { TD };
-window._gs_TOWER_SKILLS_ref = { TOWER_SKILLS };
 
 export function updateTowers() {
   const { towers, enemies, projectiles, ticks, wave, CELL, particles } = state;

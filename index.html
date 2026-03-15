@@ -12,6 +12,7 @@
     <div class="hi">❤️<span class="v hv" id="hHP">20</span></div>
     <div class="hi">💰<span class="v gv" id="hG">200</span></div>
     <span id="wl">Wave 0</span>
+    <button id="goBtn" style="display:none">▶ Start</button>
     <div class="hi">🏭<span class="v" style="color:#10b981" id="hI">+0</span></div>
     <div class="hi">⚡<span class="v" style="color:#a78bfa" id="hSP">0</span></div>
     <button id="snd">🔊</button>
@@ -20,13 +21,13 @@
   <div id="bp">
     <div id="tabs">
       <div class="tab on" data-t="towers">Towers</div>
-      <div class="tab" data-t="support">Support</div>
       <div class="tab" data-t="spells">Spells</div>
       <div class="tab" data-t="factory">Factory</div>
-      <div class="tab" data-t="skills">Skills</div>
+      <div class="tab" data-t="skills">Skill Tree</div>
     </div>
     <div id="pc"></div>
   </div>
+  <div id="tdesc"></div>
   <div id="ov">
     <h1 id="oT">⚔️ Goblin Siege ⚔️</h1>
     <div class="sub" id="oD">11 towers · Boss waves · Skill trees · Spells · Random events<br>Build, upgrade, survive!</div>
@@ -42,19 +43,6 @@
     <h2>⚡ Skill Tree</h2>
     <div id="skC"></div>
     <button id="skClose">Close</button>
-  </div>
-  <div id="authOv">
-    <div id="authBox">
-      <h2>⚔️ Goblin Siege</h2>
-      <div id="authTabs">
-        <button class="atab on" id="tabLogin">Login</button>
-        <button class="atab" id="tabReg">Register</button>
-      </div>
-      <input id="authUser" type="text" placeholder="Username" autocomplete="username">
-      <input id="authPass" type="password" placeholder="Password" autocomplete="current-password">
-      <div id="authErr"></div>
-      <button id="authSubmit">Login</button>
-    </div>
   </div>
 </div>
 <script type="module" src="js/main.js"></script>

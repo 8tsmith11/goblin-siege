@@ -1,29 +1,38 @@
 'use strict';
-import { state, startGame, startWave, resetGame } from './main.js';
+import { state, startGame, startWave, resetGame, _ΨΔ } from './main.js';
 import { TD, TOWER_SKILLS } from './towers.js';
 import { SD, spawnBees } from './support.js';
 import { SP, castSpell } from './spells.js';
 import { SKILLS, renderSk, showTowerSkill } from './skills.js';
 import { sfxPlace } from './audio.js';
-import * as api from './api.js';
 
 export function hudU() {
-  const { lives, gold, enemies, spawnQueue, wave, phase } = state;
+  const { lives, gold, enemies, spawnQueue, wave, phase, prepTicks } = state;
   document.getElementById('hHP').textContent = lives;
   document.getElementById('hG').textContent = gold;
   const l = enemies.length + spawnQueue.length;
-  document.getElementById('wl').textContent = phase === 'active' ? 'W' + wave + ' · ' + l + ' left' : 'Wave ' + wave;
+  const wlEl = document.getElementById('wl');
+  if (phase === 'prep') {
+    wlEl.textContent = '⚔ Prepare · ' + Math.ceil(prepTicks / 60) + 's';
+  } else {
+    wlEl.textContent = phase === 'active' ? 'W' + wave + ' · ' + l + ' left' : 'Wave ' + wave;
+  }
   document.getElementById('hI').textContent = '+' + state.fIncome();
   document.getElementById('hSP').textContent = state.skillPts;
+  const goBtn = document.getElementById('goBtn');
+  if (goBtn) {
+    goBtn.style.display = phase === 'prep' ? '' : 'none';
+    wlEl.style.flex = phase === 'prep' ? '0 0 auto' : '1';
+  }
 }
 
-export function showOv(t, d, b, go) {
+export function showOv(t, d, b, go, fn) {
   document.getElementById('oT').textContent = t;
   document.getElementById('oD').innerHTML = d;
   document.getElementById('oS').textContent = go ? 'Wave ' + state.wave + ' · Gold ' + state.gold : '';
   const btn = document.getElementById('oB');
   btn.textContent = b;
-  btn.onclick = go ? () => { resetGame(); startGame(); } : () => startWave();
+  btn.onclick = fn ?? (go ? () => { resetGame(); startGame(); } : () => startWave());
   document.getElementById('ov').classList.remove('hid');
 }
 
@@ -35,7 +44,7 @@ export function showBanner(t) {
 }
 
 export function showBL(t) {
-  const b = document.getElementById('bL'); b.textContent = '"' + t + '"'; b.classList.add('sh');
+  const b = document.getElementById('bL'); b.textContent = '\"' + t + '\"'; b.classList.add('sh');
   import('./audio.js').then(m => m.speak(t));
   setTimeout(() => b.classList.remove('sh'), 3000);
 }
@@ -46,37 +55,99 @@ export function showTip(t) {
   clearTimeout(tipTmr); tipTmr = setTimeout(() => el.classList.remove('sh'), 2000);
 }
 
+function showTdesc(key) {
+  const el = document.getElementById('tdesc');
+  if (!el) return;
+  const bp = document.getElementById('bp');
+  el.style.bottom = (bp ? bp.offsetHeight : 0) + 'px';
+
+  let icon, name, desc, catCls, catLabel, stats = '';
+  if (key === 'factory') {
+    icon = '🏭'; name = 'Factory'; catCls = 'factory'; catLabel = 'Factory';
+    desc = 'Generates gold income each wave. Upgrade for higher income or add a laser.';
+  } else if (TD[key]) {
+    const d = TD[key]; icon = d.icon; name = d.name; desc = d.desc || ''; catCls = 'offense'; catLabel = 'Offense';
+    stats = 'DMG ' + d.dmg + ' · RNG ' + d.range + ' · CD ' + d.rate;
+    if (d.slow) stats += ' · Slow ' + Math.floor(d.slow * 100) + '%';
+    if (d.splash) stats += ' · Splash ' + d.splash;
+    if (d.pierce) stats += ' · Pierce ' + d.pierce;
+    if (d.chain) stats += ' · Chain ' + d.chain;
+  } else if (SD[key]) {
+    const d = SD[key]; icon = d.icon; name = d.name; desc = d.desc || ''; catCls = 'support'; catLabel = 'Support';
+  } else if (SP[key]) {
+    const d = SP[key]; icon = d.icon; name = d.name; desc = d.desc || ''; catCls = 'spell'; catLabel = 'Spell';
+  } else return;
+
+  el.innerHTML = '<div class="tdi">'
+    + '<div class="tdico">' + icon + '</div>'
+    + '<div class="tdtxt">'
+    + '<span class="tdcat ' + catCls + '">' + catLabel + '</span>'
+    + '<div class="tdname">' + name + '</div>'
+    + '<div class="tddesc">' + desc + '</div>'
+    + (stats ? '<div class="tdstats">' + stats + '</div>' : '')
+    + '</div></div>';
+  el.classList.add('sh');
+}
+
+function hideTdesc() {
+  const el = document.getElementById('tdesc');
+  if (el) el.classList.remove('sh');
+}
+
 export function panelU() {
   const pc = document.getElementById('pc'); pc.innerHTML = '';
   const { gold, phase } = state;
   const tab = state.tab;
 
+  const addHover = (el, key) => {
+    el.addEventListener('mouseenter', () => showTdesc(key));
+    el.addEventListener('mouseleave', () => hideTdesc());
+  };
+
   if (tab === 'towers') {
     for (const k in TD) {
       const d = TD[k];
-      pc.appendChild(mkIB(d.icon, k.slice(0, 6), d.cost, gold >= d.cost, state.sel?.key === k, () => { state.sel = state.sel?.key === k ? null : { key:k, type:'tower', cost:d.cost }; state.ttTower = null; hideTT(); panelU(); }));
+      const el = mkIB(d.icon, d.name, d.cost, gold >= d.cost, state.sel?.key === k, () => {
+        const sel = state.sel?.key === k;
+        state.sel = sel ? null : { key:k, type:'tower', cost:d.cost };
+        state.ttTower = null; hideTT();
+        panelU();
+      });
+      addHover(el, k); pc.appendChild(el);
     }
-  } else if (tab === 'support') {
     for (const k in SD) {
       const d = SD[k];
-      pc.appendChild(mkIB(d.icon, k.slice(0, 6), d.cost, gold >= d.cost, state.sel?.key === k, () => { state.sel = state.sel?.key === k ? null : { key:k, type:'support', cost:d.cost }; state.ttTower = null; hideTT(); panelU(); }));
+      const el = mkIB(d.icon, d.name, d.cost, gold >= d.cost, state.sel?.key === k, () => {
+        const sel = state.sel?.key === k;
+        state.sel = sel ? null : { key:k, type:'support', cost:d.cost };
+        state.ttTower = null; hideTT();
+        panelU();
+      });
+      addHover(el, k); pc.appendChild(el);
     }
   } else if (tab === 'spells') {
     for (const k in SP) {
       const s = SP[k];
       const cost = SKILLS.spellMaster?.owned ? Math.floor(s.cost * 0.75) : s.cost;
-      pc.appendChild(mkIB(s.icon, s.name.slice(0, 6), cost, gold >= cost && phase === 'active', false, () => castSpell(k)));
+      const el = mkIB(s.icon, s.name, cost, gold >= cost && phase === 'active', false, () => castSpell(k));
+      addHover(el, k); pc.appendChild(el);
     }
   } else if (tab === 'factory') {
     const cnt = state.towers.filter(t => t.type === 'factory').length;
     const cost = 50 + cnt * 25;
-    pc.appendChild(mkIB('🏭', 'Factory', cost, gold >= cost, state.sel?.key === 'factory', () => { state.sel = state.sel?.key === 'factory' ? null : { key:'factory', type:'factory', cost }; state.ttTower = null; hideTT(); panelU(); }));
+    const el = mkIB('🏭', 'Factory', cost, gold >= cost, state.sel?.key === 'factory', () => {
+      const sel = state.sel?.key === 'factory';
+      state.sel = sel ? null : { key:'factory', type:'factory', cost };
+      state.ttTower = null; hideTT();
+      panelU();
+    });
+    addHover(el, 'factory'); pc.appendChild(el);
     const i = document.createElement('div');
-    i.style.cssText = 'font-size:8px;color:#64748b;padding:0 3px;line-height:1.3';
-    i.innerHTML = '×' + cnt + ' Inc:<b style="color:#10b981">+' + state.fIncome() + '</b>/w<br>Tap→Upgrade/Laser'; pc.appendChild(i);
+    i.style.cssText = 'font-size:10px;color:#64748b;padding:4px;line-height:1.4;align-self:center;flex-shrink:0';
+    i.innerHTML = '×' + cnt + '<br>Inc:<b style="color:#10b981">+' + state.fIncome() + '</b>/w'; pc.appendChild(i);
   } else if (tab === 'skills') {
     const i = document.createElement('div');
-    i.style.cssText = 'font-size:9px;color:#94a3b8;padding:3px;text-align:center';
+    i.style.cssText = 'font-size:11px;color:#94a3b8;padding:4px;text-align:center;align-self:center';
     i.innerHTML = '⚡' + state.skillPts + ' pts (every 3 waves)'; pc.appendChild(i);
   }
 }
@@ -101,7 +172,12 @@ export function mkF(px, py, val, clr) {
 
 export function hideTT() { document.getElementById('tt').style.display = 'none'; }
 
+let _ttPx = 0, _ttPy = 0;
+function refreshTT(tw) { hudU(); panelU(); showTT(tw, _ttPx, _ttPy); }
+
 export function showTT(tw, px, py) {
+  _ttPx = px; _ttPy = py;
+  hideTdesc();
   state.ttTower = tw;
   const el = document.getElementById('tt');
   const isF = tw.type === 'factory', def = TD[tw.type] || SD[tw.type];
@@ -117,28 +193,25 @@ export function showTT(tw, px, py) {
   document.getElementById('ttS').textContent = s;
 
   const a = document.getElementById('ttA'); a.innerHTML = '';
+  const sell = () => { hideTT(); state.ttTower = null; hudU(); panelU(); };
   if (TD[tw.type]) {
     const upg = genUpg(TD[tw.type], tw.level);
-    addTTB(a, upg.l + ' 💰' + upg.c, 'ttu', state.gold >= upg.c, async () => {
-      try { const r = await api.upgradeTower(tw.id); state.gold = r.gold; tw.level++; applyUpgStat(tw, upg); sfxPlace(); } catch(e) {} hideTT(); state.ttTower = null;
-    });
+    addTTB(a, upg.l + ' 💰' + upg.c, 'ttu', state.gold >= upg.c, () => { _ΨΔ(() => doUpg(tw, upg)); refreshTT(tw); });
   }
   if (isF) {
-    if (!tw.hasLaser) { const lc = 60; addTTB(a, '🔴Laser 💰' + lc, 'tts2', state.gold >= lc, async () => { try { const r = await api.addLaser(tw.id); state.gold = r.gold; tw.hasLaser = true; tw.laserCD = 0; tw.laserLvl = 1; tw.laserRange = 3; sfxPlace(); } catch(e) {} hideTT(); state.ttTower = null; }); }
-    if (tw.hasLaser) { const lc = 30 + tw.laserLvl * 15; addTTB(a, '⬆Laser 💰' + lc, 'tts2', state.gold >= lc, async () => { try { const r = await api.upgradeLaser(tw.id); state.gold = r.gold; tw.laserLvl++; tw.laserRange = 3 + tw.laserLvl * 0.5; sfxPlace(); } catch(e) {} hideTT(); state.ttTower = null; }); }
-    const uc = 30 + tw.level * 20; addTTB(a, '+Inc 💰' + uc, 'ttu', state.gold >= uc, async () => { try { const r = await api.upgradeFactoryIncome(tw.id); state.gold = r.gold; tw.level++; } catch(e) {} hideTT(); state.ttTower = null; });
+    if (!tw.hasLaser) { const lc = 60; addTTB(a, '🔴Laser 💰' + lc, 'tts2', state.gold >= lc, () => { _ΨΔ(() => { if (state.gold < lc) return; state.gold -= lc; tw.hasLaser = true; tw.laserCD = 0; tw.laserLvl = 1; tw.laserRange = 3; sfxPlace(); }); refreshTT(tw); }); }
+    if (tw.hasLaser) { const lc = 30 + tw.laserLvl * 15; addTTB(a, '⬆Laser 💰' + lc, 'tts2', state.gold >= lc, () => { _ΨΔ(() => { if (state.gold < lc) return; state.gold -= lc; tw.laserLvl++; tw.laserRange = 3 + tw.laserLvl * 0.5; sfxPlace(); }); refreshTT(tw); }); }
+    const uc = 30 + tw.level * 20; addTTB(a, '+Inc 💰' + uc, 'ttu', state.gold >= uc, () => { _ΨΔ(() => { if (state.gold < uc) return; state.gold -= uc; tw.level++; }); refreshTT(tw); });
   }
-  if (tw.type === 'clam') { const uc = 35 + tw.level * 20; addTTB(a, '+Buff 💰' + uc, 'ttu', state.gold >= uc, async () => { try { const r = await api.upgradeTower(tw.id); state.gold = r.gold; tw.level++; } catch(e) {} hideTT(); state.ttTower = null; }); }
+  if (tw.type === 'clam') { const uc = 35 + tw.level * 20; addTTB(a, '+Buff 💰' + uc, 'ttu', state.gold >= uc, () => { _ΨΔ(() => { if (state.gold < uc) return; state.gold -= uc; tw.level++; }); refreshTT(tw); }); }
   if (tw.type === 'beehive') {
     const uc = 40 + tw.level * 25;
-    addTTB(a, '+Bees 💰' + uc, 'ttu', state.gold >= uc, async () => { try { const r = await api.upgradeTower(tw.id); state.gold = r.gold; tw.level++; tw.beeCount = (tw.beeCount || 3) + 1; tw.beeDmg = (tw.beeDmg || 4) + 2; spawnBees(tw); } catch(e) {} hideTT(); state.ttTower = null; });
+    addTTB(a, '+Bees 💰' + uc, 'ttu', state.gold >= uc, () => { _ΨΔ(() => { if (state.gold < uc) return; state.gold -= uc; tw.level++; tw.beeCount = (tw.beeCount || 3) + 1; tw.beeDmg = (tw.beeDmg || 4) + 2; spawnBees(tw); }); refreshTT(tw); });
   }
-  if (tw.type === 'clown') { const uc = 40 + tw.level * 25; addTTB(a, '+Range 💰' + uc, 'ttu', state.gold >= uc, async () => { try { const r = await api.upgradeTower(tw.id); state.gold = r.gold; tw.level++; tw.reverseRange = (tw.reverseRange || 3) + 0.5; tw.reverseDur = (tw.reverseDur || 80) + 20; } catch(e) {} hideTT(); state.ttTower = null; }); }
+  if (tw.type === 'clown') { const uc = 40 + tw.level * 25; addTTB(a, '+Range 💰' + uc, 'ttu', state.gold >= uc, () => { _ΨΔ(() => { if (state.gold < uc) return; state.gold -= uc; tw.level++; tw.reverseRange = (tw.reverseRange || 3) + 0.5; tw.reverseDur = (tw.reverseDur || 80) + 20; }); refreshTT(tw); }); }
   if (TD[tw.type] && TOWER_SKILLS[tw.type]) { addTTB(a, '⚡Skill', 'ttc', state.skillPts > 0, () => { showTowerSkill(tw); hideTT(); state.ttTower = null; }); }
   const sv = Math.floor((isF ? 50 : def?.cost || 50) * 0.5);
-  addTTB(a, 'Sell +💰' + sv, 'ttl', true, async () => {
-    try { const r = await api.sellTower(tw.id); state.gold = r.gold; state.grid[tw.y][tw.x] = 0; state.towers = state.towers.filter(x => x !== tw); state.bees = state.bees.filter(b => b.hive !== tw); } catch(e) {} hideTT(); state.ttTower = null;
-  });
+  addTTB(a, 'Sell +💰' + sv, 'ttl', true, () => { _ΨΔ(() => doSell(tw, sv)); sell(); });
 
   const { W } = state;
   el.style.display = 'block';
@@ -173,64 +246,27 @@ function m32(a) {
   };
 }
 
-export function applyUpgStat(tw, upg) {
+function doUpg(tw, upg) {
+  if (state.gold < upg.c) return;
+  state.gold -= upg.c; tw.level++;
   if (upg.s === 'dmg') tw.dmg += upg.v;
   else if (upg.s === 'range') tw.range += upg.v;
   else if (upg.s === 'rate') tw.rate = Math.max(5, tw.rate - upg.v);
+  sfxPlace();
 }
 
-export function hideAuthOverlay() {
-  const el = document.getElementById('authOv');
-  if (el) el.classList.add('hid');
-}
-
-export function showAuthOverlay() {
-  const el = document.getElementById('authOv');
-  if (!el) return;
-  el.classList.remove('hid');
-
-  let mode = 'login';
-  const tabLogin = document.getElementById('tabLogin');
-  const tabReg = document.getElementById('tabReg');
-  const submit = document.getElementById('authSubmit');
-  const err = document.getElementById('authErr');
-
-  function setMode(m) {
-    mode = m;
-    tabLogin.classList.toggle('on', m === 'login');
-    tabReg.classList.toggle('on', m === 'register');
-    submit.textContent = m === 'login' ? 'Login' : 'Register';
-    err.textContent = '';
-  }
-
-  tabLogin.onclick = () => setMode('login');
-  tabReg.onclick = () => setMode('register');
-
-  submit.onclick = async () => {
-    const user = document.getElementById('authUser').value.trim();
-    const pass = document.getElementById('authPass').value;
-    if (!user || !pass) { err.textContent = 'Enter username and password.'; return; }
-    err.textContent = '';
-    submit.disabled = true;
-    try {
-      if (mode === 'register') await api.register(user, pass);
-      await api.login(user, pass);
-      hideAuthOverlay();
-      const { startGame } = await import('./main.js');
-      startGame();
-    } catch (e) {
-      err.textContent = e.message || 'Failed. Try again.';
-    } finally {
-      submit.disabled = false;
-    }
-  };
+function doSell(tw, val) {
+  state.gold += val;
+  state.grid[tw.y][tw.x] = 0;
+  state.towers = state.towers.filter(x => x !== tw);
+  state.bees = state.bees.filter(b => b.hive !== tw);
 }
 
 export function initTabs() {
   document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
     state.tab = t.dataset.t;
     document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
-    state.sel = null; state.ttTower = null; hideTT();
+    state.sel = null; state.ttTower = null; hideTT(); hideTdesc();
     if (state.tab === 'skills') { renderSk(); document.getElementById('skP').classList.add('sh'); }
     else document.getElementById('skP').classList.remove('sh');
     panelU();

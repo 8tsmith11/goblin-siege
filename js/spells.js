@@ -1,32 +1,22 @@
 'use strict';
-import { state } from './main.js';
-import { iA, sfxNuke, sfxVolcano, sfxFreeze, sfxLaser, sfxHeal, sfxGoldBoost, sfxRage } from './audio.js';
+import { state, _ΨΔ } from './main.js';
+import { iA, sfxNuke, sfxVolcano, sfxFreeze, sfxLaser, sfxRage } from './audio.js';
 import { SKILLS } from './skills.js';
 import { showBanner, panelU } from './ui.js';
-import * as api from './api.js';
 
 export const SP = {
-  nuke:      { icon:'☢️', cost:200, name:'Nuke' },
-  volcano:   { icon:'🌋', cost:150, name:'Volcano' },
-  freeze:    { icon:'❄️', cost:120, name:'Freeze' },
-  heal:      { icon:'💚', cost:50,  name:'Heal (+3❤️)' },
-  goldBoost: { icon:'💎', cost:40,  name:'Gold Boost' },
-  lightning: { icon:'⚡', cost:80,  name:'Lightning' },
-  rage:      { icon:'🔥', cost:60,  name:'Rage' },
+  nuke:      { icon:'☢️', cost:200, name:'Nuke',      desc:'Damages ALL enemies on the map' },
+  volcano:   { icon:'🌋', cost:150, name:'Volcano',   desc:'Creates a lava zone that burns nearby enemies for 2 waves' },
+  freeze:    { icon:'❄️', cost:120, name:'Freeze',    desc:'Freezes all enemies in place for 3 seconds' },
+  lightning: { icon:'⚡', cost:80,  name:'Lightning', desc:'Strikes the strongest enemy and stuns it' },
+  rage:      { icon:'🔥', cost:60,  name:'Rage',      desc:'Boosts all tower damage +30% and speed -20% cooldown' },
 };
 
-export async function castSpell(k) {
+export function castSpell(k) {
   const cost = SKILLS.spellMaster?.owned ? Math.floor(SP[k].cost * 0.75) : SP[k].cost;
   if (state.gold < cost || state.phase !== 'active') return;
   iA();
-  try {
-    const result = await api.castSpell(k);
-    state.gold = result.gold;
-    // Server may have updated lives (heal) — sync it
-    if (result.effect?.lives != null) state.lives = result.effect.lives;
-  } catch (e) {
-    console.error('castSpell failed:', e.message); return;
-  }
+  _ΨΔ(() => { state.gold -= cost; });
   const { enemies, beams, particles, W, H, CELL, wave } = state;
 
   if (k === 'nuke') {
@@ -46,12 +36,6 @@ export async function castSpell(k) {
     sfxFreeze(); state.freezeActive = 180;
     showBanner('❄️ FREEZE!');
     for (let i=0;i<15;i++) particles.push({ x:Math.random()*W, y:Math.random()*H, vx:(Math.random()-.5)*2, vy:-1-Math.random(), life:25, clr:'#38bdf8', sz:3 });
-  } else if (k === 'heal') {
-    // lives already synced from server result above
-    showBanner('💚 +3 Lives!'); sfxHeal();
-  } else if (k === 'goldBoost') {
-    // gold already synced from server result above
-    showBanner('💎 Gold Boost!'); sfxGoldBoost();
   } else if (k === 'lightning') {
     const alive = enemies.filter(e=>!e.dead).sort((a,b)=>b.hp-a.hp);
     if (alive.length) {

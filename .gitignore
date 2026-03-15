@@ -1,6 +1,9 @@
 # Claude
 .claude/
 
+# Agent reference (internal)
+GAME.md
+
 # OS
 .DS_Store
 Thumbs.db

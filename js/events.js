@@ -1,5 +1,5 @@
 'use strict';
-import { state, fIncome } from './main.js';
+import { state, fIncome, _ΨΔ } from './main.js';
 import { ETYPES, mkE } from './enemies.js';
 import { sfxEvent } from './audio.js';
 
@@ -18,7 +18,7 @@ export const EVENTS = [
 
 export function triggerEvent() {
   const ev = EVENTS[Math.floor(Math.random() * EVENTS.length)];
-  ev.fn(); sfxEvent();
+  _ΨΔ(() => ev.fn()); sfxEvent();
   const el = document.getElementById('evBanner');
   el.innerHTML = (ev.good ? '🎉' : '⚠️') + ' <b>' + ev.name + '</b><br>' + ev.desc;
   el.style.borderColor = ev.good ? '#22c55e' : '#ef4444';
