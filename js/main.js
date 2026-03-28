@@ -261,5 +261,4 @@ function loop() {
 document.getElementById('snd').addEventListener('click', () => import('./audio.js').then(m => m.toggleSound()));
 document.getElementById('goBtn').addEventListener('click', () => { if (state.phase === 'prep') startWave(); });
 initTabs(); initInput(); initSz(); panelU(); hudU(); loop();
-showOv('⚔️ Goblin Siege ' + VERSION + ' ⚔️', '', 'Begin Battle', false, startGame);
-showWelcome(VERSION);
+showWelcome(VERSION, startGame);

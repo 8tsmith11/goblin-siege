@@ -279,7 +279,7 @@ function mdToHtml(md) {
   return html;
 }
 
-export async function showWelcome(version) {
+export async function showWelcome(version, onClose) {
   const el = document.getElementById('welcome');
   document.getElementById('welcomeTitle').textContent = '⚔️ Welcome to Goblin Siege ' + version + ' ⚔️';
   const notesEl = document.getElementById('welcomeNotes');
@@ -290,7 +290,7 @@ export async function showWelcome(version) {
   } catch(_) {
     notesEl.textContent = 'No patch notes available.';
   }
-  document.getElementById('welcomeX').onclick = () => el.classList.add('hid');
+  document.getElementById('welcomeX').onclick = () => { el.classList.add('hid'); if (onClose) onClose(); };
 }
 
 export function initTabs() {
