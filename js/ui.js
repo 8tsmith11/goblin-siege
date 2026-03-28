@@ -259,6 +259,40 @@ function doSell(tw, val) {
   state.bees = state.bees.filter(b => b.hive !== tw);
 }
 
+function mdToHtml(md) {
+  let html = '', inList = false;
+  for (const line of md.split('\n')) {
+    if (line.startsWith('## ')) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += '<h2>' + line.slice(3) + '</h2>';
+    } else if (line.startsWith('### ')) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += '<h3>' + line.slice(4) + '</h3>';
+    } else if (line.startsWith('- ')) {
+      if (!inList) { html += '<ul>'; inList = true; }
+      html += '<li>' + line.slice(2) + '</li>';
+    } else if (line.trim() === '') {
+      if (inList) { html += '</ul>'; inList = false; }
+    }
+  }
+  if (inList) html += '</ul>';
+  return html;
+}
+
+export async function showWelcome(version) {
+  const el = document.getElementById('welcome');
+  document.getElementById('welcomeTitle').textContent = '⚔️ Welcome to Goblin Siege ' + version + ' ⚔️';
+  const notesEl = document.getElementById('welcomeNotes');
+  try {
+    const res = await fetch('patch-notes/' + version + '.md');
+    if (!res.ok) throw new Error();
+    notesEl.innerHTML = mdToHtml(await res.text());
+  } catch(_) {
+    notesEl.textContent = 'No patch notes available.';
+  }
+  document.getElementById('welcomeX').onclick = () => el.classList.add('hid');
+}
+
 export function initTabs() {
   document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
     state.tab = t.dataset.t;

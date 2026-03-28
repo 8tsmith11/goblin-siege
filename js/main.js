@@ -7,8 +7,10 @@ import { render } from './render.js';
 import { SKILLS } from './skills.js';
 import { triggerEvent } from './events.js';
 import { sfxBoss, sfxWave, sfxKill, sfxHit } from './audio.js';
-import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, initTabs } from './ui.js';
+import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, initTabs, showWelcome } from './ui.js';
 import { initInput } from './input.js';
+
+export const VERSION = 'v1.0';
 
 // ─── Protected state internals ───────────────────────────────────────────────
 // _gg/_ll/_ss: actual gold / lives / skillPts stored in module scope.
@@ -259,4 +261,5 @@ function loop() {
 document.getElementById('snd').addEventListener('click', () => import('./audio.js').then(m => m.toggleSound()));
 document.getElementById('goBtn').addEventListener('click', () => { if (state.phase === 'prep') startWave(); });
 initTabs(); initInput(); initSz(); panelU(); hudU(); loop();
-showOv('⚔️ Goblin Siege v4 ⚔️', '', 'Begin Battle', false, startGame);
+showOv('⚔️ Goblin Siege ' + VERSION + ' ⚔️', '', 'Begin Battle', false, startGame);
+showWelcome(VERSION);
