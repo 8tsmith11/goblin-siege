@@ -59,6 +59,7 @@ export const state = {
   nodes: [], resources: {},
   sel: null, tab: 'towers',
   volcanoActive: null, freezeActive: 0,
+  autoplay: false,
   gameOver: false, started: false,
   ttTower: null,
   W: 0, H: 0, CELL: 0, COLS: 0, ROWS: 0, pathReady: false,
@@ -210,11 +211,12 @@ function update() {
     if (state.wave % 3 === 0) { state.skillPts++; mkF(state.W / 2, state.H / 3, '+1 ⚡ Skill!', '#a78bfa'); }
     
     // Transition seamlessly into the prep phase without a blocking modal.
-    state.phase = 'prep'; state.prepTicks = 1800; sfxWave();
-    _φ = false;
+    sfxWave(); _φ = false;
     autoSave();
     if (Math.random() < 0.4 && state.wave > 1) setTimeout(() => triggerEvent(), 500);
     showBanner('✅ Wave ' + state.wave + ' Complete!');
+    if (state.autoplay) { startWave(); return; }
+    state.phase = 'prep'; state.prepTicks = 1800;
     hudU(); panelU();
     return;
   }
@@ -247,6 +249,7 @@ export function startWave() {
 }
 
 export function startPrep() {
+  if (state.autoplay) { startWave(); return; }
   state.phase = 'prep'; state.prepTicks = 1800;
   hideOv(); hudU(); panelU();
 }
@@ -288,6 +291,11 @@ function loop() {
 
 /* ═══ Boot ═══ */
 document.getElementById('snd').addEventListener('click', () => import('./audio.js').then(m => m.toggleSound()));
+document.getElementById('autoBtn').addEventListener('click', () => {
+  state.autoplay = !state.autoplay;
+  document.getElementById('autoBtn').classList.toggle('on', state.autoplay);
+  if (state.autoplay && state.phase === 'prep') startWave();
+});
 document.getElementById('rstBtn').addEventListener('click', () => {
   showOv('🔄 Restart?', '<label id="exportLbl"><input type="checkbox" id="chkExport" checked> Export save file before restarting</label>', 'Restart', false, () => {
     if (document.getElementById('chkExport')?.checked) exportSave();
