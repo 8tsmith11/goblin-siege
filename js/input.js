@@ -67,7 +67,7 @@ const keysDown = new Set();
 
 export function updateCameraKeys() {
   if (!keysDown.size) return;
-  const PAN = 6 / state.cam.zoom;
+  const PAN = 20 / state.cam.zoom;
   let dx = 0, dy = 0;
   if (keysDown.has('ArrowLeft')  || keysDown.has('a') || keysDown.has('A')) dx -= PAN;
   if (keysDown.has('ArrowRight') || keysDown.has('d') || keysDown.has('D')) dx += PAN;
