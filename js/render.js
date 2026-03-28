@@ -46,9 +46,6 @@ export function render() {
     cx.font = Math.floor(CELL * 0.4) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
     cx.fillStyle = '#22c55e77'; cx.fillText('▶', path[0].x * CELL + CELL / 2, path[0].y * CELL + CELL / 2);
   }
-  cx.restore();
-  if (freezeActive > 0) { cx.fillStyle = 'rgba(56,189,248,' + (0.06 + 0.03 * Math.sin(ticks * 0.2)) + ')'; cx.fillRect(0, 0, W, H); }
-
   // Volcano
   if (volcanoActive) {
     const vx = volcanoActive.x * CELL + CELL / 2, vy = volcanoActive.y * CELL + CELL / 2;
@@ -171,4 +168,7 @@ export function render() {
     const icon = sel.key === 'factory' ? '🏭' : (TD[sel.key] || SD[sel.key])?.icon || '?';
     cx.fillText(icon, gpx, gpy); cx.globalAlpha = 1;
   }
+
+  cx.restore();
+  if (freezeActive > 0) { cx.fillStyle = 'rgba(56,189,248,' + (0.06 + 0.03 * Math.sin(ticks * 0.2)) + ')'; cx.fillRect(0, 0, W, H); }
 }

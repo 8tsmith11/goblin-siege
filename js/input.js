@@ -1,5 +1,5 @@
 'use strict';
-import { state, _ΨΔ, clampCam } from './main.js';
+import { state, _ΨΔ, clampCam, minZoom } from './main.js';
 import { iA, sfxPlace, sfxLizard, speak } from './audio.js';
 import { TD } from './towers.js';
 import { SD, spawnBees } from './support.js';
@@ -62,10 +62,32 @@ function handleTap(e) {
   if (ex) { if (state.ttTower === ex) { hideTT(); state.ttTower = null; } else showTT(ex, c.px, c.py); }
 }
 
+// ── Keyboard pan ──────────────────────────────────────────────────────────────
+const keysDown = new Set();
+
+export function updateCameraKeys() {
+  if (!keysDown.size) return;
+  const PAN = 6 / state.cam.zoom;
+  let dx = 0, dy = 0;
+  if (keysDown.has('ArrowLeft')  || keysDown.has('a') || keysDown.has('A')) dx -= PAN;
+  if (keysDown.has('ArrowRight') || keysDown.has('d') || keysDown.has('D')) dx += PAN;
+  if (keysDown.has('ArrowUp')    || keysDown.has('w') || keysDown.has('W')) dy -= PAN;
+  if (keysDown.has('ArrowDown')  || keysDown.has('s') || keysDown.has('S')) dy += PAN;
+  if (dx || dy) { state.cam.panX += dx; state.cam.panY += dy; clampCam(); }
+}
+
 export function initInput() {
   const cv = state.cv;
 
-  // ── Mouse pan + zoom ──────────────────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    const nav = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'];
+    if (nav.includes(e.key)) e.preventDefault();
+    keysDown.add(e.key);
+  });
+  document.addEventListener('keyup', e => keysDown.delete(e.key));
+  window.addEventListener('blur', () => keysDown.clear());
+
+  // ── Mouse pan + zoom ────────────────────────────────────────────────────────
   let mouseDragStart = null, mouseDragged = false;
 
   cv.addEventListener('mousedown', e => {
@@ -90,24 +112,23 @@ export function initInput() {
 
   cv.addEventListener('mouseup', () => { mouseDragStart = null; });
   cv.addEventListener('mouseleave', () => { state.gCell = null; mouseDragStart = null; mouseDragged = false; });
-
   cv.addEventListener('click', e => { if (!mouseDragged) handleTap(e); });
 
   cv.addEventListener('wheel', e => {
     e.preventDefault();
     const r = cv.getBoundingClientRect();
     const sx = e.clientX - r.left, sy = e.clientY - r.top;
-    const oldZoom = state.cam.zoom;
-    const newZoom = Math.max(0.5, Math.min(4, oldZoom * (e.deltaY < 0 ? 1.12 : 0.89)));
-    const wx = sx / oldZoom + state.cam.panX, wy = sy / oldZoom + state.cam.panY;
-    state.cam.zoom = newZoom;
-    state.cam.panX = wx - sx / newZoom;
-    state.cam.panY = wy - sy / newZoom;
-    clampCam();
+    const cam = state.cam;
+    const mz = minZoom(), newTarget = Math.max(mz, Math.min(4, cam.targetZoom * (e.deltaY < 0 ? 1.12 : 0.89)));
+    // Store focal world point at CURRENT zoom (before target changes)
+    cam.focalX = sx / cam.zoom + cam.panX;
+    cam.focalY = sy / cam.zoom + cam.panY;
+    cam.focalSx = sx; cam.focalSy = sy;
+    cam.targetZoom = newTarget;
   }, { passive: false });
 
-  // ── Touch pan + pinch zoom ────────────────────────────────────────────────
-  let touchMoved = false, touchPanStart = null, lastPinchDist = 0;
+  // ── Touch pan + pinch ───────────────────────────────────────────────────────
+  let touchMoved = false, touchPanStart = null, lastPinchDist = 0, lastPinchMid = null;
 
   cv.addEventListener('touchstart', e => {
     touchMoved = false;
@@ -118,28 +139,30 @@ export function initInput() {
     if (e.touches.length === 2) {
       const [a, b] = e.touches;
       lastPinchDist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      const r = cv.getBoundingClientRect();
+      lastPinchMid = { sx: (a.clientX + b.clientX) / 2 - r.left, sy: (a.clientY + b.clientY) / 2 - r.top };
       touchPanStart = null;
     }
   }, { passive: true });
 
   cv.addEventListener('touchmove', e => {
     e.preventDefault(); touchMoved = true;
+    const cam = state.cam;
     if (e.touches.length === 2) {
       const [a, b] = e.touches;
       const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
       const r = cv.getBoundingClientRect();
-      const mx = (a.clientX + b.clientX) / 2 - r.left, my = (a.clientY + b.clientY) / 2 - r.top;
-      const oldZoom = state.cam.zoom;
-      const newZoom = Math.max(0.5, Math.min(4, oldZoom * (dist / lastPinchDist)));
-      const wx = mx / oldZoom + state.cam.panX, wy = my / oldZoom + state.cam.panY;
-      state.cam.zoom = newZoom;
-      state.cam.panX = wx - mx / newZoom;
-      state.cam.panY = wy - my / newZoom;
-      clampCam(); lastPinchDist = dist; touchPanStart = null;
+      const sx = (a.clientX + b.clientX) / 2 - r.left, sy = (a.clientY + b.clientY) / 2 - r.top;
+      const mz = minZoom(), newTarget = Math.max(mz, Math.min(4, cam.targetZoom * (dist / lastPinchDist)));
+      cam.focalX = lastPinchMid.sx / cam.zoom + cam.panX;
+      cam.focalY = lastPinchMid.sy / cam.zoom + cam.panY;
+      cam.focalSx = lastPinchMid.sx; cam.focalSy = lastPinchMid.sy;
+      cam.targetZoom = newTarget;
+      lastPinchDist = dist; lastPinchMid = { sx, sy }; touchPanStart = null;
     } else if (e.touches.length === 1 && touchPanStart && !state.sel) {
       const t = e.touches[0];
-      state.cam.panX = touchPanStart.panX - (t.clientX - touchPanStart.x) / state.cam.zoom;
-      state.cam.panY = touchPanStart.panY - (t.clientY - touchPanStart.y) / state.cam.zoom;
+      cam.panX = touchPanStart.panX - (t.clientX - touchPanStart.x) / cam.zoom;
+      cam.panY = touchPanStart.panY - (t.clientY - touchPanStart.y) / cam.zoom;
       clampCam(); state.gCell = null;
     } else if (state.sel) {
       const c = cell(e);

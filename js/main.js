@@ -8,7 +8,7 @@ import { SKILLS } from './skills.js';
 import { triggerEvent } from './events.js';
 import { sfxBoss, sfxWave, sfxKill, sfxHit } from './audio.js';
 import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, initTabs, showWelcome } from './ui.js';
-import { initInput } from './input.js';
+import { initInput, updateCameraKeys } from './input.js';
 
 export const VERSION = 'v1.0';
 export const WORLD_COLS = 20;
@@ -37,7 +37,7 @@ export const state = {
   gameOver: false, started: false,
   ttTower: null,
   W: 0, H: 0, CELL: 0, COLS: 0, ROWS: 0, pathReady: false,
-  cam: { panX: 0, panY: 0, zoom: 1 },
+  cam: { panX: 0, panY: 0, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
   cv: null, cx: null,
   path: [], pathSet: new Set(), grid: [],
   gCell: null,
@@ -74,8 +74,15 @@ function measure() {
 export function clampCam() {
   const { cam, CELL, W, H } = state;
   const worldW = WORLD_COLS * CELL, worldH = WORLD_ROWS * CELL;
-  cam.panX = Math.max(0, Math.min(cam.panX, Math.max(0, worldW - W / cam.zoom)));
-  cam.panY = Math.max(0, Math.min(cam.panY, Math.max(0, worldH - H / cam.zoom)));
+  const viewW = W / cam.zoom, viewH = H / cam.zoom;
+  cam.panX = viewW >= worldW ? -(viewW - worldW) / 2 : Math.max(0, Math.min(cam.panX, worldW - viewW));
+  cam.panY = viewH >= worldH ? -(viewH - worldH) / 2 : Math.max(0, Math.min(cam.panY, worldH - viewH));
+}
+
+export function minZoom() {
+  const { CELL, W, H } = state;
+  const worldW = WORLD_COLS * CELL, worldH = WORLD_ROWS * CELL;
+  return Math.min(W / worldW, H / worldH);
 }
 
 export function initSz() {
@@ -255,7 +262,7 @@ export function resetGame() {
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
     gameOver: false, started: false, pathReady: false, sel: null, ttTower: null,
-    cam: { panX: 0, panY: 0, zoom: 1 },
+    cam: { panX: 0, panY: 0, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
     _Σ: 0, _Ω: 0,
   });
   state.pathSet.clear(); state.grid = [];
@@ -266,6 +273,14 @@ export function resetGame() {
 /* ═══ Loop ═══ */
 let lastP = 0;
 function loop() {
+  updateCameraKeys();
+  const cam = state.cam;
+  if (Math.abs(cam.zoom - cam.targetZoom) > 0.0005) {
+    cam.zoom += (cam.targetZoom - cam.zoom) * 0.18;
+    cam.panX = cam.focalX - cam.focalSx / cam.zoom;
+    cam.panY = cam.focalY - cam.focalSy / cam.zoom;
+    clampCam();
+  }
   update(); render();
   if (state.ticks - lastP > 10) { panelU(); lastP = state.ticks; }
   requestAnimationFrame(loop);
