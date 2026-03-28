@@ -149,8 +149,6 @@ export function importSave() {
 }
 
 export function initSaveUI() {
-  document.getElementById('svBtn')?.addEventListener('click', () => saveGame());
-  document.getElementById('ldBtn')?.addEventListener('click', () => loadGame());
-  document.getElementById('exBtn')?.addEventListener('click', () => exportSave());
-  document.getElementById('imBtn')?.addEventListener('click', () => importSave());
+  document.getElementById('svBtn')?.addEventListener('click', () => exportSave());
+  document.getElementById('ldBtn')?.addEventListener('click', () => importSave());
 }

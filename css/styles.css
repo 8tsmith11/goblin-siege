@@ -8,8 +8,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .gv{color:var(--gold)}.hv{color:var(--green)}
 .hsp{flex:1}
 #wl{color:var(--accent);font-family:'MedievalSharp',cursive;font-size:16px;white-space:nowrap;text-align:center;min-width:0}
-#snd,#svBtn,#ldBtn,#exBtn,#imBtn{background:none;border:1px solid #334;color:#888;font-size:20px;padding:2px 6px;border-radius:3px;cursor:pointer;flex-shrink:0}
-#svBtn:active,#ldBtn:active,#exBtn:active,#imBtn:active{transform:scale(.92)}
+#snd,#svBtn,#ldBtn,#rstBtn{background:none;border:1px solid #334;color:#888;font-size:20px;padding:2px 6px;border-radius:3px;cursor:pointer;flex-shrink:0}
+#svBtn:active,#ldBtn:active,#rstBtn:active{transform:scale(.92)}
 #goBtn{background:linear-gradient(135deg,var(--accent),#be123c);border:none;color:#fff;font-family:'MedievalSharp',cursive;font-size:14px;padding:4px 10px;border-radius:5px;cursor:pointer;flex-shrink:0;white-space:nowrap;animation:gbPulse 1.4s ease-in-out infinite}
 @keyframes gbPulse{0%,100%{box-shadow:0 0 5px var(--accentG)}50%{box-shadow:0 0 14px var(--accent)}}
 #goBtn:active{transform:scale(.95)}

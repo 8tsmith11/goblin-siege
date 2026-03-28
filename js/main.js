@@ -9,7 +9,7 @@ import { triggerEvent } from './events.js';
 import { sfxBoss, sfxWave, sfxKill, sfxHit } from './audio.js';
 import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, initTabs, showWelcome } from './ui.js';
 import { initInput, updateCameraKeys } from './input.js';
-import { autoSave, saveGame, initSaveUI, hasSave, loadGame } from './save.js';
+import { autoSave, initSaveUI, hasSave, loadGame } from './save.js';
 
 export const VERSION = 'v1.0';
 export const WORLD_COLS = 20;
@@ -296,6 +296,7 @@ function loop() {
 
 /* ═══ Boot ═══ */
 document.getElementById('snd').addEventListener('click', () => import('./audio.js').then(m => m.toggleSound()));
+document.getElementById('rstBtn').addEventListener('click', () => { if (confirm('Restart? All progress will be lost.')) resetGame(); });
 document.getElementById('goBtn').addEventListener('click', () => { if (state.phase === 'prep') startWave(); });
 initTabs(); initInput(); initSz(); panelU(); hudU(); loop();
 initSaveUI();
