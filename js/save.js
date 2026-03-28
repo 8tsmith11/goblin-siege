@@ -37,7 +37,6 @@ function _st(tw) {
 
 function _build() {
   if (!state.started) return null;
-  if (state.phase === 'active' && (state.enemies.length > 0 || state.spawnQueue.length > 0)) return null;
   const ps = {}, ts = {};
   for (const [k, s] of Object.entries(SKILLS)) if (s.owned) ps[k] = 1;
   for (const [tp, tree] of Object.entries(TOWER_SKILLS)) {
