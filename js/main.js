@@ -211,12 +211,11 @@ function update() {
     if (state.wave % 3 === 0) { state.skillPts++; mkF(state.W / 2, state.H / 3, '+1 ⚡ Skill!', '#a78bfa'); }
     
     // Transition seamlessly into the prep phase without a blocking modal.
-    sfxWave(); _φ = false;
+    state.phase = 'prep'; state.prepTicks = 1800; sfxWave(); _φ = false;
     autoSave();
     if (Math.random() < 0.4 && state.wave > 1) setTimeout(() => triggerEvent(), 500);
     showBanner('✅ Wave ' + state.wave + ' Complete!');
     if (state.autoplay) { startWave(); return; }
-    state.phase = 'prep'; state.prepTicks = 1800;
     hudU(); panelU();
     return;
   }
