@@ -88,6 +88,7 @@ export function minZoom() {
 export function initSz() {
   measure();
   if (!state.pathReady) { buildPath(); state.pathReady = true; }
+  clampCam();
 }
 
 window.addEventListener('resize', () => { measure(); clampCam(); });
