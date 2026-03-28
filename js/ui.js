@@ -23,17 +23,26 @@ export function hudU() {
   if (goBtn) goBtn.style.display = phase === 'prep' ? '' : 'none';
 }
 
-export function showOv(t, d, b, go, fn) {
+export function showOv(t, d, b, go, fn, cancelFn) {
   document.getElementById('oT').textContent = t;
   document.getElementById('oD').innerHTML = d;
   document.getElementById('oS').textContent = go ? 'Wave ' + state.wave + ' · Gold ' + state.gold : '';
   const btn = document.getElementById('oB');
   btn.textContent = b;
   btn.onclick = fn ?? (go ? () => { resetGame(); startGame(); } : () => startPrep());
+  const cancel = document.getElementById('oCancelBtn');
+  if (cancel) {
+    cancel.style.display = cancelFn ? '' : 'none';
+    cancel.onclick = cancelFn ?? null;
+  }
   document.getElementById('ov').classList.remove('hid');
 }
 
-export function hideOv() { document.getElementById('ov').classList.add('hid'); }
+export function hideOv() {
+  document.getElementById('ov').classList.add('hid');
+  const cancel = document.getElementById('oCancelBtn');
+  if (cancel) cancel.style.display = 'none';
+}
 
 export function showBanner(t) {
   const b = document.getElementById('wb'); b.textContent = t; b.classList.add('sh');

@@ -9,7 +9,7 @@ import { triggerEvent } from './events.js';
 import { sfxBoss, sfxWave, sfxKill, sfxHit } from './audio.js';
 import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, initTabs, showWelcome } from './ui.js';
 import { initInput, updateCameraKeys } from './input.js';
-import { autoSave, initSaveUI, hasSave, loadGame } from './save.js';
+import { autoSave, clearSave, initSaveUI, hasSave, loadGame } from './save.js';
 
 export const VERSION = 'v1.0';
 export const WORLD_COLS = 20;
@@ -275,7 +275,7 @@ export function resetGame() {
   });
   state.pathSet.clear(); state.grid = [];
   Object.values(SKILLS).forEach(s => s.owned = false);
-  hideTT(); startGame();
+  clearSave(); hideTT(); startGame();
 }
 
 /* ═══ Loop ═══ */
@@ -296,7 +296,9 @@ function loop() {
 
 /* ═══ Boot ═══ */
 document.getElementById('snd').addEventListener('click', () => import('./audio.js').then(m => m.toggleSound()));
-document.getElementById('rstBtn').addEventListener('click', () => { if (confirm('Restart? All progress will be lost.')) resetGame(); });
+document.getElementById('rstBtn').addEventListener('click', () => {
+  showOv('🔄 Restart?', 'All progress will be lost.', 'Restart', false, () => resetGame(), () => hideOv());
+});
 document.getElementById('goBtn').addEventListener('click', () => { if (state.phase === 'prep') startWave(); });
 initTabs(); initInput(); initSz(); panelU(); hudU(); loop();
 initSaveUI();

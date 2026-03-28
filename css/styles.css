@@ -39,6 +39,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 #ov .sub{color:var(--dim);font-size:10px;margin-bottom:10px;text-align:center;padding:0 16px;line-height:1.4}
 #ov .st{color:var(--gold);font-size:11px;margin-bottom:6px;font-weight:700}
 #ov button{padding:10px 30px;font-family:'MedievalSharp',cursive;font-size:17px;color:#fff;background:linear-gradient(135deg,var(--accent),#be123c);border:none;border-radius:8px;cursor:pointer;box-shadow:0 3px 15px var(--accentG)}
+#oCancelBtn{background:linear-gradient(135deg,#334155,#1e293b)!important;box-shadow:none!important}
 #ov button:active{transform:scale(.95)}
 #tt{position:absolute;display:none;background:#111827f4;border:2px solid var(--accent);border-radius:7px;padding:7px 9px;z-index:40;min-width:150px;font-size:11px;pointer-events:auto;max-width:260px}
 .ttt{font-family:'MedievalSharp',cursive;color:var(--accent);font-size:15px;margin-bottom:2px}

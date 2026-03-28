@@ -114,6 +114,8 @@ export function loadGame() {
   return true;
 }
 
+export function clearSave() { localStorage.removeItem(_K); }
+
 export function exportSave() {
   const d = _build();
   if (d) localStorage.setItem(_K, _pack(d));
@@ -124,14 +126,20 @@ export function exportSave() {
   const a = document.createElement('a');
   a.href = url;
   a.download = 'goblin-siege-w' + state.wave + '.sav';
+  a.style.display = 'none';
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
 export function importSave() {
   const inp = document.createElement('input');
   inp.type = 'file';
+  inp.style.display = 'none';
+  document.body.appendChild(inp);
   inp.onchange = e => {
+    document.body.removeChild(inp);
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
