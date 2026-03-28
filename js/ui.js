@@ -15,7 +15,7 @@ export function hudU() {
   if (phase === 'prep') {
     wlEl.textContent = '⚔ Prepare · ' + Math.ceil(prepTicks / 60) + 's';
   } else {
-    wlEl.textContent = phase === 'active' ? 'W' + wave + ' · ' + l + ' left' : 'Wave ' + wave;
+    wlEl.textContent = phase === 'active' ? 'Wave ' + wave + ' · ' + l + ' left' : 'Wave ' + wave;
   }
   document.getElementById('hI').textContent = '+' + state.fIncome();
   document.getElementById('hSP').textContent = state.skillPts;
