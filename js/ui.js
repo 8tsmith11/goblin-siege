@@ -52,11 +52,9 @@ export function showTip(t) {
   clearTimeout(tipTmr); tipTmr = setTimeout(() => el.classList.remove('sh'), 2000);
 }
 
-function showTdesc(key) {
+function showTdesc(key, btnEl) {
   const el = document.getElementById('tdesc');
   if (!el) return;
-  const bp = document.getElementById('bp');
-  el.style.bottom = (bp ? bp.offsetHeight : 0) + 'px';
 
   let icon, name, desc, catCls, catLabel, stats = '';
   if (key === 'factory') {
@@ -83,7 +81,18 @@ function showTdesc(key) {
     + '<div class="tddesc">' + desc + '</div>'
     + (stats ? '<div class="tdstats">' + stats + '</div>' : '')
     + '</div></div>';
+
   el.classList.add('sh');
+
+  if (btnEl) {
+    const gcR = document.getElementById('gc').getBoundingClientRect();
+    const bR = btnEl.getBoundingClientRect();
+    const popW = el.offsetWidth;
+    const rawLeft = bR.left - gcR.left + bR.width / 2 - popW / 2;
+    el.style.left = Math.max(4, Math.min(rawLeft, gcR.width - popW - 4)) + 'px';
+    el.style.bottom = (gcR.bottom - bR.top + 8) + 'px';
+    el.style.right = 'auto';
+  }
 }
 
 function hideTdesc() {
@@ -97,7 +106,7 @@ export function panelU() {
   const tab = state.tab;
 
   const addHover = (el, key) => {
-    el.addEventListener('mouseenter', () => showTdesc(key));
+    el.addEventListener('mouseenter', () => showTdesc(key, el));
     el.addEventListener('mouseleave', () => hideTdesc());
   };
 
