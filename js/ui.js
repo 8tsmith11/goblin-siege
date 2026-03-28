@@ -162,7 +162,7 @@ export function mkIB(icon, name, cost, ok, sl2, fn) {
   const b = document.createElement('div');
   b.className = 'ib' + (sl2 ? ' sel' : '') + (ok ? '' : ' off');
   b.innerHTML = '<span class="ic">' + icon + '</span><span class="nm">' + name + '</span><span class="ct">💰' + cost + '</span>';
-  b.onclick = fn; return b;
+  b.addEventListener('pointerdown', e => { e.stopPropagation(); fn(); }); return b;
 }
 
 export function mkF(px, py, val, clr) {
