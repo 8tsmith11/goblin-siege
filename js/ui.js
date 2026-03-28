@@ -21,8 +21,6 @@ export function hudU() {
   document.getElementById('hSP').textContent = state.skillPts;
   const goBtn = document.getElementById('goBtn');
   if (goBtn) goBtn.style.display = phase === 'prep' ? '' : 'none';
-  const svBtn = document.getElementById('svBtn');
-  if (svBtn) svBtn.style.display = (state.started && phase !== 'active') ? '' : 'none';
 }
 
 export function showOv(t, d, b, go, fn) {
