@@ -159,8 +159,10 @@ export function mkIB(icon, name, cost, ok, sl2, fn) {
 export function mkF(px, py, val, clr) {
   const el = document.createElement('div'); el.className = 'flt';
   const gcR = document.getElementById('gc').getBoundingClientRect(), cvR = state.cv.getBoundingClientRect();
-  el.style.left = (cvR.left - gcR.left + px) + 'px';
-  el.style.top = (cvR.top - gcR.top + py) + 'px';
+  const { cam } = state;
+  const sx = (px - cam.panX) * cam.zoom, sy = (py - cam.panY) * cam.zoom;
+  el.style.left = (cvR.left - gcR.left + sx) + 'px';
+  el.style.top = (cvR.top - gcR.top + sy) + 'px';
   el.style.color = clr;
   el.textContent = typeof val === 'number' ? '-' + val : val;
   document.getElementById('gc').appendChild(el);
@@ -213,7 +215,7 @@ export function showTT(tw, px, py) {
   const { W } = state;
   el.style.display = 'block';
   let tx = px - el.offsetWidth / 2, ty = py - el.offsetHeight - 10;
-  if (ty < 2) ty = py + state.CELL + 4;
+  if (ty < 2) ty = py + state.CELL * state.cam.zoom + 4;
   if (tx < 2) tx = 2;
   if (tx + el.offsetWidth > W) tx = W - el.offsetWidth - 2;
   el.style.left = tx + 'px'; el.style.top = ty + 'px';

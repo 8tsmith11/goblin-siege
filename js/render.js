@@ -17,10 +17,12 @@ export function canPlace(cx2, cy2) {
 }
 
 export function render() {
-  const { cx, W, H, CELL, COLS, ROWS, path, ticks, freezeActive, volcanoActive,
+  const { cx, W, H, CELL, COLS, ROWS, cam, path, ticks, freezeActive, volcanoActive,
           towers, bees, enemies, projectiles, beams, particles, sel, gCell, ttTower } = state;
 
   cx.clearRect(0, 0, W, H);
+  cx.save();
+  cx.setTransform(cam.zoom, 0, 0, cam.zoom, -cam.panX * cam.zoom, -cam.panY * cam.zoom);
   const grassReady = _imgGrassL.complete && _imgGrassL.naturalWidth && _imgGrassD.complete && _imgGrassD.naturalWidth;
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     if (grassReady) {
@@ -44,6 +46,7 @@ export function render() {
     cx.font = Math.floor(CELL * 0.4) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
     cx.fillStyle = '#22c55e77'; cx.fillText('▶', path[0].x * CELL + CELL / 2, path[0].y * CELL + CELL / 2);
   }
+  cx.restore();
   if (freezeActive > 0) { cx.fillStyle = 'rgba(56,189,248,' + (0.06 + 0.03 * Math.sin(ticks * 0.2)) + ')'; cx.fillRect(0, 0, W, H); }
 
   // Volcano

@@ -11,6 +11,8 @@ import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, initTabs
 import { initInput } from './input.js';
 
 export const VERSION = 'v1.0';
+export const WORLD_COLS = 20;
+export const WORLD_ROWS = 12;
 
 // ─── Protected state internals ───────────────────────────────────────────────
 // _gg/_ll/_ss: actual gold / lives / skillPts stored in module scope.
@@ -35,6 +37,7 @@ export const state = {
   gameOver: false, started: false,
   ttTower: null,
   W: 0, H: 0, CELL: 0, COLS: 0, ROWS: 0, pathReady: false,
+  cam: { panX: 0, panY: 0, zoom: 1 },
   cv: null, cx: null,
   path: [], pathSet: new Set(), grid: [],
   gCell: null,
@@ -54,12 +57,25 @@ state.cv = cv; state.cx = cx;
 
 function measure() {
   const gc = document.getElementById('gc'), hud = document.getElementById('hud'), bp = document.getElementById('bp');
+  const oldCELL = state.CELL;
   state.W = cv.width = gc.clientWidth;
   state.H = cv.height = gc.clientHeight - hud.offsetHeight - bp.offsetHeight;
-  state.CELL = Math.floor(Math.min(state.W / 16, state.H / 9));
+  state.COLS = WORLD_COLS;
+  state.ROWS = WORLD_ROWS;
+  state.CELL = Math.floor(Math.min(state.W / WORLD_COLS, state.H / WORLD_ROWS));
   if (state.CELL < 18) state.CELL = 18;
-  state.COLS = Math.floor(state.W / state.CELL);
-  state.ROWS = Math.floor(state.H / state.CELL);
+  if (oldCELL > 0 && state.CELL !== oldCELL) {
+    const ratio = state.CELL / oldCELL;
+    state.cam.panX *= ratio;
+    state.cam.panY *= ratio;
+  }
+}
+
+export function clampCam() {
+  const { cam, CELL, W, H } = state;
+  const worldW = WORLD_COLS * CELL, worldH = WORLD_ROWS * CELL;
+  cam.panX = Math.max(0, Math.min(cam.panX, Math.max(0, worldW - W / cam.zoom)));
+  cam.panY = Math.max(0, Math.min(cam.panY, Math.max(0, worldH - H / cam.zoom)));
 }
 
 export function initSz() {
@@ -67,10 +83,7 @@ export function initSz() {
   if (!state.pathReady) { buildPath(); state.pathReady = true; }
 }
 
-window.addEventListener('resize', () => {
-  const oc = state.COLS, or2 = state.ROWS; measure();
-  if ((state.COLS !== oc || state.ROWS !== or2) && state.towers.length === 0) buildPath();
-});
+window.addEventListener('resize', () => { measure(); clampCam(); });
 
 export function fIncome() {
   let t = 0;
@@ -242,6 +255,7 @@ export function resetGame() {
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
     gameOver: false, started: false, pathReady: false, sel: null, ttTower: null,
+    cam: { panX: 0, panY: 0, zoom: 1 },
     _Σ: 0, _Ω: 0,
   });
   state.pathSet.clear(); state.grid = [];
