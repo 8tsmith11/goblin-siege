@@ -46,6 +46,8 @@ function _build() {
     _ν: 1, _w: state.wave, _r: state.gold, _h: state.lives, _p: state.skillPts,
     _t: state.towers.map(_st), _g: state.grid, _a: state.path, ps, ts,
     _va: state.volcanoActive,
+    _no: state.nodes.map(n => ({ type: n.type, x: n.x, y: n.y })),
+    _rs: { ...state.resources },
   };
 }
 
@@ -77,6 +79,8 @@ function _apply(d) {
   state.pathReady = true;
 
   state.towers = d._t.map(t => ({ ...t, cd: 0, _buffed: false, _rateBuff: 1 }));
+  state.nodes = (d._no || []).map(n => ({ ...n, wobbleTick: 0, cd: 0 }));
+  state.resources = { ...(d._rs || {}) };
   state.bees = [];
   state.towers.filter(tw => tw.type === 'beehive').forEach(tw => spawnBees(tw));
 

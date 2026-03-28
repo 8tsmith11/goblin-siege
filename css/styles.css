@@ -40,6 +40,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 #ov .st{color:var(--gold);font-size:11px;margin-bottom:6px;font-weight:700}
 #ov button{padding:10px 30px;font-family:'MedievalSharp',cursive;font-size:17px;color:#fff;background:linear-gradient(135deg,var(--accent),#be123c);border:none;border-radius:8px;cursor:pointer;box-shadow:0 3px 15px var(--accentG)}
 #oCancelBtn{background:linear-gradient(135deg,#334155,#1e293b)!important;box-shadow:none!important}
+#exportLbl{font-size:12px;color:#94a3b8;cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;justify-content:center}
 #ov button:active{transform:scale(.95)}
 #tt{position:absolute;display:none;background:#111827f4;border:2px solid var(--accent);border-radius:7px;padding:7px 9px;z-index:40;min-width:150px;font-size:11px;pointer-events:auto;max-width:260px}
 .ttt{font-family:'MedievalSharp',cursive;color:var(--accent);font-size:15px;margin-bottom:2px}
@@ -58,6 +59,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 #tip.sh{opacity:1}
 .flt{position:absolute;font-size:10px;font-weight:800;pointer-events:none;z-index:25;animation:fu .6s ease-out forwards;text-shadow:0 1px 2px #000}
 @keyframes fu{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-20px) scale(.8)}}
+.fltG{position:absolute;font-size:14px;font-weight:800;pointer-events:none;z-index:25;animation:fuG .95s ease-out forwards;text-shadow:0 1px 3px #000;white-space:nowrap}
+@keyframes fuG{0%{opacity:1;transform:translateY(0) scale(1.1)}100%{opacity:0;transform:translateY(-38px) scale(.85)}}
+#hRes{display:flex;align-items:center;gap:6px;flex-shrink:0}
 #skP{position:absolute;inset:0;background:rgba(11,14,23,.96);z-index:55;display:none;flex-direction:column;align-items:center;padding:8px;overflow-y:auto}
 #skP.sh{display:flex}
 #skP h2{font-family:'MedievalSharp',cursive;color:var(--accent);font-size:18px;margin:6px 0}

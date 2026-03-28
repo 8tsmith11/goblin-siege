@@ -38,6 +38,7 @@ export function sfxWave() { pT(523, 0.08, 'square', 0.12); setTimeout(() => pT(6
 export function sfxLaser() { pT(1800, 0.06, 'sawtooth', 0.08); pT(1600, 0.1, 'square', 0.04); }
 export function sfxLizard() { pT(150, 0.15, 'sawtooth', 0.15); setTimeout(() => pT(100, 0.25, 'sawtooth', 0.2), 80); }
 export function sfxClown() { pT(800, 0.08, 'sine', 0.15); setTimeout(() => pT(1000, 0.06, 'sine', 0.12), 60); setTimeout(() => pT(600, 0.1, 'sine', 0.1), 120); }
+export function sfxMine()  { pT(160, 0.07, 'triangle', 0.16); setTimeout(() => pT(110, 0.09, 'triangle', 0.11), 45); }
 export function sfxEvent() { pT(440, 0.1, 'triangle', 0.15); setTimeout(() => pT(550, 0.1, 'triangle', 0.12), 100); setTimeout(() => pT(660, 0.15, 'triangle', 0.1), 200); }
 export function sfxBee() { pT(1400, 0.02, 'sawtooth', 0.03); }
 export function sfxHeal() { pT(440, 0.15, 'sine', 0.12); }

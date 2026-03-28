@@ -5,6 +5,7 @@ import { TD } from './towers.js';
 import { SD, spawnBees } from './support.js';
 import { canPlace } from './render.js';
 import { showTT, hideTT, showTip, showBanner, panelU, hudU } from './ui.js';
+import { clickNode } from './resources.js';
 
 function cell(e) {
   const r = state.cv.getBoundingClientRect();
@@ -21,6 +22,12 @@ function handleTap(e) {
   const c = cell(e);
   if (c.x < 0 || c.x >= state.COLS || c.y < 0 || c.y >= state.ROWS) return;
   const ex = state.towers.find(t => t.x === c.x && t.y === c.y);
+
+  // Resource node interaction (only when not placing a tower)
+  if (!state.sel) {
+    const node = state.nodes?.find(n => n.x === c.x && n.y === c.y);
+    if (node) { clickNode(node); return; }
+  }
 
   if (state.sel && state.sel.type !== 'spell') {
     if (ex || !canPlace(c.x, c.y)) {
@@ -47,12 +54,15 @@ function handleTap(e) {
       if (tw.type === 'beehive') { const d = SD.beehive; tw.beeCount = d.beeCount; tw.beeDmg = d.beeDmg; tw.beeRange = d.beeRange; tw.beeRate = d.beeRate; }
       if (tw.type === 'factory') { tw.hasLaser = false; tw.laserCD = 0; }
       state.towers.push(tw);
-      state.grid[c.y][c.x] = 2;
+      state.grid[c.y][c.x].type = 'tower';
+      state.grid[c.y][c.x].content = tw;
     });
     sfxPlace();
     if (tw.type === 'beehive') spawnBees(tw);
     if (tw.type === 'lizard') { sfxLizard(); showBanner('🦎 "' + TD.lizard.voiceLine + '"'); speak(TD.lizard.voiceLine); }
 
+    // Remove any resource node on this tile
+    state.nodes = state.nodes?.filter(n => !(n.x === c.x && n.y === c.y)) ?? [];
     state.sel = null;
     hudU(); panelU();
     return;

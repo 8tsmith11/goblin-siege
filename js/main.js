@@ -1,5 +1,19 @@
 'use strict';
+import { bus } from './bus.js';
+import { getP, freeP, freeBeam } from './pool.js';
+import { updateProjectiles } from './projectiles.js';
 import { buildPath } from './path.js';
+
+bus.on('enemyDeath', e => {
+  let rew = e.rew; if (SKILLS.greed?.owned) rew += 3;
+  state.gold += rew; sfxKill();
+  for (let j = 0; j < (e.boss ? 18 : 6); j++) {
+     let p = getP(); p.x = e.x * state.CELL + state.CELL / 2; p.y = e.y * state.CELL + state.CELL / 2;
+     p.vx = (Math.random() - 0.5) * (e.boss ? 7 : 4); p.vy = (Math.random() - 0.5) * (e.boss ? 7 : 4);
+     p.life = e.boss ? 28 : 16; p.clr = e.clr; p.sz = e.boss ? 4 : 2.5; state.particles.push(p);
+  }
+  mkF(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2 - 12, '+' + rew, '#fbbf24');
+});
 import { updateEnemies, genWave } from './enemies.js';
 import { updateTowers } from './towers.js';
 import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser } from './support.js';
@@ -10,6 +24,7 @@ import { sfxBoss, sfxWave, sfxKill, sfxHit } from './audio.js';
 import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, initTabs, showWelcome } from './ui.js';
 import { initInput, updateCameraKeys } from './input.js';
 import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
+import { placeNodes, updateNodes } from './resources.js';
 
 export const VERSION = 'v1.0';
 export const WORLD_COLS = 20;
@@ -33,6 +48,7 @@ export const state = {
   wave: 0, phase: 'idle', ticks: 0, prepTicks: 0,
   enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
   spawnQueue: [], spawnTimer: 0,
+  nodes: [], resources: {},
   sel: null, tab: 'towers',
   volcanoActive: null, freezeActive: 0,
   gameOver: false, started: false,
@@ -88,7 +104,7 @@ export function minZoom() {
 
 export function initSz() {
   measure();
-  if (!state.pathReady) { buildPath(); state.pathReady = true; }
+  if (!state.pathReady) { buildPath(); state.pathReady = true; placeNodes(); }
   clampCam();
 }
 
@@ -112,14 +128,14 @@ function update() {
   _φ = true;
   state.ticks++;
 
-  // Prep phase — player places towers, no enemies yet
+  // Prep phase countdown
   if (state.phase === 'prep') {
     state.prepTicks--;
-    if (state.prepTicks <= 0) { _φ = false; startWave(); return; }
-    if (state.ticks % 60 === 0) { _φ = false; hudU(); }
-    else _φ = false;
-    return;
+    if (state.prepTicks <= 0) { startWave(); }
+    else if (state.ticks % 60 === 0) { _φ = false; hudU(); _φ = true; } // Temporarily flip φ if needed for hud
   }
+
+  updateNodes();
   if (state.freezeActive > 0) state.freezeActive--;
 
   // Spawn
@@ -158,18 +174,18 @@ function update() {
   for (const e of state.enemies) {
     if (!e.dead && e.hp <= 0) {
       e.dead = true;
-      let rew = e.rew; if (SKILLS.greed?.owned) rew += 3;
-      state.gold += rew; sfxKill();
-      for (let j = 0; j < (e.boss ? 18 : 6); j++) state.particles.push({ x: e.x * state.CELL + state.CELL / 2, y: e.y * state.CELL + state.CELL / 2, vx: (Math.random() - 0.5) * (e.boss ? 7 : 4), vy: (Math.random() - 0.5) * (e.boss ? 7 : 4), life: e.boss ? 28 : 16, clr: e.clr, sz: e.boss ? 4 : 2.5 });
-      mkF(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2 - 12, '+' + rew, '#fbbf24');
+      bus.emit('enemyDeath', e);
     }
   }
   state.enemies = state.enemies.filter(e => !e.dead);
-  state.beams = state.beams.filter(b => { b.life--; return b.life > 0; });
+  for (let i = state.beams.length - 1; i >= 0; i--) {
+    const b = state.beams[i]; b.life--;
+    if (b.life <= 0) { freeBeam(b); state.beams.splice(i, 1); }
+  }
   state.bees = state.bees.filter(b => !b.dead);
   for (let i = state.particles.length - 1; i >= 0; i--) {
     const p = state.particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.03; p.life--;
-    if (p.life <= 0) state.particles.splice(i, 1);
+    if (p.life <= 0) { freeP(p); state.particles.splice(i, 1); }
   }
 
   if (state.lives <= 0) {
@@ -184,11 +200,13 @@ function update() {
     const inc = fIncome(); state.gold += inc;
     if (inc > 0) mkF(state.W / 2, state.H / 2, '+' + inc + ' 🏭', '#10b981');
     if (state.wave % 3 === 0) { state.skillPts++; mkF(state.W / 2, state.H / 3, '+1 ⚡ Skill!', '#a78bfa'); }
-    state.phase = 'idle'; sfxWave();
+    
+    // Transition seamlessly into the prep phase without a blocking modal.
+    state.phase = 'prep'; state.prepTicks = 1800; sfxWave();
     _φ = false;
     autoSave();
     if (Math.random() < 0.4 && state.wave > 1) setTimeout(() => triggerEvent(), 500);
-    showOv('✅ Wave ' + state.wave, (state.wave + 1) % 5 === 0 ? '⚠️ BOSS next!' : 'Build & prepare.', 'Next Wave', false);
+    showBanner('✅ Wave ' + state.wave + ' Complete!');
     hudU(); panelU();
     return;
   }
@@ -200,42 +218,7 @@ function update() {
   hudU();
 }
 
-function updateProjectiles() {
-  const { projectiles, enemies, particles, beams, ticks, CELL } = state;
-  for (let i = projectiles.length - 1; i >= 0; i--) {
-    const p = projectiles[i];
-    if (p.tgt.dead && !p.chain && !p.pierce) { projectiles.splice(i, 1); continue; }
-    if (p.tgt.dead) {
-      const next = enemies.filter(e => !e.dead && !p.hits.includes(e) && Math.hypot(e.x - p.x, e.y - p.y) < 3);
-      if (next.length) { p.tgt = next[0]; p.hits.push(p.tgt); } else { projectiles.splice(i, 1); continue; }
-    }
-    const dx = p.tgt.x - p.x, dy = p.tgt.y - p.y, d = Math.sqrt(dx * dx + dy * dy);
-    if (d < p.spd + 0.02) {
-      p.tgt.hp -= p.dmg; sfxHit();
-      mkF(p.tgt.x * CELL + CELL / 2, p.tgt.y * CELL + CELL / 2, p.dmg, '#fbbf24');
-      if (p.slow > 0) { p.tgt.slow = Math.max(p.tgt.slow, p.slow); p.tgt.st = 80; }
-      if (p.stun > 0) p.tgt.stunned = Math.max(p.tgt.stunned, p.stun);
-      if (p.blind) p.tgt.slow = Math.max(p.tgt.slow, 0.5);
-      if (p.poison) p.tgt.poison = { dmg: p.poison.dmg, dur: p.poison.dur };
-      if (p.splash > 0) enemies.forEach(e => { if (e !== p.tgt && !e.dead && Math.hypot(e.x - p.tgt.x, e.y - p.tgt.y) <= p.splash) e.hp -= Math.floor(p.dmg * 0.5); });
-      if (p.chain > 0) {
-        const nx = enemies.filter(e => !e.dead && e !== p.tgt && !p.hits.includes(e) && Math.hypot(e.x - p.tgt.x, e.y - p.tgt.y) < 2.5);
-        if (nx.length) { const nt = nx[0]; p.hits.push(nt); beams.push({ x1: p.tgt.x*CELL+CELL/2, y1: p.tgt.y*CELL+CELL/2, x2: nt.x*CELL+CELL/2, y2: nt.y*CELL+CELL/2, life: 6, clr: '#818cf8', w: 2 }); nt.hp -= Math.floor(p.dmg * 0.6); if (p.chainStun) nt.stunned = p.chainStun; p.chain--; }
-      }
-      if (p.pierce > 0) {
-        p.hits.push(p.tgt); p.pierce--;
-        const nx = enemies.filter(e => !e.dead && !p.hits.includes(e) && Math.hypot(e.x - p.tgt.x, e.y - p.tgt.y) < 1.5);
-        if (nx.length) { p.tgt = nx[0]; continue; }
-      }
-      for (let j = 0; j < 4; j++) particles.push({ x: p.tgt.x*CELL+CELL/2, y: p.tgt.y*CELL+CELL/2, vx: (Math.random()-0.5)*3, vy: (Math.random()-0.5)*3, life: 10, clr: p.clr, sz: 2 });
-      if (p.bloodlust && p.tgt.hp <= 0) state.lives = Math.min(30, state.lives + 1);
-      projectiles.splice(i, 1);
-    } else {
-      p.x += dx / d * p.spd; p.y += dy / d * p.spd;
-      if (ticks % 3 === 0) particles.push({ x: p.x*CELL+CELL/2, y: p.y*CELL+CELL/2, vx:0, vy:0, life:6, clr: p.clr+'66', sz:1.5 });
-    }
-  }
-}
+// updateProjectiles removed to projectiles.js
 
 /* ═══ Game flow ═══ */
 export function startGame() {
@@ -270,6 +253,7 @@ export function resetGame() {
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
     gameOver: false, started: false, pathReady: false, sel: null, ttTower: null,
+    nodes: [], resources: {},
     cam: { panX: 0, panY: 0, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
     _Σ: 0, _Ω: 0,
   });
@@ -297,7 +281,10 @@ function loop() {
 /* ═══ Boot ═══ */
 document.getElementById('snd').addEventListener('click', () => import('./audio.js').then(m => m.toggleSound()));
 document.getElementById('rstBtn').addEventListener('click', () => {
-  showOv('🔄 Restart?', 'Your save will be exported first.', 'Restart', false, () => { exportSave(); resetGame(); }, () => hideOv());
+  showOv('🔄 Restart?', '<label id="exportLbl"><input type="checkbox" id="chkExport" checked> Export save file before restarting</label>', 'Restart', false, () => {
+    if (document.getElementById('chkExport')?.checked) exportSave();
+    resetGame();
+  }, () => hideOv());
 });
 document.getElementById('goBtn').addEventListener('click', () => { if (state.phase === 'prep') startWave(); });
 initTabs(); initInput(); initSz(); panelU(); hudU(); loop();

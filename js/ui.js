@@ -1,5 +1,6 @@
 'use strict';
 import { state, startGame, startWave, startPrep, resetGame, _ΨΔ } from './main.js';
+import { RTYPES } from './resources.js';
 import { TD, TOWER_SKILLS } from './towers.js';
 import { SD, spawnBees } from './support.js';
 import { SP, castSpell } from './spells.js';
@@ -21,6 +22,10 @@ export function hudU() {
   document.getElementById('hSP').textContent = state.skillPts;
   const goBtn = document.getElementById('goBtn');
   if (goBtn) goBtn.style.display = phase === 'prep' ? '' : 'none';
+  const hRes = document.getElementById('hRes');
+  if (hRes) hRes.innerHTML = Object.entries(RTYPES).map(([k, r]) =>
+    `<div class="hi">${r.icon}<span class="v" style="color:${r.clr}">${state.resources[k] || 0}</span></div>`
+  ).join('');
 }
 
 export function showOv(t, d, b, go, fn, cancelFn) {
@@ -174,17 +179,42 @@ export function mkIB(icon, name, cost, ok, sl2, fn) {
   b.addEventListener('pointerdown', e => { e.stopPropagation(); fn(); }); return b;
 }
 
+const fltPool = [];
 export function mkF(px, py, val, clr) {
-  const el = document.createElement('div'); el.className = 'flt';
+  let p = fltPool.pop();
+  if (!p) {
+    const el = document.createElement('div'); el.className = 'flt';
+    document.getElementById('gc').appendChild(el);
+    p = { el, tmr: null };
+  } else { clearTimeout(p.tmr); }
   const gcR = document.getElementById('gc').getBoundingClientRect(), cvR = state.cv.getBoundingClientRect();
   const { cam } = state;
   const sx = (px - cam.panX) * cam.zoom, sy = (py - cam.panY) * cam.zoom;
-  el.style.left = (cvR.left - gcR.left + sx) + 'px';
-  el.style.top = (cvR.top - gcR.top + sy) + 'px';
-  el.style.color = clr;
-  el.textContent = typeof val === 'number' ? '-' + val : val;
-  document.getElementById('gc').appendChild(el);
-  setTimeout(() => el.remove(), 600);
+  p.el.style.left = (cvR.left - gcR.left + sx) + 'px';
+  p.el.style.top = (cvR.top - gcR.top + sy) + 'px';
+  p.el.style.color = clr;
+  p.el.textContent = typeof val === 'number' ? '-' + val : val;
+  p.el.style.display = 'block';
+  p.tmr = setTimeout(() => { p.el.style.display = 'none'; fltPool.push(p); }, 600);
+}
+
+const fltGPool = [];
+export function mkGain(px, py, icon, amount, clr) {
+  let p = fltGPool.pop();
+  if (!p) {
+    const el = document.createElement('div'); el.className = 'fltG';
+    document.getElementById('gc').appendChild(el);
+    p = { el, tmr: null };
+  } else { clearTimeout(p.tmr); }
+  const gcR = document.getElementById('gc').getBoundingClientRect(), cvR = state.cv.getBoundingClientRect();
+  const { cam } = state;
+  const sx = (px - cam.panX) * cam.zoom, sy = (py - cam.panY) * cam.zoom;
+  p.el.style.left = (cvR.left - gcR.left + sx) + 'px';
+  p.el.style.top  = (cvR.top  - gcR.top  + sy) + 'px';
+  p.el.style.color = clr;
+  p.el.textContent = '+' + amount + '\u202f' + icon;
+  p.el.style.display = 'block';
+  p.tmr = setTimeout(() => { p.el.style.display = 'none'; fltGPool.push(p); }, 950);
 }
 
 export function hideTT() { document.getElementById('tt').style.display = 'none'; }
@@ -274,7 +304,8 @@ function doUpg(tw, upg) {
 
 function doSell(tw, val) {
   state.gold += val;
-  state.grid[tw.y][tw.x] = 0;
+  state.grid[tw.y][tw.x].type = 'empty';
+  state.grid[tw.y][tw.x].content = null;
   state.towers = state.towers.filter(x => x !== tw);
   state.bees = state.bees.filter(b => b.hive !== tw);
 }

@@ -1,5 +1,6 @@
 'use strict';
 import { state } from './main.js';
+import { clearEnemiesGrid, addToCell } from './grid.js';
 
 export const ETYPES = {
   normal:  { hpM:1,   spdM:1,   sz:.30, rew:4,  clr:'#22c55e', em:'👺' },
@@ -61,7 +62,8 @@ export function genWave(w) {
 }
 
 export function updateEnemies() {
-  const { enemies, path, freezeActive, ticks, CELL, particles } = state;
+  const { enemies, path, freezeActive, ticks, CELL, particles, grid } = state;
+  if (grid.length > 0) clearEnemiesGrid(grid);
   for (const e of enemies) {
     if (e.dead) continue;
     if (e.pi >= path.length - 1 && !e.reversed) {
@@ -96,5 +98,7 @@ export function updateEnemies() {
     }
     if (e.healCD > 0) e.healCD--;
     if (e.stealth && e.pi > path.length * 0.6) e.stealth = false;
+
+    if (grid.length > 0) addToCell(grid, e);
   }
 }

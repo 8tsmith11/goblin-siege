@@ -1,10 +1,10 @@
 'use strict';
 import { state } from './main.js';
+import { createGrid } from './grid.js';
 
 export function buildPath() {
   const { COLS, ROWS } = state;
-  state.grid = [];
-  for (let r = 0; r < ROWS; r++) { state.grid[r] = []; for (let c = 0; c < COLS; c++) state.grid[r][c] = 0; }
+  state.grid = createGrid(COLS, ROWS);
   state.path = []; state.pathSet.clear();
   const vis = new Set();
   let px = 0, py = Math.max(1, Math.min(Math.floor(ROWS * 0.3), ROWS - 2));
@@ -41,5 +41,5 @@ export function buildPath() {
   for (let i = 1; i < state.path.length; i++) { if (state.path[i].x !== state.path[i-1].x || state.path[i].y !== state.path[i-1].y) cl.push(state.path[i]); }
   state.path = cl.filter(p => p.x >= 0 && p.x < COLS && p.y >= 0 && p.y < ROWS);
   state.pathSet.clear();
-  state.path.forEach(p => { state.pathSet.add(p.x + ',' + p.y); state.grid[p.y][p.x] = 1; });
+  state.path.forEach(p => { state.pathSet.add(p.x + ',' + p.y); state.grid[p.y][p.x].type = 'path'; });
 }

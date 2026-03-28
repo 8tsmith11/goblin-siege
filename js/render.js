@@ -2,6 +2,7 @@
 import { state } from './main.js';
 import { TD } from './towers.js';
 import { SD } from './support.js';
+import { renderNodes } from './resources.js';
 
 const _imgPath = new Image(); _imgPath.src = 'assets/tiles/path.png';
 const _imgGrassL = new Image(); _imgGrassL.src = 'assets/tiles/lightgrass.png';
@@ -12,9 +13,50 @@ export function canPlace(cx2, cy2) {
   const { COLS, ROWS, pathSet, grid } = state;
   if (cx2 < 0 || cx2 >= COLS || cy2 < 0 || cy2 >= ROWS) return false;
   if (pathSet.has(cx2 + ',' + cy2)) return false;
-  if (grid[cy2] && grid[cy2][cx2] !== 0) return false;
+  if (grid[cy2] && grid[cy2][cx2].type !== 'empty' && grid[cy2][cx2].type !== 'node') return false;
   return true;
 }
+
+let bgCache = null;
+
+function updateBgCache() {
+  const { CELL, COLS, ROWS, path } = state;
+  if (!bgCache) bgCache = document.createElement('canvas');
+  bgCache.width = COLS * CELL;
+  bgCache.height = ROWS * CELL;
+  const bcx = bgCache.getContext('2d');
+  
+  const grassReady = _imgGrassL.complete && _imgGrassL.naturalWidth && _imgGrassD.complete && _imgGrassD.naturalWidth;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    if (grassReady) {
+      bcx.drawImage((r + c) % 2 === 0 ? _imgGrassD : _imgGrassL, c * CELL, r * CELL, CELL, CELL);
+    } else {
+      bcx.fillStyle = (r + c) % 2 === 0 ? '#131929' : '#151b2b';
+      bcx.fillRect(c * CELL, r * CELL, CELL, CELL);
+    }
+  }
+
+  // Path
+  path.forEach(p => {
+    if (_imgPath.complete && _imgPath.naturalWidth) {
+      bcx.drawImage(_imgPath, p.x * CELL, p.y * CELL, CELL, CELL);
+    } else {
+      bcx.fillStyle = '#3a2518'; bcx.fillRect(p.x * CELL, p.y * CELL, CELL, CELL);
+    }
+  });
+  if (path.length > 2) {
+    bcx.fillStyle = 'rgba(34,197,94,.12)'; bcx.fillRect(path[0].x * CELL, path[0].y * CELL, CELL, CELL);
+    bcx.font = Math.floor(CELL * 0.4) + 'px serif'; bcx.textAlign = 'center'; bcx.textBaseline = 'middle';
+    bcx.fillStyle = '#22c55e77'; bcx.fillText('▶', path[0].x * CELL + CELL / 2, path[0].y * CELL + CELL / 2);
+  }
+}
+
+const reqBgUpdate = () => { bgCache = null; };
+_imgPath.onload = reqBgUpdate;
+_imgGrassL.onload = reqBgUpdate;
+_imgGrassD.onload = reqBgUpdate;
+
+export function invalidateBg() { bgCache = null; }
 
 export function render() {
   const { cx, W, H, CELL, COLS, ROWS, cam, path, ticks, freezeActive, volcanoActive,
@@ -23,29 +65,13 @@ export function render() {
   cx.clearRect(0, 0, W, H);
   cx.save();
   cx.setTransform(cam.zoom, 0, 0, cam.zoom, -cam.panX * cam.zoom, -cam.panY * cam.zoom);
-  const grassReady = _imgGrassL.complete && _imgGrassL.naturalWidth && _imgGrassD.complete && _imgGrassD.naturalWidth;
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-    if (grassReady) {
-      cx.drawImage((r + c) % 2 === 0 ? _imgGrassD : _imgGrassL, c * CELL, r * CELL, CELL, CELL);
-    } else {
-      cx.fillStyle = (r + c) % 2 === 0 ? '#131929' : '#151b2b';
-      cx.fillRect(c * CELL, r * CELL, CELL, CELL);
-    }
-  }
+  
+  if (!bgCache && state.pathReady && CELL > 0) updateBgCache();
+  if (bgCache) cx.drawImage(bgCache, 0, 0);
 
-  // Path
-  path.forEach(p => {
-    if (_imgPath.complete && _imgPath.naturalWidth) {
-      cx.drawImage(_imgPath, p.x * CELL, p.y * CELL, CELL, CELL);
-    } else {
-      cx.fillStyle = '#3a2518'; cx.fillRect(p.x * CELL, p.y * CELL, CELL, CELL);
-    }
-  });
-  if (path.length > 2) {
-    cx.fillStyle = 'rgba(34,197,94,.12)'; cx.fillRect(path[0].x * CELL, path[0].y * CELL, CELL, CELL);
-    cx.font = Math.floor(CELL * 0.4) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
-    cx.fillStyle = '#22c55e77'; cx.fillText('▶', path[0].x * CELL + CELL / 2, path[0].y * CELL + CELL / 2);
-  }
+  // Resource nodes
+  renderNodes();
+
   // Volcano
   if (volcanoActive) {
     const vx = volcanoActive.x * CELL + CELL / 2, vy = volcanoActive.y * CELL + CELL / 2;

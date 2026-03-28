@@ -1,6 +1,7 @@
-'use strict';
 import { state } from './main.js';
 import { sfxShoot } from './audio.js';
+import { getEnemiesInRadius } from './grid.js';
+import { getProj } from './pool.js';
 
 export const TD = {
   squirrel: { name:'Thoughtful Squirrel', icon:'🐿️', clr:'#8b5cf6', cost:40,  dmg:8,  range:3.2, rate:50, pClr:'#a78bfa', pSpd:4,   splash:0,   slow:0,  target:'weakest', cat:'tower', desc:'Long range · targets weakest enemy' },
@@ -51,13 +52,13 @@ export const TOWER_SKILLS = {
 };
 
 export function updateTowers() {
-  const { towers, enemies, projectiles, ticks, wave, CELL, particles } = state;
+  const { towers, projectiles, ticks, wave, CELL, particles, grid } = state;
   towers.forEach(tw => {
     if (tw.type === 'factory' || !TD[tw.type]) return;
     if (tw.disabled && tw.disabledWave === wave) return;
     if (tw.cd > 0) { tw.cd -= (tw._rateBuff < 1 ? 1.2 : 1); return; }
     const def = TD[tw.type];
-    const vis = enemies.filter(e => !e.dead && (!e.stealth || tw.seeInvis) && Math.hypot(e.x - tw.x, e.y - tw.y) <= tw.range);
+    const vis = getEnemiesInRadius(grid, tw.x, tw.y, tw.range, true, tw.seeInvis);
     if (!vis.length) return;
     let tgt;
     if (def.target === 'weakest') tgt = vis.reduce((a,b) => a.hp < b.hp ? a : b);
@@ -65,11 +66,17 @@ export function updateTowers() {
     else if (def.target === 'last') tgt = vis.reduce((a,b) => a.pi < b.pi ? a : b);
     else tgt = vis.reduce((a,b) => a.pi > b.pi ? a : b);
     let dmg = tw.dmg; if (tw._buffed) dmg = Math.ceil(dmg * 1.5);
-    projectiles.push({ x:tw.x, y:tw.y, tgt, dmg, spd:def.pSpd*0.06, clr:def.pClr, splash:tw.splash, slow:tw.slow, pierce:tw.pierce||0, chain:tw.chain||0, speedUp:def.speedUp, hits:[], stun:tw.stun||0, poison:tw.poison||null, blind:tw.blind, chainStun:tw.chainStun||0, bloodlust:tw.bloodlust });
-    tw.cd = tw.rate; sfxShoot();
+    let p1 = getProj();
+    Object.assign(p1, { x:tw.x, y:tw.y, tgt, dmg, spd:def.pSpd*0.06, clr:def.pClr, splash:tw.splash, slow:tw.slow, pierce:tw.pierce||0, chain:tw.chain||0, speedUp:def.speedUp, hits:[], stun:tw.stun||0, poison:tw.poison||null, blind:tw.blind, chainStun:tw.chainStun||0, bloodlust:tw.bloodlust });
+    projectiles.push(p1);
+    sfxShoot(); tw.cd = def.rate;
     if (tw.frenzy && vis.length > 1) {
       const t2 = vis.filter(e => e !== tgt);
-      if (t2.length) projectiles.push({ x:tw.x, y:tw.y, tgt:t2[0], dmg, spd:def.pSpd*0.06, clr:def.pClr, splash:tw.splash, slow:tw.slow, pierce:0, chain:0, speedUp:false, hits:[], stun:0, poison:null, blind:false, chainStun:0, bloodlust:tw.bloodlust });
+      if (t2.length) {
+        let p2 = getProj();
+        Object.assign(p2, { x:tw.x, y:tw.y, tgt:t2[0], dmg, spd:def.pSpd*0.06, clr:def.pClr, splash:tw.splash, slow:tw.slow, pierce:0, chain:0, speedUp:false, hits:[], stun:0, poison:null, blind:false, chainStun:0, bloodlust:tw.bloodlust });
+        projectiles.push(p2);
+      }
     }
     if (tw.blizzard) vis.forEach(e => { e.slow = Math.max(e.slow, tw.slow); e.st = 80; });
     if (def.speedUp) vis.forEach(e => {

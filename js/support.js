@@ -1,8 +1,10 @@
 'use strict';
 import { state } from './main.js';
 import { sfxClown, sfxBee, sfxLaser } from './audio.js';
+import { getEnemiesInRadius } from './grid.js';
 import { SKILLS } from './skills.js';
 import { mkF } from './ui.js';
+import { getProj } from './pool.js';
 
 export const SD = {
   clam:    { name:'Intuitive Clam',    icon:'🐚', clr:'#14b8a6', cost:80,  cat:'support', buffRange:2,  buffDmg:1.5, buffRate:.85, buffDesc:'+50% DMG, -15% CD to nearby', desc:'Buffs nearby towers: +50% DMG, -15% cooldown' },
@@ -42,10 +44,10 @@ export function updateClam() {
 }
 
 export function updateClown() {
-  const { towers, enemies, CELL, particles } = state;
+  const { towers, enemies, CELL, particles, grid } = state;
   towers.filter(tw => tw.type === 'clown').forEach(cl => {
     if (cl.cd > 0) { cl.cd--; return; }
-    const inR = enemies.filter(e => !e.dead && !e.reversed && !e.boss && Math.hypot(e.x - cl.x, e.y - cl.y) <= cl.reverseRange);
+    const inR = getEnemiesInRadius(grid, cl.x, cl.y, cl.reverseRange).filter(e => !e.reversed && !e.boss);
     if (!inR.length) return;
     const dur = cl.reverseDur * (SKILLS.clownMaster?.owned ? 2 : 1);
     inR.forEach(e => { e.reversed = true; e.reverseTimer = dur; });
@@ -83,7 +85,7 @@ export function updateRobot() {
 }
 
 export function updateBees() {
-  const { bees, enemies, projectiles, CELL } = state;
+  const { bees, enemies, projectiles, CELL, grid } = state;
   for (const bee of bees) {
     const hive = state.towers.find(t => t === bee.hive);
     if (!hive) { bee.dead = true; continue; }
@@ -91,19 +93,22 @@ export function updateBees() {
     bee.x = hive.x * CELL + CELL / 2 + Math.cos(bee.angle) * CELL * 1.5;
     bee.y = hive.y * CELL + CELL / 2 + Math.sin(bee.angle) * CELL * 1.5;
     if (bee.cd > 0) { bee.cd--; continue; }
-    const inR = enemies.filter(e => !e.dead && !e.stealth && Math.hypot(e.x*CELL+CELL/2 - bee.x, e.y*CELL+CELL/2 - bee.y) <= bee.range * CELL);
+    const wx = (bee.x - CELL / 2) / CELL, wy = (bee.y - CELL / 2) / CELL;
+    const inR = getEnemiesInRadius(grid, wx, wy, bee.range, true, false);
     if (!inR.length) continue;
-    projectiles.push({ x:bee.x/CELL-.5, y:bee.y/CELL-.5, tgt:inR[0], dmg:bee.dmg, spd:.08, clr:'#fbbf24', splash:0, slow:0, pierce:0, chain:0, speedUp:false, hits:[] });
+    let bProj = getProj();
+    Object.assign(bProj, { x:bee.x/CELL-.5, y:bee.y/CELL-.5, tgt:inR[0], dmg:bee.dmg, spd:.08, clr:'#fbbf24', splash:0, slow:0, pierce:0, chain:0, speedUp:false, hits:[] });
+    projectiles.push(bProj);
     bee.cd = bee.rate; sfxBee();
   }
 }
 
 export function updateFactoryLaser() {
-  const { towers, enemies, beams, wave, CELL, particles } = state;
+  const { towers, enemies, beams, wave, CELL, particles, grid } = state;
   towers.filter(tw => tw.type === 'factory' && tw.hasLaser).forEach(tw => {
     if (tw.laserCD > 0) { tw.laserCD--; return; }
     const lr = tw.laserRange || 3;
-    const inR = enemies.filter(e => !e.dead && !e.stealth && Math.hypot(e.x - tw.x, e.y - tw.y) <= lr);
+    const inR = getEnemiesInRadius(grid, tw.x, tw.y, lr, true, false);
     if (!inR.length) return;
     const tgt = inR.reduce((a,b) => a.pi > b.pi ? a : b);
     const ldmg = (SKILLS.doomCannon?.owned ? 2 : 1) * (10 + wave * 1.5 + tw.laserLvl * 5);
