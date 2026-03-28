@@ -4,7 +4,7 @@ import { TD, TOWER_SKILLS } from './towers.js';
 import { SD, spawnBees } from './support.js';
 import { SP, castSpell } from './spells.js';
 import { SKILLS, renderSk, showTowerSkill } from './skills.js';
-import { sfxPlace } from './audio.js';
+import { sfxPlace, iA } from './audio.js';
 
 export function hudU() {
   const { lives, gold, enemies, spawnQueue, wave, phase, prepTicks } = state;
@@ -290,6 +290,9 @@ export async function showWelcome(version, onClose) {
   } catch(_) {
     notesEl.textContent = 'No patch notes available.';
   }
+  const box = document.getElementById('welcomeBox');
+  const startAudio = () => { iA(); box.removeEventListener('pointerdown', startAudio); };
+  box.addEventListener('pointerdown', startAudio);
   document.getElementById('welcomeX').onclick = () => { el.classList.add('hid'); if (onClose) onClose(); };
 }
 
