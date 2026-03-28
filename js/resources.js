@@ -8,7 +8,7 @@ import { mkGain, hudU } from './ui.js';
 // Add new resources here — the HUD and save system pick them up automatically.
 export const RTYPES = {
   stone: { icon: '🪨', name: 'Stone', clr: '#94a3b8' },
-  sticks: { icon: '🪵', name: 'Sticks', clr: '#92400e' },
+  wood: { icon: '🪵', name: 'Wood', clr: '#92400e' }
 };
 
 // ─── Resource node type definitions ───────────────────────────────────────
@@ -101,3 +101,75 @@ export function renderNodes() {
     }
   }
 }
+
+// ─── Ground Loot Drop ─────────────────────────────────────────────────────
+export function dropItem(cx, cy, type) {
+  const cell = state.grid[cy]?.[cx];
+  if (!cell) return;
+  if (!cell.stacks) cell.stacks = [null, null, null, null];
+  
+  let existingIndex = cell.stacks.findIndex(s => s && s.type === type && s.count < 64);
+  if (existingIndex !== -1) {
+    cell.stacks[existingIndex].count++;
+    return;
+  }
+  
+  let emptyIndices = [];
+  cell.stacks.forEach((s, idx) => { if (!s) emptyIndices.push(idx); });
+  if (emptyIndices.length > 0) {
+    let pickedIndex = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+    cell.stacks[pickedIndex] = { type, count: 1 };
+  }
+}
+
+// ─── Ground Loot Renderer ──────────────────────────────────────────────────
+export function renderStacks() {
+  const { cx, CELL, grid, COLS, ROWS } = state;
+  if (!grid.length) return;
+  
+  const slots = [
+    {dx: 0.25, dy: 0.25},
+    {dx: 0.75, dy: 0.75},
+    {dx: 0.75, dy: 0.25},
+    {dx: 0.25, dy: 0.75}
+  ];
+  
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  const fs = Math.round(CELL * 0.45);
+  cx.font = fs + 'px serif';
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cell = grid[r]?.[c];
+      if (!cell?.stacks) continue;
+      
+      for (let i = 0; i < 4; i++) {
+        const stack = cell.stacks[i];
+        if (!stack) continue;
+        const icon = RTYPES[stack.type]?.icon || '❓';
+        const basex = c * CELL + slots[i].dx * CELL;
+        const basey = r * CELL + slots[i].dy * CELL;
+        
+        cx.save();
+        cx.translate(basex, basey);
+        const sc = 1 + Math.min(stack.count, 20) * 0.02;
+        cx.scale(sc, sc);
+        cx.fillText(icon, 0, 0);
+        cx.restore();
+        
+        if (stack.count > 1) {
+          cx.save();
+          cx.font = '900 ' + Math.floor(CELL * 0.18) + 'px sans-serif';
+          cx.strokeStyle = '#000';
+          cx.lineWidth = 2;
+          cx.strokeText('x' + stack.count, basex + CELL * 0.15, basey + CELL * 0.15);
+          cx.fillStyle = '#fff';
+          cx.fillText('x' + stack.count, basex + CELL * 0.15, basey + CELL * 0.15);
+          cx.restore();
+        }
+      }
+    }
+  }
+}
+

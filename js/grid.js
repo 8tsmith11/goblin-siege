@@ -7,7 +7,8 @@ export function createGrid(cols, rows) {
         x, y,
         type: 'empty', 
         content: null,
-        enemies: [] 
+        enemies: [],
+        stacks: [null, null, null, null]
       });
     }
     G.push(row);

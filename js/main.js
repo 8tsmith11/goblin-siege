@@ -2,6 +2,7 @@
 import { bus } from './bus.js';
 import { getP, freeP, freeBeam } from './pool.js';
 import { updateProjectiles } from './projectiles.js';
+import { dropItem } from './resources.js';
 import { buildPath } from './path.js';
 
 bus.on('enemyDeath', e => {
@@ -13,11 +14,18 @@ bus.on('enemyDeath', e => {
      p.life = e.boss ? 28 : 16; p.clr = e.clr; p.sz = e.boss ? 4 : 2.5; state.particles.push(p);
   }
   mkF(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2 - 12, '+' + rew, '#fbbf24');
+  if (e.drops) {
+    const cx = Math.max(0, Math.min(state.COLS - 1, Math.round(e.x)));
+    const cy = Math.max(0, Math.min(state.ROWS - 1, Math.round(e.y)));
+    for (const drop of e.drops) {
+      if (Math.random() < drop.chance) dropItem(cx, cy, drop.type);
+    }
+  }
 });
 import { updateEnemies, genWave } from './enemies.js';
 import { updateTowers } from './towers.js';
 import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser } from './support.js';
-import { render } from './render.js';
+import { render, invalidateBg } from './render.js';
 import { SKILLS } from './skills.js';
 import { triggerEvent } from './events.js';
 import { sfxBoss, sfxWave, sfxKill, sfxHit } from './audio.js';
@@ -26,7 +34,7 @@ import { initInput, updateCameraKeys } from './input.js';
 import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
 import { placeNodes, updateNodes } from './resources.js';
 
-export const VERSION = 'v1.0';
+export const VERSION = 'v1.1';
 export const WORLD_COLS = 20;
 export const WORLD_ROWS = 12;
 
@@ -108,7 +116,7 @@ export function initSz() {
   clampCam();
 }
 
-window.addEventListener('resize', () => { measure(); clampCam(); });
+window.addEventListener('resize', () => { measure(); clampCam(); invalidateBg(); });
 
 export function fIncome() {
   let t = 0;
@@ -224,7 +232,7 @@ function update() {
 export function startGame() {
   _ΨΔ(() => { _wG(200); _wL(20); _wS(0); });
   state.started = true; state.phase = 'prep'; state.prepTicks = 1800;
-  initSz(); hideOv(); hudU(); panelU();
+  invalidateBg(); initSz(); hideOv(); hudU(); panelU();
 }
 
 export function startWave() {

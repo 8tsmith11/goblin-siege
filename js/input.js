@@ -4,8 +4,8 @@ import { iA, sfxPlace, sfxLizard, speak } from './audio.js';
 import { TD } from './towers.js';
 import { SD, spawnBees } from './support.js';
 import { canPlace } from './render.js';
-import { showTT, hideTT, showTip, showBanner, panelU, hudU } from './ui.js';
-import { clickNode } from './resources.js';
+import { showTT, hideTT, showTip, showBanner, panelU, hudU, mkGain } from './ui.js';
+import { clickNode, RTYPES } from './resources.js';
 
 function cell(e) {
   const r = state.cv.getBoundingClientRect();
@@ -23,8 +23,46 @@ function handleTap(e) {
   if (c.x < 0 || c.x >= state.COLS || c.y < 0 || c.y >= state.ROWS) return;
   const ex = state.towers.find(t => t.x === c.x && t.y === c.y);
 
-  // Resource node interaction (only when not placing a tower)
+  // Ground Stack interaction
   if (!state.sel) {
+    const glCell = state.grid[c.y]?.[c.x];
+    if (glCell && glCell.stacks) {
+      const slots = [
+        {dx: 0.25, dy: 0.25},
+        {dx: 0.75, dy: 0.75},
+        {dx: 0.75, dy: 0.25},
+        {dx: 0.25, dy: 0.75}
+      ];
+      let closestIndex = -1;
+      let minDist = Infinity;
+      const { cam, CELL } = state;
+      const wx = c.px / cam.zoom + cam.panX;
+      const wy = c.py / cam.zoom + cam.panY;
+      
+      for (let i = 0; i < 4; i++) {
+        if (!glCell.stacks[i]) continue;
+        const sx = c.x * CELL + slots[i].dx * CELL;
+        const sy = c.y * CELL + slots[i].dy * CELL;
+        const d = Math.hypot(wx - sx, wy - sy);
+        if (d < minDist && d < CELL * 0.45) { // generous radius
+          minDist = d;
+          closestIndex = i;
+        }
+      }
+      
+      if (closestIndex !== -1) {
+        const stack = glCell.stacks[closestIndex];
+        stack.count--;
+        state.resources[stack.type] = (state.resources[stack.type] || 0) + 1;
+        const rt = RTYPES[stack.type];
+        mkGain(c.x * CELL + slots[closestIndex].dx * CELL, c.y * CELL + slots[closestIndex].dy * CELL, rt.icon, 1, rt.clr);
+        hudU();
+        if (stack.count <= 0) glCell.stacks[closestIndex] = null;
+        return;
+      }
+    }
+
+    // Resource node interaction (only when not placing a tower)
     const node = state.nodes?.find(n => n.x === c.x && n.y === c.y);
     if (node) { clickNode(node); return; }
   }

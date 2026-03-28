@@ -2,7 +2,7 @@
 import { state } from './main.js';
 import { TD } from './towers.js';
 import { SD } from './support.js';
-import { renderNodes } from './resources.js';
+import { renderNodes, renderStacks } from './resources.js';
 
 const _imgPath = new Image(); _imgPath.src = 'assets/tiles/path.png';
 const _imgGrassL = new Image(); _imgGrassL.src = 'assets/tiles/lightgrass.png';
@@ -69,8 +69,9 @@ export function render() {
   if (!bgCache && state.pathReady && CELL > 0) updateBgCache();
   if (bgCache) cx.drawImage(bgCache, 0, 0);
 
-  // Resource nodes
+  // Resource Nodes & Stacks
   renderNodes();
+  renderStacks();
 
   // Volcano
   if (volcanoActive) {
@@ -107,20 +108,21 @@ export function render() {
       cx.strokeStyle = 'rgba(244,114,182,.1)'; cx.lineWidth = 1; cx.stroke();
     }
     const isF = tw.type === 'factory', def = TD[tw.type] || SD[tw.type];
+    const tx = Math.round(tw.x * CELL), ty = Math.round(tw.y * CELL);
     cx.fillStyle = tw.disabled ? '#1a0a0a' : isF ? '#0a3d2f' : tw._buffed ? '#1a2040' : '#171838';
-    cx.fillRect(tw.x * CELL + 2, tw.y * CELL + 2, CELL - 4, CELL - 4);
+    cx.fillRect(tx + 2, ty + 2, CELL - 4, CELL - 4);
     cx.strokeStyle = tw.disabled ? '#ef4444' : isF ? '#10b981' : tw._buffed ? '#5eead4' : (def?.clr || '#555');
-    cx.lineWidth = tw._buffed ? 2 : 1.5; cx.strokeRect(tw.x * CELL + 2, tw.y * CELL + 2, CELL - 4, CELL - 4);
-    cx.font = Math.floor(CELL * 0.42) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
-    cx.fillText(isF ? '🏭' : (def?.icon || '?'), px, py);
-    if (isF && tw.hasLaser) { cx.fillStyle = '#ef4444'; cx.beginPath(); cx.arc(px + CELL * 0.28, py - CELL * 0.28, 2 + Math.sin(ticks * 0.15), 0, Math.PI * 2); cx.fill(); }
-    if (tw.level > 0) { cx.font = 'bold ' + Math.floor(CELL * 0.16) + 'px Anybody,sans-serif'; cx.fillStyle = '#fbbf24'; cx.fillText('★'.repeat(Math.min(tw.level, 5)), px, tw.y * CELL + CELL - 2); }
+    cx.lineWidth = tw._buffed ? 2 : 1.5; cx.strokeRect(tx + 2, ty + 2, CELL - 4, CELL - 4);
+    cx.font = Math.floor(CELL * 0.35) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.fillText(isF ? '🏭' : (def?.icon || '?'), tx + CELL / 2, ty + CELL / 2);
+    if (isF && tw.hasLaser) { cx.fillStyle = '#ef4444'; cx.beginPath(); cx.arc(tx + CELL * 0.78, ty + CELL * 0.22, 2 + Math.sin(ticks * 0.15), 0, Math.PI * 2); cx.fill(); }
+    if (tw.level > 0) { cx.font = 'bold ' + Math.floor(CELL * 0.16) + 'px Anybody,sans-serif'; cx.fillStyle = '#fbbf24'; cx.fillText('★'.repeat(Math.min(tw.level, 5)), tx + CELL / 2, ty + CELL - 2); }
   });
 
   // Castle (end of path) — drawn oversized so it overlaps surrounding tiles
   if (path.length > 2 && _imgCastle.naturalWidth) {
     const lp = path[path.length - 1];
-    const cs = CELL * 1.9;
+    const cs = CELL * 1.2;
     cx.drawImage(_imgCastle, lp.x * CELL + CELL / 2 - cs / 2, lp.y * CELL + CELL / 2 - cs / 2, cs, cs);
   }
 

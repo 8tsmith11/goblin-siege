@@ -3,15 +3,15 @@ import { state } from './main.js';
 import { clearEnemiesGrid, addToCell } from './grid.js';
 
 export const ETYPES = {
-  normal:  { hpM:1,   spdM:1,   sz:.30, rew:4,  clr:'#22c55e', em:'👺' },
-  fast:    { hpM:.4,  spdM:1.6, sz:.24, rew:3,  clr:'#4ade80', em:'👺' },
-  tank:    { hpM:2.5, spdM:.6,  sz:.45, rew:8,  clr:'#a855f7', em:'👹' },
-  berserker:{ hpM:1.8,spdM:1.2, sz:.38, rew:7,  clr:'#ef4444', em:'😤' },
-  shaman:  { hpM:1.2, spdM:.9,  sz:.33, rew:6,  clr:'#f97316', em:'🧙' },
-  stealth: { hpM:.6,  spdM:1.4, sz:.22, rew:5,  clr:'#64748b', em:'👤' },
-  healer:  { hpM:.8,  spdM:.8,  sz:.30, rew:6,  clr:'#22d3ee', em:'💚' },
-  swarm:   { hpM:.18, spdM:1.7, sz:.18, rew:1,  clr:'#a3e635', em:'🐜' },
-  shield:  { hpM:2,   spdM:.7,  sz:.40, rew:9,  clr:'#3b82f6', em:'🛡️' },
+  normal:  { hpM:1,   spdM:1,   sz:.30, rew:4,  clr:'#22c55e', em:'👺', drops: [{ type: 'wood', chance: 0.15 }] },
+  fast:    { hpM:.4,  spdM:1.6, sz:.24, rew:3,  clr:'#4ade80', em:'👺', drops: [{ type: 'wood', chance: 0.2 }] },
+  tank:    { hpM:2.5, spdM:.6,  sz:.45, rew:8,  clr:'#a855f7', em:'👹', drops: [{ type: 'stone', chance: 0.3 }] },
+  berserker:{ hpM:1.8,spdM:1.2, sz:.38, rew:7,  clr:'#ef4444', em:'😤', drops: [{ type: 'wood', chance: 0.25 }] },
+  shaman:  { hpM:1.2, spdM:.9,  sz:.33, rew:6,  clr:'#f97316', em:'🧙', drops: [] },
+  stealth: { hpM:.6,  spdM:1.4, sz:.22, rew:5,  clr:'#64748b', em:'👤', drops: [{ type: 'wood', chance: 0.2 }] },
+  healer:  { hpM:.8,  spdM:.8,  sz:.30, rew:6,  clr:'#22d3ee', em:'💚', drops: [{ type: 'wood', chance: 0.15 }] },
+  swarm:   { hpM:.18, spdM:1.7, sz:.18, rew:1,  clr:'#a3e635', em:'🐜', drops: [] },
+  shield:  { hpM:2,   spdM:.7,  sz:.40, rew:9,  clr:'#3b82f6', em:'🛡️', drops: [{ type: 'stone', chance: 0.35 }] },
 };
 
 export const BOSS_LINES = [
@@ -23,7 +23,7 @@ export const BOSS_LINES = [
 export function mkE(et, bHP, bSpd) {
   return {
     tp: et.em, hp: Math.floor(bHP * et.hpM), mhp: Math.floor(bHP * et.hpM),
-    spd: bSpd * et.spdM, sz: et.sz, rew: et.rew, clr: et.clr, em: et.em,
+    spd: bSpd * et.spdM, sz: et.sz, rew: et.rew, clr: et.clr, em: et.em, drops: et.drops || [],
     pi: 0, x: 0, y: 0, slow: 0, st: 0, dead: false, spdBuff: 0, frozen: 0,
     stealth: et.em === '👤', stealthTimer: 0, healCD: et.em === '💚' ? 120 : 0,
     boss: false, line: '', reversed: false, reverseTimer: 0, poison: null, stunned: 0,
@@ -37,7 +37,7 @@ export function genWave(w) {
   if (isBoss) {
     q.push({
       tp: 'boss', hp: Math.floor(bHP * 8 + w * 50), mhp: Math.floor(bHP * 8 + w * 50),
-      spd: bSpd * 0.35, sz: 0.65, rew: 50 + w * 5, clr: '#ef4444', em: '👑',
+      spd: bSpd * 0.35, sz: 0.65, rew: 50 + w * 5, clr: '#ef4444', em: '👑', drops: [{ type: 'stone', chance: 1 }, { type: 'wood', chance: 1 }],
       pi: 0, x: 0, y: 0, slow: 0, st: 0, dead: false, spdBuff: 0, frozen: 0,
       stealth: false, stealthTimer: 0, healCD: 0, boss: true,
       line: BOSS_LINES[Math.floor(w / 5) % BOSS_LINES.length],
@@ -72,6 +72,7 @@ export function updateEnemies() {
       continue;
     }
     if (e.pi <= 0 && e.reversed) { e.reversed = false; e.reverseTimer = 0; }
+    if (grid.length > 0) addToCell(grid, e);
     if (freezeActive > 0 && !e.boss) { e.frozen = 2; continue; }
     if (e.frozen > 0) { e.frozen--; continue; }
     if (e.stunned > 0) { e.stunned--; continue; }
@@ -99,6 +100,5 @@ export function updateEnemies() {
     if (e.healCD > 0) e.healCD--;
     if (e.stealth && e.pi > path.length * 0.6) e.stealth = false;
 
-    if (grid.length > 0) addToCell(grid, e);
   }
 }
