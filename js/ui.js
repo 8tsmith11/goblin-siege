@@ -1,5 +1,5 @@
 'use strict';
-import { state, startGame, startWave, resetGame, _ΨΔ } from './main.js';
+import { state, startGame, startWave, startPrep, resetGame, _ΨΔ } from './main.js';
 import { TD, TOWER_SKILLS } from './towers.js';
 import { SD, spawnBees } from './support.js';
 import { SP, castSpell } from './spells.js';
@@ -31,7 +31,7 @@ export function showOv(t, d, b, go, fn) {
   document.getElementById('oS').textContent = go ? 'Wave ' + state.wave + ' · Gold ' + state.gold : '';
   const btn = document.getElementById('oB');
   btn.textContent = b;
-  btn.onclick = fn ?? (go ? () => { resetGame(); startGame(); } : () => startWave());
+  btn.onclick = fn ?? (go ? () => { resetGame(); startGame(); } : () => startPrep());
   document.getElementById('ov').classList.remove('hid');
 }
 

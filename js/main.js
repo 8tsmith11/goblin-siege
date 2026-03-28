@@ -255,6 +255,11 @@ export function startWave() {
   hudU(); panelU();
 }
 
+export function startPrep() {
+  state.phase = 'prep'; state.prepTicks = 1800;
+  hideOv(); hudU(); panelU();
+}
+
 export function resetGame() {
   import('./towers.js').then(({ TOWER_SKILLS }) => {
     for (const k in TOWER_SKILLS) for (const sk of Object.values(TOWER_SKILLS[k])) sk.owned = false;
