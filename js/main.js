@@ -9,6 +9,7 @@ import { triggerEvent } from './events.js';
 import { sfxBoss, sfxWave, sfxKill, sfxHit } from './audio.js';
 import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, initTabs, showWelcome } from './ui.js';
 import { initInput, updateCameraKeys } from './input.js';
+import { autoSave, initSaveUI } from './save.js';
 
 export const VERSION = 'v1.0';
 export const WORLD_COLS = 20;
@@ -185,6 +186,7 @@ function update() {
     if (state.wave % 3 === 0) { state.skillPts++; mkF(state.W / 2, state.H / 3, '+1 ⚡ Skill!', '#a78bfa'); }
     state.phase = 'idle'; sfxWave();
     _φ = false;
+    autoSave();
     if (Math.random() < 0.4 && state.wave > 1) setTimeout(() => triggerEvent(), 500);
     showOv('✅ Wave ' + state.wave, (state.wave + 1) % 5 === 0 ? '⚠️ BOSS next!' : 'Build & prepare.', 'Next Wave', false);
     hudU(); panelU();
@@ -291,4 +293,5 @@ function loop() {
 document.getElementById('snd').addEventListener('click', () => import('./audio.js').then(m => m.toggleSound()));
 document.getElementById('goBtn').addEventListener('click', () => { if (state.phase === 'prep') startWave(); });
 initTabs(); initInput(); initSz(); panelU(); hudU(); loop();
+initSaveUI();
 showWelcome(VERSION, startGame);
