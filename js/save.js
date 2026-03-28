@@ -99,6 +99,13 @@ export function autoSave() {
   if (d) localStorage.setItem(_K, _pack(d));
 }
 
+export function saveGame() {
+  const d = _build();
+  if (!d) { showBanner('⚠️ Can\'t save mid-wave'); return; }
+  localStorage.setItem(_K, _pack(d));
+  showBanner('💾 Saved!');
+}
+
 export function loadGame() {
   const d = _unpack(localStorage.getItem(_K));
   if (!d || d._ν !== 1) { localStorage.removeItem(_K); return false; }
@@ -108,7 +115,6 @@ export function loadGame() {
 }
 
 export function exportSave() {
-  // Ensure we have an up-to-date save before exporting
   const d = _build();
   if (d) localStorage.setItem(_K, _pack(d));
   const stored = localStorage.getItem(_K);
@@ -143,8 +149,8 @@ export function importSave() {
 }
 
 export function initSaveUI() {
-  const sv = document.getElementById('svBtn');
-  const ld = document.getElementById('ldBtn');
-  if (sv) sv.addEventListener('click', () => exportSave());
-  if (ld) ld.addEventListener('click', () => importSave());
+  document.getElementById('svBtn')?.addEventListener('click', () => saveGame());
+  document.getElementById('ldBtn')?.addEventListener('click', () => loadGame());
+  document.getElementById('exBtn')?.addEventListener('click', () => exportSave());
+  document.getElementById('imBtn')?.addEventListener('click', () => importSave());
 }
