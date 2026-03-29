@@ -102,7 +102,7 @@ function isStockpile(gx, gy) {
 }
 
 // Find nearest cell with a matching stack within range tiles of (ox, oy)
-function findNearestStack(ox, oy, range, filter) {
+function findNearestStack(ox, oy, range, filter, exclude) {
   const { grid, COLS, ROWS } = state;
   let best = null, bestD = Infinity;
   const r = Math.ceil(range);
@@ -110,6 +110,7 @@ function findNearestStack(ox, oy, range, filter) {
     for (let dx = -r; dx <= r; dx++) {
       const gx = ox + dx, gy = oy + dy;
       if (gx < 0 || gx >= COLS || gy < 0 || gy >= ROWS) continue;
+      if (exclude && gx === exclude.x && gy === exclude.y) continue;
       if (Math.hypot(dx, dy) > range) continue;
       const cell = grid[gy]?.[gx];
       if (!cell?.stacks) continue;
@@ -144,8 +145,8 @@ function tickGatherer(mk, tw) {
   if (!cfg.dest || !inRange(tw, cfg.dest.x, cfg.dest.y)) { tickIdle(mk, tw); return; }
 
   if (mk.st === 'idle') {
-    // Scan for nearest item in range
-    const target = findNearestStack(tw.x, tw.y, tw.range, cfg.filter);
+    // Scan for nearest item in range, skip destination tile to avoid pickup loop
+    const target = findNearestStack(tw.x, tw.y, tw.range, cfg.filter, cfg.dest);
     if (target) {
       const c = cellCenter(target.x, target.y);
       mk.targetX = c.x; mk.targetY = c.y;
