@@ -1,9 +1,9 @@
 'use strict';
 import { state, _ΨΔ, clampCam } from './main.js';
-import { SKILLS } from './skills.js';
 import { TOWER_SKILLS } from './data.js';
 import { spawnBees } from './support.js';
 import { hudU, panelU, showBanner, showOv, hideTT } from './ui.js';
+import { reinitMonkeys } from './monkeys.js';
 
 // ─── Encode / decode ──────────────────────────────────────────────────────────
 const _ψ = [0x47,0x6f,0x62,0x53,0x69,0x65,0x39,0x31,0x78,0x6b,0x37,0x5a];
@@ -28,23 +28,34 @@ function _χ(s) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const _SK = new Set(['cd','_buffed','_rateBuff','laserCD','clownCD','robotCD']);
+const _SK = new Set(['cd','_buffed','_rateBuff','laserCD','clownCD','robotCD','_monkeyBoosted','_monkeyBoostCount']);
+const _MK_SK = new Set(['st','x','y','carrying','patrolAngle','targetX','targetY','waitCd','_itemTarget']);
 function _st(tw) {
   const o = {};
-  for (const k of Object.keys(tw)) if (!_SK.has(k)) o[k] = tw[k];
+  for (const k of Object.keys(tw)) {
+    if (_SK.has(k)) continue;
+    if (k === 'monkeys' && Array.isArray(tw.monkeys)) {
+      o.monkeys = tw.monkeys.map(mk => {
+        const m = {};
+        for (const mk_k of Object.keys(mk)) if (!_MK_SK.has(mk_k)) m[mk_k] = mk[mk_k];
+        return m;
+      });
+    } else {
+      o[k] = tw[k];
+    }
+  }
   return o;
 }
 
 function _build() {
   if (!state.started) return null;
-  const ps = {}, ts = {};
-  for (const [k, s] of Object.entries(SKILLS)) if (s.owned) ps[k] = 1;
+  const ts = {};
   for (const [tp, tree] of Object.entries(TOWER_SKILLS)) {
     for (const [sk, s] of Object.entries(tree)) if (s.owned) { ts[tp] = ts[tp] || {}; ts[tp][sk] = 1; }
   }
   return {
-    _ν: 1, _w: state.wave, _r: state.gold, _h: state.lives, _p: state.skillPts,
-    _t: state.towers.map(_st), _g: state.grid, _a: state.path, ps, ts,
+    _ν: 1, _w: state.wave, _r: state.gold, _h: state.lives,
+    _t: state.towers.map(_st), _g: state.grid, _a: state.path, ts,
     _va: state.volcanoActive,
     _no: state.nodes.map(n => ({ type: n.type, x: n.x, y: n.y })),
     _bSen: Array.from(state.bSen || ['sleepy_door']),
@@ -73,8 +84,6 @@ function _apply(d) {
   for (const [tp, sks] of Object.entries(d.ts || {})) {
     for (const sk of Object.keys(sks)) if (TOWER_SKILLS[tp]?.[sk]) TOWER_SKILLS[tp][sk].owned = true;
   }
-  for (const s of Object.values(SKILLS)) s.owned = false;
-  for (const k of Object.keys(d.ps || {})) if (SKILLS[k]) SKILLS[k].owned = true;
 
   state.path = d._a;
   state.pathSet = new Set(d._a.map(p => p.x + ',' + p.y));
@@ -82,6 +91,7 @@ function _apply(d) {
   state.pathReady = true;
 
   state.towers = d._t.map(t => ({ ...t, cd: 0, _buffed: false, _rateBuff: 1 }));
+  reinitMonkeys(state.towers);
   state.nodes = (d._no || []).map(n => ({ ...n, wobbleTick: 0, cd: 0 }));
   state.resources = { ...(d._rs || {}) };
   state.research = d._res || null;
@@ -97,7 +107,7 @@ function _apply(d) {
   state.started = true; state.wave = d._w; state.phase = 'idle';
   state.ticks = 0; state.prepTicks = 0;
 
-  _ΨΔ(() => { state.gold = d._r; state.lives = d._h; state.skillPts = d._p; });
+  _ΨΔ(() => { state.gold = d._r; state.lives = d._h; });
   clampCam(); hideTT(); hudU(); panelU();
 }
 

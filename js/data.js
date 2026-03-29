@@ -11,45 +11,46 @@ export const TD = {
   clam:     { name:'Intuitive Clam',     icon:'🐚', clr:'#14b8a6', cost:80,  cat:'support', buffRange:2,  buffDmg:1.5, buffRate:.85, buffDesc:'+50% DMG, -15% CD to nearby', desc:'Buffs nearby towers: +50% DMG, -15% cooldown' },
   beehive:  { name:'Beehive',            icon:'🐝', clr:'#eab308', cost:90,  cat:'support', beeCount:3,  beeDmg:4,    beeRange:3,   beeRate:30,  desc:'Deploys bees that swarm and sting enemies' },
   clown:    { name:'Magnificent Clown',  icon:'🤡', clr:'#f472b6', cost:100, cat:'support', reverseRange:3, reverseDur:80, reverseCD:200, desc:'Reverses nearby enemy movement direction' },
-  monkey:   { name:'Monkey Hut',         icon:'🛖', clr:'#fb923c', cost:70, resCost: { stone: 8, wood: 8 }, cat:'support', factoryBuff:true, desc:'Boosts all factory income by +25% each' },
+  monkey:   { name:'Monkey Hut',         icon:'🛖', clr:'#fb923c', cost:70, resCost:{ stone:8, wood:8 }, cat:'support', capacity:2, range:4, desc:'Houses Resourceful Monkeys that gather, courier, or boost nearby buildings' },
+  stockpile:{ name:'Stockpile',          icon:'📦', clr:'#d97706', cost:50, resCost:{ wood:6 }, cat:'support', desc:'Interface between ground items and your inventory. Monkeys deposit/withdraw here.' },
   robot:    { name:'AI Agent',           icon:'🤖', clr:'#38bdf8', cost:110, cat:'support', autoSpell:true, reqAge: 'iron', desc:'Automatically casts spells during waves' },
 };
 
 export const TOWER_SKILLS = {
   squirrel: {
-    A: { name:'Piercing Gaze', desc:'Shots pierce 2 enemies',      excludes:'B', cost:1, owned:false, apply:tw=>{ tw.pierce=(tw.pierce||0)+2; } },
-    B: { name:'Mind Blast',    desc:'Shots stun for 40 ticks',     excludes:'A', cost:1, owned:false, apply:tw=>{ tw.stun=40; } },
-    C: { name:'Wisdom Aura',   desc:'+80% range',                  cost:2, owned:false, req:'any',    apply:tw=>{ tw.range*=1.8; } },
+    A: { name:'Piercing Gaze', desc:'Shots pierce 2 enemies',      excludes:'B', cost:{dust:15,gold:50}, owned:false, apply:tw=>{ tw.pierce=(tw.pierce||0)+2; } },
+    B: { name:'Mind Blast',    desc:'Shots stun for 40 ticks',     excludes:'A', cost:{dust:15,gold:50}, owned:false, apply:tw=>{ tw.stun=40; } },
+    C: { name:'Wisdom Aura',   desc:'+80% range',                  cost:{dust:30,gold:100}, owned:false, req:'any',    apply:tw=>{ tw.range*=1.8; } },
   },
   lion: {
-    A: { name:'Frenzy',      desc:'Double shot',                  excludes:'B', cost:1, owned:false, apply:tw=>{ tw.frenzy=true; } },
-    B: { name:'Savage Bite', desc:'Triple damage, halve rate',    excludes:'A', cost:1, owned:false, apply:tw=>{ tw.dmg*=3; tw.rate*=2; } },
-    C: { name:'Bloodlust',   desc:'Kills heal +1❤️',              cost:2, owned:false, req:'any',    apply:tw=>{ tw.bloodlust=true; } },
+    A: { name:'Frenzy',      desc:'Double shot',                  excludes:'B', cost:{dust:15,gold:50}, owned:false, apply:tw=>{ tw.frenzy=true; } },
+    B: { name:'Savage Bite', desc:'Triple damage, halve rate',    excludes:'A', cost:{dust:15,gold:50}, owned:false, apply:tw=>{ tw.dmg*=3; tw.rate*=2; } },
+    C: { name:'Bloodlust',   desc:'Kills heal +1❤️',              cost:{dust:30,gold:100}, owned:false, req:'any',    apply:tw=>{ tw.bloodlust=true; } },
   },
   penguin: {
-    A: { name:'Avalanche',  desc:'Add splash 1.2',               excludes:'B', cost:1, owned:false, apply:tw=>{ tw.splash=1.2; } },
-    B: { name:'Permafrost', desc:'Slow 80%, duration x2',        excludes:'A', cost:1, owned:false, apply:tw=>{ tw.slow=.8; tw.slowDur=160; } },
-    C: { name:'Blizzard',   desc:'AoE slow all in range',        cost:2, owned:false, req:'any',    apply:tw=>{ tw.blizzard=true; } },
+    A: { name:'Avalanche',  desc:'Add splash 1.2',               excludes:'B', cost:{dust:15,gold:50}, owned:false, apply:tw=>{ tw.splash=1.2; } },
+    B: { name:'Permafrost', desc:'Slow 80%, duration x2',        excludes:'A', cost:{dust:15,gold:50}, owned:false, apply:tw=>{ tw.slow=.8; tw.slowDur=160; } },
+    C: { name:'Blizzard',   desc:'AoE slow all in range',        cost:{dust:30,gold:100}, owned:false, req:'any',    apply:tw=>{ tw.blizzard=true; } },
   },
   fish: {
-    A: { name:'Tidal Wave', desc:'Splash radius x2',             excludes:'B', cost:1, owned:false, apply:tw=>{ tw.splash*=2; } },
-    B: { name:'Poison',     desc:'DoT 3/tick for 60 ticks',      excludes:'A', cost:1, owned:false, apply:tw=>{ tw.poison={dmg:3,dur:60}; } },
-    C: { name:'Tsunami',    desc:'+100% DMG',                    cost:2, owned:false, req:'any',    apply:tw=>{ tw.dmg*=2; } },
+    A: { name:'Tidal Wave', desc:'Splash radius x2',             excludes:'B', cost:{dust:15,gold:50}, owned:false, apply:tw=>{ tw.splash*=2; } },
+    B: { name:'Poison',     desc:'DoT 3/tick for 60 ticks',      excludes:'A', cost:{dust:15,gold:50}, owned:false, apply:tw=>{ tw.poison={dmg:3,dur:60}; } },
+    C: { name:'Tsunami',    desc:'+100% DMG',                    cost:{dust:30,gold:100}, owned:false, req:'any',    apply:tw=>{ tw.dmg*=2; } },
   },
   seahorse: {
-    A: { name:'Trident',     desc:'Pierce +4',                   excludes:'B', cost:1, owned:false, apply:tw=>{ tw.pierce+=4; } },
-    B: { name:'Ink Cloud',   desc:'Hits blind enemies (-50% spd)',excludes:'A', cost:1, owned:false, apply:tw=>{ tw.blind=true; } },
-    C: { name:'Deep Insight',desc:'Reveal+target stealth, +range',cost:2, owned:false, req:'any',   apply:tw=>{ tw.range+=2; tw.seeInvis=true; } },
+    A: { name:'Trident',     desc:'Pierce +4',                   excludes:'B', cost:{dust:15,gold:50}, owned:false, apply:tw=>{ tw.pierce+=4; } },
+    B: { name:'Ink Cloud',   desc:'Hits blind enemies (-50% spd)',excludes:'A', cost:{dust:15,gold:50}, owned:false, apply:tw=>{ tw.blind=true; } },
+    C: { name:'Deep Insight',desc:'Reveal+target stealth, +range',cost:{dust:30,gold:100}, owned:false, req:'any',   apply:tw=>{ tw.range+=2; tw.seeInvis=true; } },
   },
   lizard: {
-    A: { name:'Venom Spit', desc:'DoT 5/tick 80 ticks',          excludes:'B', cost:1, owned:false, apply:tw=>{ tw.poison={dmg:5,dur:80}; } },
-    B: { name:'Rage Aura',  desc:'Speed-up enemies 2x BUT dmg x3',excludes:'A',cost:1, owned:false, apply:tw=>{ tw.dmg*=3; tw.megaSpeed=true; } },
-    C: { name:'Dragon Form',desc:'Splash x2, range +1',          cost:2, owned:false, req:'any',    apply:tw=>{ tw.splash*=2; tw.range+=1; } },
+    A: { name:'Venom Spit', desc:'DoT 5/tick 80 ticks',          excludes:'B', cost:{dust:15,gold:50}, owned:false, apply:tw=>{ tw.poison={dmg:5,dur:80}; } },
+    B: { name:'Rage Aura',  desc:'Speed-up enemies 2x BUT dmg x3',excludes:'A',cost:{dust:15,gold:50}, owned:false, apply:tw=>{ tw.dmg*=3; tw.megaSpeed=true; } },
+    C: { name:'Dragon Form',desc:'Splash x2, range +1',          cost:{dust:30,gold:100}, owned:false, req:'any',    apply:tw=>{ tw.splash*=2; tw.range+=1; } },
   },
   heron: {
-    A: { name:'Storm Chain',   desc:'Chain to 5 targets',        excludes:'B', cost:1, owned:false, apply:tw=>{ tw.chain=5; } },
-    B: { name:'Focus Fire',    desc:'No chain, but x4 damage',   excludes:'A', cost:1, owned:false, apply:tw=>{ tw.chain=0; tw.dmg*=4; } },
-    C: { name:'Thunderstrike', desc:'Chain hits stun 30 ticks',  cost:2, owned:false, req:'any',    apply:tw=>{ tw.chainStun=30; } },
+    A: { name:'Storm Chain',   desc:'Chain to 5 targets',        excludes:'B', cost:{dust:15,gold:50}, owned:false, apply:tw=>{ tw.chain=5; } },
+    B: { name:'Focus Fire',    desc:'No chain, but x4 damage',   excludes:'A', cost:{dust:15,gold:50}, owned:false, apply:tw=>{ tw.chain=0; tw.dmg*=4; } },
+    C: { name:'Thunderstrike', desc:'Chain hits stun 30 ticks',  cost:{dust:30,gold:100}, owned:false, req:'any',    apply:tw=>{ tw.chainStun=30; } },
   },
 };
 

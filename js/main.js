@@ -7,7 +7,7 @@ import { buildPath } from './path.js';
 
 bus.on('enemyDeath', e => {
   state._kills = (state._kills || 0) + 1;
-  let rew = e.rew; if (SKILLS.greed?.owned) rew += 3;
+  let rew = e.rew;
   state.gold += rew; sfxKill();
   for (let j = 0; j < (e.boss ? 18 : 6); j++) {
      let p = getP(); p.x = e.x * state.CELL + state.CELL / 2; p.y = e.y * state.CELL + state.CELL / 2;
@@ -40,8 +40,8 @@ import { buildResearchGraph, tickResearch } from './research.js';
 import { updateEnemies, genWave } from './enemies.js';
 import { updateTowers } from './towers.js';
 import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser } from './support.js';
+import { updateMonkeys } from './monkeys.js';
 import { render, invalidateBg } from './render.js';
-import { SKILLS } from './skills.js';
 import { triggerEvent } from './events.js';
 import { sfxBoss, sfxWave, sfxKill, sfxHit } from './audio.js';
 import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch } from './ui.js';
@@ -54,16 +54,14 @@ export const WORLD_COLS = 20;
 export const WORLD_ROWS = 12;
 
 // ─── Protected state internals ───────────────────────────────────────────────
-// _gg/_ll/_ss: actual gold / lives / skillPts stored in module scope.
+// _gg/_ll: actual gold / lives stored in module scope.
 // Writes are gated by _φ; any external assignment to state.gold etc. is dropped.
-let _gg = 200, _ll = 20, _ss = 0, _φ = false;
+let _gg = 200, _ll = 20, _φ = false;
 let _ηG = (_gg * 0x9E3779B9) >>> 16; // integrity markers — updated alongside every write
 let _ηL = (_ll * 0xC2B2AE35) >>> 16;
-let _ηS = (_ss * 0x85EBCA77) >>> 16;
 function _wG(v) { _gg = v | 0; _ηG = (_gg * 0x9E3779B9) >>> 16; }
 function _wL(v) { _ll = Math.max(0, v | 0); _ηL = (_ll * 0xC2B2AE35) >>> 16; }
-function _wS(v) { _ss = Math.max(0, v | 0); _ηS = (_ss * 0x85EBCA77) >>> 16; }
-// Trusted write executor — pass a fn that may read/write gold/lives/skillPts
+// Trusted write executor — pass a fn that may read/write gold/lives
 export function _ΨΔ(fn) { const p = _φ; _φ = true; try { fn(); } finally { _φ = p; } }
 
 /* ═══ Shared game state ═══ */
@@ -89,9 +87,8 @@ export const state = {
 };
 // Protected accessors — console writes are silently discarded
 Object.defineProperties(state, {
-  gold:     { get: () => _gg, set: v => { if (_φ) _wG(v); }, enumerable: true },
-  lives:    { get: () => _ll, set: v => { if (_φ) _wL(v); }, enumerable: true },
-  skillPts: { get: () => _ss, set: v => { if (_φ) _wS(v); }, enumerable: true },
+  gold:  { get: () => _gg, set: v => { if (_φ) _wG(v); }, enumerable: true },
+  lives: { get: () => _ll, set: v => { if (_φ) _wL(v); }, enumerable: true },
 });
 
 /* ═══ Canvas ═══ */
@@ -99,11 +96,15 @@ const cv = document.getElementById('cv');
 const cx = cv.getContext('2d');
 state.cv = cv; state.cx = cx;
 
-function measure() {
-  const gc = document.getElementById('gc'), hud = document.getElementById('hud'), bp = document.getElementById('bp');
-  const oldCELL = state.CELL;
+export function measure() {
+  const gc = document.getElementById('gc');
+  const cv = document.getElementById('cv');
+  const hud = document.getElementById('hud');
+  const bp = document.getElementById('bp');
+  if (!gc || !cv || !hud || !bp) return false;
+  const oldW = state.W, oldH = state.H, oldCELL = state.CELL;
   state.W = cv.width = gc.clientWidth;
-  state.H = cv.height = gc.clientHeight - hud.offsetHeight - bp.offsetHeight;
+  state.H = cv.height = gc.clientHeight - (hud.offsetHeight || 0) - (bp.offsetHeight || 0);
   state.COLS = WORLD_COLS;
   state.ROWS = WORLD_ROWS;
   state.CELL = Math.floor(Math.min(state.W / WORLD_COLS, state.H / WORLD_ROWS));
@@ -113,6 +114,7 @@ function measure() {
     state.cam.panX *= ratio;
     state.cam.panY *= ratio;
   }
+  return state.W !== oldW || state.H !== oldH;
 }
 
 export function clampCam() {
@@ -131,7 +133,11 @@ export function minZoom() {
 
 export function initSz() {
   measure();
-  if (!state.pathReady) { buildPath(); state.pathReady = true; placeNodes(); }
+  if (!state.pathReady || !state.grid || !state.grid.length) {
+    buildPath();
+    state.pathReady = true;
+    placeNodes();
+  }
   clampCam();
 }
 
@@ -139,12 +145,9 @@ window.addEventListener('resize', () => { measure(); clampCam(); invalidateBg();
 
 export function fIncome() {
   let t = 0;
-  const mc = state.towers.filter(tw => tw.type === 'monkey').length;
   state.towers.forEach(tw => {
     if (tw.type === 'hoard') { /* No passive income per user request */ }
   });
-  if (SKILLS.goldRush?.owned) t = Math.floor(t * 1.3);
-  if (SKILLS.megaFactory?.owned) t = Math.floor(t * 1.5);
   return t;
 }
 state.fIncome = fIncome;
@@ -194,7 +197,7 @@ function update() {
     }
   }
 
-  updateClam(); updateClown(); updateRobot(); updateBees(); updateFactoryLaser(); updateTowers();
+  updateClam(); updateClown(); updateRobot(); updateBees(); updateMonkeys(); updateTowers();
   updateProjectiles();
 
   // Kill check
@@ -227,7 +230,8 @@ function update() {
     let hInc = 0;
     state.towers.forEach(tw => {
       if (tw.type === 'hoard') {
-        const m = (tw.level > 0 ? [1.5, 2.0, 2.5, 3.0, 4.0][tw.level - 1] : 1.0);
+        const baseM = (tw.level > 0 ? [1.5, 2.0, 2.5, 3.0, 4.0][tw.level - 1] : 1.0);
+        const m = baseM + (tw._monkeyBoostCount || 0) * 0.5;
         const amt = Math.floor((tw.dep.wood + tw.dep.stone) * m);
         hInc += amt;
         tw.dep.wood = 0; tw.dep.stone = 0;
@@ -235,8 +239,6 @@ function update() {
     });
     const inc = fIncome() + hInc; state.gold += inc;
     if (inc > 0) mkF(state.W / 2, state.H / 2, '+' + inc + ' 🏺', '#10b981');
-    if (state.wave % 3 === 0) { state.skillPts++; mkF(state.W / 2, state.H / 3, '+1 ⚡ Skill!', '#a78bfa'); }
-    
     // Research tick
     const _done = tickResearch();
     if (_done) showBanner('🔬 ' + _done.name + ' complete!');
@@ -253,7 +255,7 @@ function update() {
 
   // Update frame consistency markers
   state._Σ = (state.ticks * _ηG ^ _ηL) & 0xFFFF;
-  state._Ω = (_ηS * state.wave + _ηG ^ state.ticks) & 0xFFFF;
+  state._Ω = 0;
   _φ = false;
   hudU();
 }
@@ -262,7 +264,7 @@ function update() {
 
 /* ═══ Game flow ═══ */
 export function startGame() {
-  _ΨΔ(() => { _wG(200); _wL(20); _wS(0); });
+  _ΨΔ(() => { _wG(200); _wL(20); });
   if (!state.research) state.research = buildResearchGraph();
   state.started = true; state.phase = 'prep'; state.prepTicks = 1800;
   invalidateBg(); initSz(); hideOv(); hudU(); panelU();
@@ -282,14 +284,13 @@ export function startWave() {
 export function startPrep() {
   if (state.autoplay) { startWave(); return; }
   state.phase = 'prep'; state.prepTicks = 1800;
-  hideOv(); hudU(); panelU();
+  invalidateBg();
+  clampCam(); hideTT(); hudU(); panelU();
 }
 
 export function resetGame() {
-  import('./data.js').then(({ TOWER_SKILLS }) => {
-    for (const k in TOWER_SKILLS) for (const sk of Object.values(TOWER_SKILLS[k])) sk.owned = false;
-  });
-  _ΨΔ(() => { _wG(200); _wL(20); _wS(0); });
+  import('./dev.js').then(m => { m.devMode(state, hudU, panelU); }).catch(() => {});
+  _ΨΔ(() => { _wG(200); _wL(20); });
   Object.assign(state, {
     wave: 0, phase: 'idle', ticks: 0, prepTicks: 0,
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
@@ -302,14 +303,14 @@ export function resetGame() {
   import('./dev.js').then(m => { m.devMode(state, hudU, panelU); }).catch(() => {});
 
   state.pathSet.clear(); state.grid = [];
-  buildPath(); placeNodes();
-  Object.values(SKILLS).forEach(s => s.owned = false);
+  initSz();
   clearSave(); hideTT(); startGame();
 }
 
 /* ═══ Loop ═══ */
 let lastP = 0;
 function loop() {
+  if (measure()) invalidateBg();
   updateCameraKeys();
   const cam = state.cam;
   if (Math.abs(cam.zoom - cam.targetZoom) > 0.0005) {
@@ -337,7 +338,8 @@ document.getElementById('rstBtn').addEventListener('click', () => {
   }, () => hideOv());
 });
 document.getElementById('goBtn').addEventListener('click', () => { if (state.phase === 'prep') startWave(); });
-initTabs(); initInput(); initSz(); panelU(); hudU(); loop();
+initTabs(); initInput(); measure();
 initSaveUI(); initBestiaryUI(); initResearchUI();
-const _sv = hasSave() && loadGame();
+const _sv = hasSave() && loadGame(); 
+initSz(); panelU(); hudU(); loop();
 showWelcome(VERSION, _sv ? null : startGame);

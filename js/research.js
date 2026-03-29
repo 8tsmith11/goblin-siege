@@ -13,7 +13,7 @@ export const FIXED_RESEARCH = {
 };
 
 export const VARIABLE_RESEARCH = [
-  { id:'animal_husb',   name:'Animal Husbandry',     icon:'🐵', cost:{dust:15,wood:10},  waves:2, unlocks:'monkey',             prereqs:['basic_obs'] },
+  { id:'animal_husb',   name:'Animal Husbandry',     icon:'🐵', cost:{dust:15,wood:10},  waves:2, unlocks:'monkey,stockpile',    prereqs:['basic_obs'] },
   { id:'beekeeping',    name:'Apiculture',           icon:'🐝', cost:{dust:20,wood:15},  waves:2, unlocks:'beehive',            prereqs:['basic_obs'] },
   { id:'reptilian',     name:'Reptilian Lore',       icon:'🦎', cost:{dust:30,stone:20}, waves:3, unlocks:'lizard',             prereqs:['structural'] },
   { id:'entertainment', name:'Magnificent Show',     icon:'🤡', cost:{dust:25,stone:10}, waves:3, unlocks:'clown',              prereqs:['pattern_rec'] },
@@ -30,7 +30,7 @@ export const UNLOCK_DESC = {
   'fish,seahorse':      'Fish & Seahorse towers',
   'heron':              'Clever Heron tower',
   'robot':              'AI Agent (Robot) tower',
-  'monkey':             'Monkey Hut building',
+  'monkey,stockpile':   'Monkey Hut & Stockpile',
   'beehive':            'Beehive building',
   'lizard':             'Abhorrent Lizard tower',
   'clown':              'Magnificent Clown tower',

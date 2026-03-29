@@ -6,6 +6,7 @@ import { spawnBees } from './support.js';
 import { canPlace } from './render.js';
 import { showTT, hideTT, showTip, showBanner, panelU, hudU, mkGain } from './ui.js';
 import { clickNode, RTYPES } from './resources.js';
+import { initMonkeys } from './monkeys.js';
 
 function cell(e) {
   const r = state.cv.getBoundingClientRect();
@@ -104,6 +105,7 @@ function tryPlaceTower(c, ex) {
     if (tw.type === 'beehive') { const d = TD.beehive; tw.beeCount = d.beeCount; tw.beeDmg = d.beeDmg; tw.beeRange = d.beeRange; tw.beeRate = d.beeRate; }
     if (tw.type === 'hoard') { tw.dep = { wood: 0, stone: 0 }; }
     if (tw.type === 'lab') { tw.obsRange = TD.lab.obsRange; }
+    if (tw.type === 'monkey') { tw.range = TD.monkey.range; tw.monkeys = initMonkeys(TD.monkey.capacity); }
     state.towers.push(tw);
     state.grid[c.y][c.x].type = 'tower';
     state.grid[c.y][c.x].content = tw;
@@ -124,6 +126,17 @@ function handleTap(e) {
   const c = cell(e);
   if (c.x < 0 || c.x >= state.COLS || c.y < 0 || c.y >= state.ROWS) return;
   const ex = state.towers.find(t => t.x === c.x && t.y === c.y);
+
+  // Tile-pick mode: record clicked tile for monkey role config
+  if (state.sel?.type === 'tile_pick') {
+    const { monkey, field } = state.sel;
+    monkey.cfg[field] = { x: c.x, y: c.y };
+    monkey.st = 'idle'; // reset movement so new config takes effect
+    state.sel = null;
+    showTip('Position set!');
+    panelU();
+    return;
+  }
 
   if (!state.sel) {
     if (handleStackInteraction(c, e)) return;
@@ -159,6 +172,7 @@ export function initInput() {
   document.addEventListener('keydown', e => {
     const nav = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'];
     if (nav.includes(e.key)) e.preventDefault();
+    if (e.key === 'Escape' && state.sel?.type === 'tile_pick') { state.sel = null; panelU(); return; }
     keysDown.add(e.key);
   });
   document.addEventListener('keyup', e => keysDown.delete(e.key));

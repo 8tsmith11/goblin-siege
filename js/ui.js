@@ -1,11 +1,11 @@
 'use strict';
 import { state, startGame, startWave, startPrep, resetGame, _ΨΔ } from './main.js';
-import { RTYPES } from './resources.js';
+import { RTYPES, dropItem } from './resources.js';
 import { TD, TOWER_SKILLS } from './data.js';
 import { spawnBees } from './support.js';
 import { canAfford, spendResources, layoutNodes, UNLOCK_DESC } from './research.js';
 import { SP, castSpell } from './spells.js';
-import { SKILLS, renderSk, showTowerSkill } from './skills.js';
+import { renderSk, showTowerSkill } from './skills.js';
 import { BESTIARY, getScribeLogs } from './bestiary.js';
 import { sfxPlace, iA } from './audio.js';
 
@@ -28,11 +28,8 @@ export function hudU() {
   } else {
     wlEl.textContent = phase === 'active' ? 'Wave ' + wave + ' · ' + l + ' left' : 'Wave ' + wave;
   }
-  const wl = document.getElementById('wl');
-  if (wl) wl.textContent = 'Wave ' + (state.wave || 0);
 
   document.getElementById('hI').textContent = '+' + state.fIncome();
-  document.getElementById('hSP').textContent = state.skillPts;
   const goBtn = document.getElementById('goBtn');
   if (goBtn) goBtn.style.display = phase === 'prep' ? '' : 'none';
   const hRes = document.getElementById('hRes');
@@ -155,7 +152,7 @@ export function panelU() {
       const isUnl = state.unlockedTowers && state.unlockedTowers.has(k);
       if (!isUnl) {
         if (k !== 'robot') continue;
-        const el = mkIB(d.icon, '???', 'Locked', false, false, () => {});
+        const el = mkIB(d.icon, '???', 'Locked', false, false, () => { });
         addHover(el, k); pc.appendChild(el);
         continue;
       }
@@ -171,7 +168,7 @@ export function panelU() {
       const el = mkIB(d.icon, isAgeLocked ? '???' : d.name, costStr, !isAgeLocked && afford, state.sel?.key === k, () => {
         if (isAgeLocked) return;
         const sel = state.sel?.key === k;
-        state.sel = sel ? null : { key:k, type:'tower', cost:d.cost, resCost: d.resCost };
+        state.sel = sel ? null : { key: k, type: 'tower', cost: d.cost, resCost: d.resCost };
         state.ttTower = null; hideTT();
         panelU();
       });
@@ -180,14 +177,12 @@ export function panelU() {
   } else if (tab === 'spells') {
     for (const k in SP) {
       const s = SP[k];
-      const cost = SKILLS.spellMaster?.owned ? Math.floor(s.cost * 0.75) : s.cost;
+      const cost = s.cost;
       const el = mkIB(s.icon, s.name, '💰' + cost, gold >= cost && phase === 'active', false, () => castSpell(k));
       addHover(el, k); pc.appendChild(el);
     }
   } else if (tab === 'skills') {
-    const i = document.createElement('div');
-    i.style.cssText = 'font-size:11px;color:#94a3b8;padding:4px;text-align:center;align-self:center';
-    i.innerHTML = '⚡' + state.skillPts + ' pts (every 3 waves)'; pc.appendChild(i);
+    renderSk();
   }
 }
 
@@ -229,7 +224,7 @@ export function mkGain(px, py, icon, amount, clr) {
   const { cam } = state;
   const sx = (px - cam.panX) * cam.zoom, sy = (py - cam.panY) * cam.zoom;
   p.el.style.left = (cvR.left - gcR.left + sx) + 'px';
-  p.el.style.top  = (cvR.top  - gcR.top  + sy) + 'px';
+  p.el.style.top = (cvR.top - gcR.top + sy) + 'px';
   p.el.style.color = clr;
   p.el.textContent = '+' + amount + '\u202f' + icon;
   p.el.style.display = 'block';
@@ -249,14 +244,15 @@ export function showTT(tw, px, py) {
   const isH = tw.type === 'hoard', def = TD[tw.type];
   document.getElementById('ttT').textContent = (isH ? 'Hoard Pile' : def?.name || tw.type) + (tw.level > 0 ? ' ★' + tw.level : '');
   let s = '';
-  if (isH) { 
+  if (isH) {
     const m = (tw.level > 0 ? HOARD_UPGS[tw.level - 1].m : 1.0);
-    s = `Mult: ${m.toFixed(1)}x | Storage: 🪵${tw.dep.wood} 🪨${tw.dep.stone}`; 
+    s = `Mult: ${m.toFixed(1)}x | Storage: 🪵${tw.dep.wood} 🪨${tw.dep.stone}`;
   }
   else if (tw.type === 'clam') { s = 'Buff radius: ' + ((tw.level + 1) * 1.5).toFixed(1) + ' · +50%DMG -15%CD'; }
   else if (tw.type === 'beehive') { s = 'Bees: ' + (tw.beeCount || 3) + ' · Bee DMG: ' + (tw.beeDmg || 4); }
   else if (tw.type === 'clown') { s = 'Reverse rng:' + (tw.reverseRange || 3) + ' dur:' + (tw.reverseDur || 80); }
-  else if (tw.type === 'monkey') { s = 'Buffs factories +25% each'; }
+  else if (tw.type === 'monkey') { const mc = tw.monkeys?.length ?? 0; s = mc + ' Resourceful Monke' + (mc === 1 ? 'y' : 'ys'); }
+  else if (tw.type === 'stockpile') { s = 'Monkeys deposit/withdraw resources here'; }
   else if (tw.type === 'robot') { s = 'Auto-casts spells!'; }
   else if (tw.type === 'lab') { s = 'Observation radius: ' + (tw.obsRange || 3) + ' · Gathers 🔮 Dust'; }
   else { s = 'DMG:' + tw.dmg + ' RNG:' + tw.range?.toFixed(1) + ' CD:' + tw.rate; if (tw.slow > 0) s += ' Slow:' + Math.floor(tw.slow * 100) + '%'; if (tw.splash > 0) s += ' Spl:' + tw.splash.toFixed(1); if (tw.pierce) s += ' Prc:' + tw.pierce; if (tw.chain) s += ' Chn:' + tw.chain; if (tw._buffed) s += ' 🐚'; }
@@ -303,9 +299,16 @@ export function showTT(tw, px, py) {
   }
   if (tw.type === 'clown') { const uc = 40 + tw.level * 25; addTTB(a, '+Range 💰' + uc, 'ttu', state.gold >= uc, () => { _ΨΔ(() => { if (state.gold < uc) return; state.gold -= uc; tw.level++; tw.reverseRange = (tw.reverseRange || 3) + 0.5; tw.reverseDur = (tw.reverseDur || 80) + 20; }); refreshTT(tw); }); }
   if (tw.type === 'lab') { addTTB(a, '🔬 Research', 'tts2', !!state.research, () => { hideTT(); state.ttTower = null; showResearch(); }); }
-  if (TD[tw.type]?.cat === 'tower' && TOWER_SKILLS[tw.type]) { addTTB(a, '⚡Skill', 'ttc', state.skillPts > 0, () => { showTowerSkill(tw); hideTT(); state.ttTower = null; }); }
-  const sv = Math.floor((def?.cost || 50) * 0.5);
-  addTTB(a, 'Sell +💰' + sv, 'ttl', true, () => { _ΨΔ(() => doSell(tw, sv)); sell(); });
+  if (tw.type === 'monkey') { buildMonkeyTT(tw, a); }
+  if (TD[tw.type]?.cat === 'tower' && TOWER_SKILLS[tw.type]) { addTTB(a, '⚡Skill', 'ttc', true, () => { showTowerSkill(tw); hideTT(); state.ttTower = null; }); }
+  const sv = Math.floor(def.cost * 0.75 + (tw.level * def.cost * 0.4));
+  addTTB(a, 'Sell +💰' + sv, 'ttl', true, () => {
+    showOv('Sell ' + def.name + '?', 'Are you sure you want to sell this tower? You will receive 💰' + sv + '.', 'Sell', false, () => {
+      _ΨΔ(() => doSell(tw, sv));
+      sell();
+      hideOv();
+    }, () => hideOv());
+  });
 
   const { W } = state;
   el.style.display = 'block';
@@ -327,13 +330,13 @@ function genUpg(def, lvl) {
   const r = m32(state.wave * 7 + lvl * 13 + def.cost);
   const ts = ['dmg', 'range', 'rate'], t = ts[Math.floor(r() * ts.length)];
   const c = Math.floor(def.cost * 0.5 * (1 + lvl * 0.4));
-  if (t === 'dmg') { const v = Math.ceil(def.dmg * 0.3 * (1 + lvl * 0.15)); return { l:'+'+v+'DMG', s:'dmg', v, c }; }
-  if (t === 'range') { const v = +(0.3 + lvl * 0.1).toFixed(1); return { l:'+'+v+'RNG', s:'range', v, c }; }
-  const v = Math.max(2, Math.floor(def.rate * 0.12)); return { l:'-'+v+'CD', s:'rate', v, c };
+  if (t === 'dmg') { const v = Math.ceil(def.dmg * 0.3 * (1 + lvl * 0.15)); return { l: '+' + v + 'DMG', s: 'dmg', v, c }; }
+  if (t === 'range') { const v = +(0.3 + lvl * 0.1).toFixed(1); return { l: '+' + v + 'RNG', s: 'range', v, c }; }
+  const v = Math.max(2, Math.floor(def.rate * 0.12)); return { l: '-' + v + 'CD', s: 'rate', v, c };
 }
 
 function m32(a) {
-  return function() {
+  return function () {
     a |= 0; a = a + 0x6D2B79F5 | 0;
     let t = Math.imul(a ^ a >>> 15, 1 | a); t ^= t + Math.imul(t ^ t >>> 7, 61 | t);
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
@@ -355,6 +358,103 @@ function doSell(tw, val) {
   state.grid[tw.y][tw.x].content = null;
   state.towers = state.towers.filter(x => x !== tw);
   state.bees = state.bees.filter(b => b.hive !== tw);
+  // Drop any items carried toward this tile by monkeys
+  _cleanupMonkeysForSoldTile(tw.x, tw.y);
+}
+
+function _cleanupMonkeysForSoldTile(sx, sy) {
+  for (const hut of state.towers) {
+    if (hut.type !== 'monkey' || !hut.monkeys) continue;
+    for (const mk of hut.monkeys) {
+      if (!mk.carrying) continue;
+      const dest = mk.role === 'gatherer' ? mk.cfg.dest
+                 : mk.role === 'courier'  ? (mk.st === 'carrying' ? mk.cfg.dest : mk.cfg.from)
+                 : null;
+      if (dest?.x === sx && dest?.y === sy) {
+        // Tower already removed from grid.content, so dropItem lands as ground stack
+        dropItem(sx, sy, mk.carrying.type);
+        mk.carrying = null;
+        mk.st = 'idle';
+      }
+    }
+  }
+}
+
+export function refreshActiveTT() { if (state.ttTower) refreshTT(state.ttTower); }
+
+const ROLE_CYCLE = [null, 'gatherer', 'courier', 'booster'];
+const ROLE_LABEL = { null: 'Idle 💤', gatherer: 'Gather 🌿', courier: 'Courier 🚚', booster: 'Boost 💪' };
+const FILTER_CYCLE = [null, 'wood', 'stone'];
+const FILTER_LABEL = { null: 'All', wood: '🪵', stone: '🪨' };
+
+function buildMonkeyTT(tw, container) {
+  if (!tw.monkeys) return;
+  for (const mk of tw.monkeys) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:4px;align-items:center;margin:2px 0';
+    const nameEl = document.createElement('span');
+    nameEl.style.cssText = 'color:#fb923c;font-size:10px;min-width:44px;font-weight:700';
+    nameEl.textContent = mk.name;
+    row.appendChild(nameEl);
+    container.appendChild(row);
+
+    // Role cycle button
+    addTTB(container, ROLE_LABEL[mk.role] ?? 'Idle 💤', 'tts2', true, () => {
+      const idx = ROLE_CYCLE.indexOf(mk.role);
+      mk.role = ROLE_CYCLE[(idx + 1) % ROLE_CYCLE.length];
+      mk.cfg = { filter: null, dest: null, from: null, boost: null };
+      mk.st = 'idle'; mk.carrying = null;
+      refreshTT(tw);
+    });
+
+    if (mk.role === 'gatherer') {
+      // Filter toggle
+      addTTB(container, 'Filter:' + FILTER_LABEL[mk.cfg.filter ?? null], 'tts2', true, () => {
+        const fi = FILTER_CYCLE.indexOf(mk.cfg.filter ?? null);
+        mk.cfg.filter = FILTER_CYCLE[(fi + 1) % FILTER_CYCLE.length] ?? null;
+        refreshTT(tw);
+      });
+      // Destination tile pick
+      const destLbl = mk.cfg.dest ? `Dest:(${mk.cfg.dest.x},${mk.cfg.dest.y})` : 'Set Dest 📍';
+      addTTB(container, destLbl, 'tts2', true, () => {
+        state.sel = { type: 'tile_pick', monkey: mk, field: 'dest' };
+        hideTT(); state.ttTower = null; panelU();
+      });
+    }
+
+    if (mk.role === 'courier') {
+      addTTB(container, 'Filter:' + FILTER_LABEL[mk.cfg.filter ?? null], 'tts2', true, () => {
+        const fi = FILTER_CYCLE.indexOf(mk.cfg.filter ?? null);
+        mk.cfg.filter = FILTER_CYCLE[(fi + 1) % FILTER_CYCLE.length] ?? null;
+        refreshTT(tw);
+      });
+      const fromLbl = mk.cfg.from ? `From:(${mk.cfg.from.x},${mk.cfg.from.y})` : 'Set From 📍';
+      addTTB(container, fromLbl, 'tts2', true, () => {
+        state.sel = { type: 'tile_pick', monkey: mk, field: 'from' };
+        hideTT(); state.ttTower = null; panelU();
+      });
+      const toLbl = mk.cfg.dest ? `To:(${mk.cfg.dest.x},${mk.cfg.dest.y})` : 'Set To 📍';
+      addTTB(container, toLbl, 'tts2', true, () => {
+        state.sel = { type: 'tile_pick', monkey: mk, field: 'dest' };
+        hideTT(); state.ttTower = null; panelU();
+      });
+    }
+
+    if (mk.role === 'booster') {
+      const bLbl = mk.cfg.boost ? `Boost:(${mk.cfg.boost.x},${mk.cfg.boost.y})` : 'Set Target 📍';
+      addTTB(container, bLbl, 'tts2', true, () => {
+        state.sel = { type: 'tile_pick', monkey: mk, field: 'boost' };
+        hideTT(); state.ttTower = null; panelU();
+      });
+    }
+
+    if (mk.trips > 0) {
+      const tripEl = document.createElement('div');
+      tripEl.style.cssText = 'color:#64748b;font-size:9px;margin-left:2px';
+      tripEl.textContent = mk.trips + ' trip' + (mk.trips === 1 ? '' : 's');
+      container.appendChild(tripEl);
+    }
+  }
 }
 
 function mdToHtml(md) {
@@ -385,7 +485,7 @@ export async function showWelcome(version, onClose) {
     const res = await fetch('patch-notes/' + version + '.md');
     if (!res.ok) throw new Error();
     notesEl.innerHTML = mdToHtml(await res.text());
-  } catch(_) {
+  } catch (_) {
     notesEl.textContent = 'No patch notes available.';
   }
   const box = document.getElementById('welcomeBox');
@@ -410,15 +510,15 @@ export function renderBestiary() {
   const c = document.getElementById('beastC');
   if (!c) return;
   c.innerHTML = '';
-  
+
   const entries = { ...BESTIARY };
 
   for (const [k, d] of Object.entries(entries)) {
     if (!state.bSen.has(k) && k !== 'sleepy_door') continue;
-    
+
     // Determine locked presentation
     const lock = !state.bSen.has(k) && k === 'sleepy_door';
-    
+
     const el = document.createElement('div');
     el.id = 'beast-ent-' + k;
     el.className = 'beast-ent' + (d.boss ? ' boss' : '') + (lock ? ' locked' : '');
@@ -434,7 +534,7 @@ export function renderBestiary() {
 }
 
 function syncPause() {
-  const resOpen   = document.getElementById('resP')?.classList.contains('sh');
+  const resOpen = document.getElementById('resP')?.classList.contains('sh');
   const beastOpen = document.getElementById('beastP')?.classList.contains('sh');
   const scribeOpen = document.getElementById('scribeP')?.style.display === 'flex';
   state.paused = !!(resOpen || beastOpen || scribeOpen);
@@ -458,7 +558,7 @@ export function initBestiaryUI() {
     document.getElementById('beastP')?.classList.remove('sh');
     syncPause();
   });
-  
+
   document.getElementById('scribeBtn')?.addEventListener('click', () => {
     const sp = document.getElementById('scribeP');
     if (!sp) return;
@@ -479,7 +579,7 @@ export function initBestiaryUI() {
 }
 
 // ── Research Web ──────────────────────────────────────────────────────────────
-const RES_ICONS = { dust:'🔮', stone:'🪨', wood:'🪵', flint:'🗿' };
+const RES_ICONS = { dust: '🔮', stone: '🪨', wood: '🪵', flint: '🗿' };
 const NODE_R = 22;
 let _rPos = null; // cached layout positions (world coords)
 const _rCam = { panX: 0, panY: 0, zoom: 1 };

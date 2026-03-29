@@ -1,25 +1,29 @@
 'use strict';
 import { state } from './main.js';
 import { TD } from './data.js';
-import { renderNodes, renderStacks } from './resources.js';
+import { renderNodes, renderStacks, RTYPES } from './resources.js';
 
 const _imgPath = new Image(); _imgPath.src = 'assets/tiles/path.png';
 const _imgGrassL = new Image(); _imgGrassL.src = 'assets/tiles/lightgrass.png';
 const _imgGrassD = new Image(); _imgGrassD.src = 'assets/tiles/darkgrass.png';
 const _imgCastle = new Image(); _imgCastle.src = 'assets/tiles/castle.png';
+const _imgHoard = new Image(); _imgHoard.src = 'assets/tiles/hoardpile.png';
 
 export function canPlace(cx2, cy2) {
   const { COLS, ROWS, pathSet, grid } = state;
   if (cx2 < 0 || cx2 >= COLS || cy2 < 0 || cy2 >= ROWS) return false;
+  if (!grid[cy2] || !grid[cy2][cx2]) return false;
   if (pathSet.has(cx2 + ',' + cy2)) return false;
-  if (grid[cy2] && grid[cy2][cx2].type !== 'empty' && grid[cy2][cx2].type !== 'node') return false;
+  if (grid[cy2][cx2].type !== 'empty' && grid[cy2][cx2].type !== 'node') return false;
+  if (grid[cy2][cx2].type === 'water') return false;
   return true;
 }
 
 let bgCache = null;
 
 function updateBgCache() {
-  const { CELL, COLS, ROWS, path } = state;
+  const { CELL, COLS, ROWS, path, grid } = state;
+  if (!grid || !grid.length) return;
   if (!bgCache) bgCache = document.createElement('canvas');
   bgCache.width = COLS * CELL;
   bgCache.height = ROWS * CELL;
@@ -27,7 +31,12 @@ function updateBgCache() {
   
   const grassReady = _imgGrassL.complete && _imgGrassL.naturalWidth && _imgGrassD.complete && _imgGrassD.naturalWidth;
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-    if (grassReady) {
+    const isWater = grid[r][c].type === 'water';
+    if (isWater) {
+       bcx.fillStyle = '#162d66'; bcx.fillRect(c * CELL, r * CELL, CELL, CELL);
+       bcx.strokeStyle = 'rgba(255,255,255,0.1)'; bcx.lineWidth = 1;
+       bcx.beginPath(); bcx.moveTo(c * CELL + 2, r * CELL + CELL / 2); bcx.bezierCurveTo(c*CELL+CELL/4, r*CELL+CELL/4, c*CELL+3*CELL/4, r*CELL+3*CELL/4, c*CELL+CELL-2, r*CELL+CELL/2); bcx.stroke();
+    } else if (grassReady) {
       bcx.drawImage((r + c) % 2 === 0 ? _imgGrassD : _imgGrassL, c * CELL, r * CELL, CELL, CELL);
     } else {
       bcx.fillStyle = (r + c) % 2 === 0 ? '#131929' : '#151b2b';
@@ -43,17 +52,29 @@ function updateBgCache() {
       bcx.fillStyle = '#3a2518'; bcx.fillRect(p.x * CELL, p.y * CELL, CELL, CELL);
     }
   });
+
+  // Visual Path Extension
+  if (path.length > 0) {
+    const start = path[0], end = path[path.length - 1];
+    bcx.fillStyle = '#3a2518';
+    // Extend Left
+    for (let x = start.x - 1; x >= -2; x--) {
+      if (_imgPath.complete && _imgPath.naturalWidth) bcx.drawImage(_imgPath, x * CELL, start.y * CELL, CELL, CELL);
+      else bcx.fillRect(x * CELL, start.y * CELL, CELL, CELL);
+    }
+    // Extend Right
+    for (let x = end.x + 1; x <= COLS + 2; x++) {
+      if (_imgPath.complete && _imgPath.naturalWidth) bcx.drawImage(_imgPath, x * CELL, end.y * CELL, CELL, CELL);
+      else bcx.fillRect(x * CELL, end.y * CELL, CELL, CELL);
+    }
+  }
+
   if (path.length > 2) {
     bcx.fillStyle = 'rgba(34,197,94,.12)'; bcx.fillRect(path[0].x * CELL, path[0].y * CELL, CELL, CELL);
     bcx.font = Math.floor(CELL * 0.4) + 'px serif'; bcx.textAlign = 'center'; bcx.textBaseline = 'middle';
     bcx.fillStyle = '#22c55e77'; bcx.fillText('▶', path[0].x * CELL + CELL / 2, path[0].y * CELL + CELL / 2);
   }
 }
-
-const reqBgUpdate = () => { bgCache = null; };
-_imgPath.onload = reqBgUpdate;
-_imgGrassL.onload = reqBgUpdate;
-_imgGrassD.onload = reqBgUpdate;
 
 export function invalidateBg() { bgCache = null; }
 
@@ -104,13 +125,22 @@ export function render() {
     }
     const isH = tw.type === 'hoard', def = TD[tw.type];
     const tx = Math.round(tw.x * CELL), ty = Math.round(tw.y * CELL);
-    cx.fillStyle = tw.disabled ? '#1a0a0a' : isH ? '#0a3d2f' : tw._buffed ? '#1a2040' : '#171838';
-    cx.fillRect(tx + 2, ty + 2, CELL - 4, CELL - 4);
-    cx.strokeStyle = tw.disabled ? '#ef4444' : isH ? '#10b981' : tw._buffed ? '#5eead4' : (def?.clr || '#555');
-    cx.lineWidth = tw._buffed ? 2 : 1.5; cx.strokeRect(tx + 2, ty + 2, CELL - 4, CELL - 4);
-    cx.font = Math.floor(CELL * 0.35) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
-    cx.fillText(isH ? '🏺' : (def?.icon || '?'), tx + CELL / 2, ty + CELL / 2);
+    if (isH && _imgHoard.naturalWidth) {
+      cx.drawImage(_imgHoard, tx, ty, CELL, CELL);
+    } else {
+      cx.fillStyle = tw.disabled ? '#1a0a0a' : isH ? '#0a3d2f' : tw._buffed ? '#1a2040' : '#171838';
+      cx.fillRect(tx + 2, ty + 2, CELL - 4, CELL - 4);
+      cx.strokeStyle = tw.disabled ? '#ef4444' : isH ? '#10b981' : tw._buffed ? '#5eead4' : (def?.clr || '#555');
+      cx.lineWidth = tw._buffed ? 2 : 1.5; cx.strokeRect(tx + 2, ty + 2, CELL - 4, CELL - 4);
+      cx.font = Math.floor(CELL * 0.35) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.fillText(isH ? '🏺' : (def?.icon || '?'), tx + CELL / 2, ty + CELL / 2);
+    }
     if (tw.level > 0) { cx.font = 'bold ' + Math.floor(CELL * 0.16) + 'px Anybody,sans-serif'; cx.fillStyle = '#fbbf24'; cx.fillText('★'.repeat(Math.min(tw.level, 5)), tx + CELL / 2, ty + CELL - 2); }
+    if (tw._monkeyBoosted) {
+      cx.font = Math.floor(CELL * 0.22) + 'px serif';
+      cx.textAlign = 'right'; cx.textBaseline = 'top';
+      cx.fillText('🐵', tx + CELL - 1, ty + 1);
+    }
   });
 
   // Castle (end of path) — drawn oversized so it overlaps surrounding tiles
@@ -127,6 +157,25 @@ export function render() {
     cx.fillText('🐝', bee.x, bee.y);
     if (ticks % 4 === 0) state.particles.push({ x: bee.x, y: bee.y, vx: 0, vy: 0, life: 8, clr: '#fbbf2444', sz: 1.5 });
   });
+
+  // Monkeys
+  for (const tw of towers) {
+    if (tw.type !== 'monkey' || !tw.monkeys) continue;
+    for (const mk of tw.monkeys) {
+      cx.fillStyle = '#fb923c';
+      cx.beginPath(); cx.arc(mk.x, mk.y, CELL * 0.13, 0, Math.PI * 2); cx.fill();
+      if (cam.zoom >= 0.75) {
+        cx.font = Math.floor(CELL * 0.22) + 'px serif';
+        cx.textAlign = 'center'; cx.textBaseline = 'middle';
+        cx.fillText('🐵', mk.x, mk.y);
+      }
+      if (mk.carrying) {
+        cx.font = Math.floor(CELL * 0.20) + 'px serif';
+        cx.textAlign = 'center'; cx.textBaseline = 'bottom';
+        cx.fillText(RTYPES[mk.carrying.type]?.icon || '?', mk.x, mk.y - CELL * 0.15);
+      }
+    }
+  }
 
   // Enemies
   enemies.forEach(e => {

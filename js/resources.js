@@ -107,14 +107,20 @@ export function renderNodes() {
 export function dropItem(cx, cy, type) {
   const cell = state.grid[cy]?.[cx];
   if (!cell) return;
-  if (!cell.stacks) cell.stacks = [null, null, null, null];
-  
-  let existingIndex = cell.stacks.findIndex(s => s && s.type === type && s.count < 64);
-  if (existingIndex !== -1) {
-    cell.stacks[existingIndex].count++;
+  // Tower-aware routing: deliver directly to tower if applicable
+  const tw = cell.content;
+  if (tw?.type === 'stockpile') {
+    state.resources[type] = (state.resources[type] || 0) + 1;
     return;
   }
-  
+  if (tw?.type === 'hoard' && (type === 'wood' || type === 'stone')) {
+    tw.dep[type] = (tw.dep[type] || 0) + 1;
+    return;
+  }
+  // Default: place as ground stack
+  if (!cell.stacks) cell.stacks = [null, null, null, null];
+  let existingIndex = cell.stacks.findIndex(s => s && s.type === type && s.count < 64);
+  if (existingIndex !== -1) { cell.stacks[existingIndex].count++; return; }
   let emptyIndices = [];
   cell.stacks.forEach((s, idx) => { if (!s) emptyIndices.push(idx); });
   if (emptyIndices.length > 0) {
