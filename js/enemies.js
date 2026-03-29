@@ -1,24 +1,8 @@
 'use strict';
 import { state } from './main.js';
 import { clearEnemiesGrid, addToCell } from './grid.js';
-
-export const ETYPES = {
-  normal:  { hpM:1,   spdM:1,   sz:.30, rew:4,  clr:'#22c55e', em:'👺', drops: [{ type: 'wood', chance: 0.15 }] },
-  fast:    { hpM:.4,  spdM:1.6, sz:.24, rew:3,  clr:'#4ade80', em:'👺', drops: [{ type: 'wood', chance: 0.2 }] },
-  tank:    { hpM:2.5, spdM:.6,  sz:.45, rew:8,  clr:'#a855f7', em:'👹', drops: [{ type: 'stone', chance: 0.3 }] },
-  berserker:{ hpM:1.8,spdM:1.2, sz:.38, rew:7,  clr:'#ef4444', em:'😤', drops: [{ type: 'wood', chance: 0.25 }] },
-  shaman:  { hpM:1.2, spdM:.9,  sz:.33, rew:6,  clr:'#f97316', em:'🧙', drops: [] },
-  stealth: { hpM:.6,  spdM:1.4, sz:.22, rew:5,  clr:'#64748b', em:'👤', drops: [{ type: 'wood', chance: 0.2 }] },
-  healer:  { hpM:.8,  spdM:.8,  sz:.30, rew:6,  clr:'#22d3ee', em:'💚', drops: [{ type: 'wood', chance: 0.15 }] },
-  swarm:   { hpM:.18, spdM:1.7, sz:.18, rew:1,  clr:'#a3e635', em:'🐜', drops: [] },
-  shield:  { hpM:2,   spdM:.7,  sz:.40, rew:9,  clr:'#3b82f6', em:'🛡️', drops: [{ type: 'stone', chance: 0.35 }] },
-};
-
-export const BOSS_LINES = [
-  "You think walls can stop ME?!","I will FEAST on your towers!","Your defenses are PATHETIC!",
-  "TREMBLE before Grak'thul!","No tower stands against my might!",
-  "I've eaten squirrels bigger than your army!","Your clever birds won't save you now!","The horde is ETERNAL!",
-];
+import { ETYPES, BOSS_LINES } from './data.js';
+import { spawnParticles, getCenter } from './utils.js';
 
 export function mkE(et, bHP, bSpd) {
   return {
@@ -30,11 +14,11 @@ export function mkE(et, bHP, bSpd) {
   };
 }
 
-
 export function genWave(w) {
   const q = [], isBoss = w % 5 === 0 && w > 0;
   const bHP = 25 + w * 20 + Math.pow(w, 1.5) * 5, bSpd = 0.55 + Math.min(w * 0.035, 0.9);
   if (isBoss) {
+    state.bSen.add('boss');
     q.push({
       tp: 'boss', hp: Math.floor(bHP * 8 + w * 50), mhp: Math.floor(bHP * 8 + w * 50),
       spd: bSpd * 0.35, sz: 0.65, rew: 50 + w * 5, clr: '#ef4444', em: '👑', drops: [{ type: 'stone', chance: 1 }, { type: 'wood', chance: 1 }],
@@ -54,6 +38,7 @@ export function genWave(w) {
     const cnt = Math.floor(6 + w * 2.2 + Math.pow(w, 1.1));
     for (let i = 0; i < cnt; i++) {
       const tp = avail[Math.floor(Math.random() * avail.length)];
+      state.bSen.add(tp);
       if (tp === 'swarm') { for (let j = 0; j < 4; j++) q.push(mkE(ETYPES.swarm, bHP, bSpd)); }
       else q.push(mkE(ETYPES[tp], bHP, bSpd));
     }
@@ -73,32 +58,44 @@ export function updateEnemies() {
     }
     if (e.pi <= 0 && e.reversed) { e.reversed = false; e.reverseTimer = 0; }
     if (grid.length > 0) addToCell(grid, e);
-    if (freezeActive > 0 && !e.boss) { e.frozen = 2; continue; }
-    if (e.frozen > 0) { e.frozen--; continue; }
-    if (e.stunned > 0) { e.stunned--; continue; }
+    
+    if (applyStatusEffects(e, freezeActive, ticks, CELL, particles, enemies)) continue;
+    
+    moveEnemy(e, path);
+  }
+}
+
+function applyStatusEffects(e, freezeActive, ticks, CELL, particles, enemies) {
+    if (freezeActive > 0 && !e.boss) { e.frozen = 2; return true; }
+    if (e.frozen > 0) { e.frozen--; return true; }
+    if (e.stunned > 0) { e.stunned--; return true; }
+    
     if (e.reverseTimer > 0) { e.reverseTimer--; if (e.reverseTimer <= 0) e.reversed = false; }
     if (e.stealthTimer > 0) { e.stealthTimer--; if (e.stealthTimer <= 0) e.stealth = false; }
+    if (e.st > 0) { e.st--; if (e.st <= 0) e.slow = 0; }
 
+    if (e.poison) {
+      e.hp -= e.poison.dmg; e.poison.dur--;
+      if (e.poison.dur <= 0) e.poison = null;
+      if (ticks % 8 === 0) spawnParticles(particles, getCenter(e.x, CELL), getCenter(e.y, CELL), 1, { vxBase: 0, vyBase: -1, spreadX: 0, spreadY: 0, life: 12, clr: '#84cc16', sz: 2 });
+    }
+    
+    if (e.em === '💚' && e.healCD <= 0) {
+      enemies.forEach(e2 => { if (e2 !== e && !e2.dead && Math.hypot(e2.x - e.x, e2.y - e.y) < 2) e2.hp = Math.min(e2.mhp, e2.hp + Math.floor(e2.mhp * 0.03)); });
+      e.healCD = 60;
+      spawnParticles(particles, getCenter(e.x, CELL), getCenter(e.y, CELL), 1, { vxBase: 0, vyBase: -1, spreadX: 0, spreadY: 0, life: 15, clr: '#22d3ee', sz: 3 });
+    }
+    if (e.healCD > 0) e.healCD--;
+    return false;
+}
+
+function moveEnemy(e, path) {
     const nextI = e.reversed ? Math.max(0, e.pi - 1) : Math.min(path.length - 1, e.pi + 1);
     const t = path[nextI], dx = t.x - e.x, dy = t.y - e.y, d = Math.sqrt(dx * dx + dy * dy);
     let sp = e.spd * (1 - e.slow) * 0.04;
     if (e.spdBuff > 0) sp *= 1.3;
     if (d < sp + 0.001) { e.x = t.x; e.y = t.y; e.pi = nextI; }
     else { e.x += dx / d * sp; e.y += dy / d * sp; }
-    if (e.st > 0) { e.st--; if (e.st <= 0) e.slow = 0; }
-
-    if (e.poison) {
-      e.hp -= e.poison.dmg; e.poison.dur--;
-      if (e.poison.dur <= 0) e.poison = null;
-      if (ticks % 8 === 0) particles.push({ x: e.x * CELL + CELL / 2, y: e.y * CELL + CELL / 2, vx: 0, vy: -1, life: 12, clr: '#84cc16', sz: 2 });
-    }
-    if (e.em === '💚' && e.healCD <= 0) {
-      enemies.forEach(e2 => { if (e2 !== e && !e2.dead && Math.hypot(e2.x - e.x, e2.y - e.y) < 2) e2.hp = Math.min(e2.mhp, e2.hp + Math.floor(e2.mhp * 0.03)); });
-      e.healCD = 60;
-      particles.push({ x: e.x * CELL + CELL / 2, y: e.y * CELL + CELL / 2, vx: 0, vy: -1, life: 15, clr: '#22d3ee', sz: 3 });
-    }
-    if (e.healCD > 0) e.healCD--;
+    
     if (e.stealth && e.pi > path.length * 0.6) e.stealth = false;
-
-  }
 }

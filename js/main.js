@@ -21,7 +21,21 @@ bus.on('enemyDeath', e => {
       if (Math.random() < drop.chance) dropItem(cx, cy, drop.type);
     }
   }
+  
+  // Dust Collection (Lab)
+  const lab = state.towers.find(t => t.type === 'lab');
+  if (lab && state.resources) {
+    const dist = Math.hypot(e.x - lab.x, e.y - lab.y);
+    if (dist <= lab.obsRange) {
+      let dustYield = e.boss ? 10 : 1 + Math.floor(rew / 3);
+      if (dustYield > 0) {
+        state.resources.dust = (state.resources.dust || 0) + dustYield;
+        mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '🔮', dustYield, '#a855f7');
+      }
+    }
+  }
 });
+import { buildResearchGraph, tickResearch } from './research.js';
 import { updateEnemies, genWave } from './enemies.js';
 import { updateTowers } from './towers.js';
 import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser } from './support.js';
@@ -29,7 +43,7 @@ import { render, invalidateBg } from './render.js';
 import { SKILLS } from './skills.js';
 import { triggerEvent } from './events.js';
 import { sfxBoss, sfxWave, sfxKill, sfxHit } from './audio.js';
-import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, initTabs, showWelcome } from './ui.js';
+import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch } from './ui.js';
 import { initInput, updateCameraKeys } from './input.js';
 import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
 import { placeNodes, updateNodes } from './resources.js';
@@ -57,9 +71,11 @@ export const state = {
   enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
   spawnQueue: [], spawnTimer: 0,
   nodes: [], resources: {},
+  research: null, researchUnlocks: {},
   sel: null, tab: 'towers',
+  bSen: new Set(['sleepy_door']),
   volcanoActive: null, freezeActive: 0,
-  autoplay: false,
+  autoplay: false, paused: false,
   gameOver: false, started: false,
   ttTower: null,
   W: 0, H: 0, CELL: 0, COLS: 0, ROWS: 0, pathReady: false,
@@ -133,7 +149,7 @@ state.fIncome = fIncome;
 
 /* ═══ Update ═══ */
 function update() {
-  if (!state.started || state.gameOver) return;
+  if (!state.started || state.gameOver || state.paused) return;
   _φ = true;
   state.ticks++;
 
@@ -210,6 +226,10 @@ function update() {
     if (inc > 0) mkF(state.W / 2, state.H / 2, '+' + inc + ' 🏭', '#10b981');
     if (state.wave % 3 === 0) { state.skillPts++; mkF(state.W / 2, state.H / 3, '+1 ⚡ Skill!', '#a78bfa'); }
     
+    // Research tick
+    const _done = tickResearch();
+    if (_done) showBanner('🔬 ' + _done.name + ' complete!');
+    refreshResearch();
     // Transition seamlessly into the prep phase without a blocking modal.
     state.phase = 'prep'; state.prepTicks = 1800; sfxWave(); _φ = false;
     autoSave();
@@ -232,6 +252,7 @@ function update() {
 /* ═══ Game flow ═══ */
 export function startGame() {
   _ΨΔ(() => { _wG(200); _wL(20); _wS(0); });
+  if (!state.research) state.research = buildResearchGraph();
   state.started = true; state.phase = 'prep'; state.prepTicks = 1800;
   invalidateBg(); initSz(); hideOv(); hudU(); panelU();
 }
@@ -254,7 +275,7 @@ export function startPrep() {
 }
 
 export function resetGame() {
-  import('./towers.js').then(({ TOWER_SKILLS }) => {
+  import('./data.js').then(({ TOWER_SKILLS }) => {
     for (const k in TOWER_SKILLS) for (const sk of Object.values(TOWER_SKILLS[k])) sk.owned = false;
   });
   _ΨΔ(() => { _wG(200); _wL(20); _wS(0); });
@@ -262,8 +283,8 @@ export function resetGame() {
     wave: 0, phase: 'idle', ticks: 0, prepTicks: 0,
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
-    gameOver: false, started: false, pathReady: false, sel: null, ttTower: null,
-    nodes: [], resources: {},
+    gameOver: false, started: false, pathReady: false, paused: false, sel: null, ttTower: null,
+    nodes: [], resources: {}, research: null, researchUnlocks: {}, bSen: new Set(['sleepy_door']),
     cam: { panX: 0, panY: 0, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
     _Σ: 0, _Ω: 0,
   });
@@ -303,6 +324,6 @@ document.getElementById('rstBtn').addEventListener('click', () => {
 });
 document.getElementById('goBtn').addEventListener('click', () => { if (state.phase === 'prep') startWave(); });
 initTabs(); initInput(); initSz(); panelU(); hudU(); loop();
-initSaveUI();
+initSaveUI(); initBestiaryUI(); initResearchUI();
 const _sv = hasSave() && loadGame();
 showWelcome(VERSION, _sv ? null : startGame);

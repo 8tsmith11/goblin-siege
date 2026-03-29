@@ -1,8 +1,8 @@
 'use strict';
 import { state, _ΨΔ, clampCam, minZoom } from './main.js';
 import { iA, sfxPlace, sfxLizard, speak } from './audio.js';
-import { TD } from './towers.js';
-import { SD, spawnBees } from './support.js';
+import { TD } from './data.js';
+import { spawnBees } from './support.js';
 import { canPlace } from './render.js';
 import { showTT, hideTT, showTip, showBanner, panelU, hudU, mkGain } from './ui.js';
 import { clickNode, RTYPES } from './resources.js';
@@ -17,92 +17,103 @@ function cell(e) {
   return { x: Math.floor(wx / CELL), y: Math.floor(wy / CELL), px: sx, py: sy };
 }
 
+function handleStackInteraction(c, e) {
+  const glCell = state.grid[c.y]?.[c.x];
+  if (glCell && glCell.stacks) {
+    const slots = [
+      {dx: 0.25, dy: 0.25}, {dx: 0.75, dy: 0.75}, {dx: 0.75, dy: 0.25}, {dx: 0.25, dy: 0.75}
+    ];
+    let closestIndex = -1;
+    let minDist = Infinity;
+    const { cam, CELL } = state;
+    const wx = c.px / cam.zoom + cam.panX;
+    const wy = c.py / cam.zoom + cam.panY;
+    
+    for (let i = 0; i < 4; i++) {
+      if (!glCell.stacks[i]) continue;
+      const sx = c.x * CELL + slots[i].dx * CELL;
+      const sy = c.y * CELL + slots[i].dy * CELL;
+      const d = Math.hypot(wx - sx, wy - sy);
+      if (d < minDist && d < CELL * 0.45) { // generous radius
+        minDist = d;
+        closestIndex = i;
+      }
+    }
+    
+    if (closestIndex !== -1) {
+      const stack = glCell.stacks[closestIndex];
+      stack.count--;
+      state.resources[stack.type] = (state.resources[stack.type] || 0) + 1;
+      const rt = RTYPES[stack.type];
+      mkGain(c.x * CELL + slots[closestIndex].dx * CELL, c.y * CELL + slots[closestIndex].dy * CELL, rt.icon, 1, rt.clr);
+      hudU();
+      if (stack.count <= 0) glCell.stacks[closestIndex] = null;
+      return true;
+    }
+  }
+  return false;
+}
+
+function handleNodeInteraction(c) {
+  const node = state.nodes?.find(n => n.x === c.x && n.y === c.y);
+  if (node) { clickNode(node); return true; }
+  return false;
+}
+
+function tryPlaceTower(c, ex) {
+  if (ex || !canPlace(c.x, c.y)) {
+    state.sel = null; hideTT(); state.ttTower = null; panelU();
+    if (ex) { showTT(ex, c.px, c.py); }
+    else if (state.pathSet?.has(c.x + ',' + c.y)) { showTip("Path tile — towers go on dark squares."); }
+    return;
+  }
+  if (state.gold < state.sel.cost) { showTip('Not enough gold!'); return; }
+  if (state.sel.key === 'lab' && state.towers.some(t => t.type === 'lab')) { showTip('Only one Lab allowed per map!'); return; }
+
+  let tw;
+  _ΨΔ(() => {
+    state.gold -= state.sel.cost;
+    const def = TD[state.sel.key];
+    tw = {
+      type: state.sel.key, x: c.x, y: c.y, level: 0, cd: 0, _buffed: false, _rateBuff: 1,
+      dmg: def?.dmg || 0, range: def?.range || 0, rate: def?.rate || 60,
+      splash: def?.splash || 0, slow: def?.slow || 0, pierce: def?.pierce || 0, chain: def?.chain || 0,
+      stun: 0, poison: null, blind: false, bloodlust: false, blizzard: false, seeInvis: false,
+      chainStun: 0, megaSpeed: false, frenzy: false, disabledWave: -1,
+    };
+    if (tw.type === 'clown') { tw.reverseRange = TD.clown.reverseRange; tw.reverseDur = TD.clown.reverseDur; tw.reverseCD = TD.clown.reverseCD; }
+    if (tw.type === 'robot') tw.cd = 100;
+    if (tw.type === 'beehive') { const d = TD.beehive; tw.beeCount = d.beeCount; tw.beeDmg = d.beeDmg; tw.beeRange = d.beeRange; tw.beeRate = d.beeRate; }
+    if (tw.type === 'factory') { tw.hasLaser = false; tw.laserCD = 0; }
+    if (tw.type === 'lab') { tw.obsRange = TD.lab.obsRange; }
+    state.towers.push(tw);
+    state.grid[c.y][c.x].type = 'tower';
+    state.grid[c.y][c.x].content = tw;
+    state.bSen.add(tw.type);
+  });
+  sfxPlace();
+  if (tw.type === 'beehive') spawnBees(tw);
+  if (tw.type === 'lizard') { sfxLizard(); showBanner('🦎 "' + TD.lizard.voiceLine + '"'); speak(TD.lizard.voiceLine); }
+
+  // Remove any resource node on this tile
+  state.nodes = state.nodes?.filter(n => !(n.x === c.x && n.y === c.y)) ?? [];
+  state.sel = null;
+  hudU(); panelU();
+}
+
 function handleTap(e) {
   iA();
   const c = cell(e);
   if (c.x < 0 || c.x >= state.COLS || c.y < 0 || c.y >= state.ROWS) return;
   const ex = state.towers.find(t => t.x === c.x && t.y === c.y);
 
-  // Ground Stack interaction
   if (!state.sel) {
-    const glCell = state.grid[c.y]?.[c.x];
-    if (glCell && glCell.stacks) {
-      const slots = [
-        {dx: 0.25, dy: 0.25},
-        {dx: 0.75, dy: 0.75},
-        {dx: 0.75, dy: 0.25},
-        {dx: 0.25, dy: 0.75}
-      ];
-      let closestIndex = -1;
-      let minDist = Infinity;
-      const { cam, CELL } = state;
-      const wx = c.px / cam.zoom + cam.panX;
-      const wy = c.py / cam.zoom + cam.panY;
-      
-      for (let i = 0; i < 4; i++) {
-        if (!glCell.stacks[i]) continue;
-        const sx = c.x * CELL + slots[i].dx * CELL;
-        const sy = c.y * CELL + slots[i].dy * CELL;
-        const d = Math.hypot(wx - sx, wy - sy);
-        if (d < minDist && d < CELL * 0.45) { // generous radius
-          minDist = d;
-          closestIndex = i;
-        }
-      }
-      
-      if (closestIndex !== -1) {
-        const stack = glCell.stacks[closestIndex];
-        stack.count--;
-        state.resources[stack.type] = (state.resources[stack.type] || 0) + 1;
-        const rt = RTYPES[stack.type];
-        mkGain(c.x * CELL + slots[closestIndex].dx * CELL, c.y * CELL + slots[closestIndex].dy * CELL, rt.icon, 1, rt.clr);
-        hudU();
-        if (stack.count <= 0) glCell.stacks[closestIndex] = null;
-        return;
-      }
-    }
-
-    // Resource node interaction (only when not placing a tower)
-    const node = state.nodes?.find(n => n.x === c.x && n.y === c.y);
-    if (node) { clickNode(node); return; }
+    if (handleStackInteraction(c, e)) return;
+    if (handleNodeInteraction(c)) return;
   }
 
   if (state.sel && state.sel.type !== 'spell') {
-    if (ex || !canPlace(c.x, c.y)) {
-      state.sel = null; hideTT(); state.ttTower = null; panelU();
-      if (ex) { showTT(ex, c.px, c.py); }
-      else if (state.pathSet?.has(c.x + ',' + c.y)) { showTip("Path tile — towers go on dark squares."); }
-      return;
-    }
-    if (state.gold < state.sel.cost) { showTip('Not enough gold!'); return; }
-
-    let tw;
-    _ΨΔ(() => {
-      state.gold -= state.sel.cost;
-      const def = TD[state.sel.key] || SD[state.sel.key];
-      tw = {
-        type: state.sel.key, x: c.x, y: c.y, level: 0, cd: 0, _buffed: false, _rateBuff: 1,
-        dmg: def?.dmg || 0, range: def?.range || 0, rate: def?.rate || 60,
-        splash: def?.splash || 0, slow: def?.slow || 0, pierce: def?.pierce || 0, chain: def?.chain || 0,
-        stun: 0, poison: null, blind: false, bloodlust: false, blizzard: false, seeInvis: false,
-        chainStun: 0, megaSpeed: false, frenzy: false, disabledWave: -1,
-      };
-      if (tw.type === 'clown') { tw.reverseRange = SD.clown.reverseRange; tw.reverseDur = SD.clown.reverseDur; tw.reverseCD = SD.clown.reverseCD; }
-      if (tw.type === 'robot') tw.cd = 100;
-      if (tw.type === 'beehive') { const d = SD.beehive; tw.beeCount = d.beeCount; tw.beeDmg = d.beeDmg; tw.beeRange = d.beeRange; tw.beeRate = d.beeRate; }
-      if (tw.type === 'factory') { tw.hasLaser = false; tw.laserCD = 0; }
-      state.towers.push(tw);
-      state.grid[c.y][c.x].type = 'tower';
-      state.grid[c.y][c.x].content = tw;
-    });
-    sfxPlace();
-    if (tw.type === 'beehive') spawnBees(tw);
-    if (tw.type === 'lizard') { sfxLizard(); showBanner('🦎 "' + TD.lizard.voiceLine + '"'); speak(TD.lizard.voiceLine); }
-
-    // Remove any resource node on this tile
-    state.nodes = state.nodes?.filter(n => !(n.x === c.x && n.y === c.y)) ?? [];
-    state.sel = null;
-    hudU(); panelU();
+    tryPlaceTower(c, ex);
     return;
   }
 

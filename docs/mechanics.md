@@ -14,7 +14,8 @@
 |---|---|---|
 | Gold 💰 | 200 | Kill enemies, factory income, events, selling towers |
 | Lives ❤️ | 20 | Reinforcements event, Robot AI heal, Thick Walls skill |
-| Skill Points ⚡ | 0 | +1 every 3 waves, random events |
+| Skill Pts ⚡ | 0 | +1 every 3 waves, random events |
+| Dust 🔮 | 0 | Harvested by the Lab when enemies die in its radius |
 
 - Enemies deal **1 life** on reaching the castle; bosses deal **3 lives**.
 - Lives cap at **30**.
@@ -49,3 +50,9 @@ A random event triggers mid-wave with a **40% chance** after wave 1. See `events
 | Zoom | Mouse wheel / Pinch gesture |
 
 Zoom range: **fit-whole-map** to **4×**. The world is always **20×12 tiles**.
+
+## Encyclopedia / Bestiary
+
+A floating 📖 journal sits statically in the UI. 
+- The Bestiary tracks unique interactions across enemies, bosses, allies, towers, and NPCs (like the Merchant).
+- Logs are strictly **hidden** until the specific unit places foot on the grid or is built by the player. See `bestiary.md`.

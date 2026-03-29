@@ -8,6 +8,7 @@ Resources are collectable materials that exist alongside gold. They are shown in
 |---|---|---|---|
 | Stone | 🪨 | Grey | Yes (3 per map) |
 | Wood | 🪵 | Brown | No (Dropped by Enemies) |
+| Dust | 🔮 | Purple | No (Harvested by Lab) |
 
 Adding a new resource requires one entry in `RTYPES` and optionally one in `NTYPES` in `js/resources.js`.
 

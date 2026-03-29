@@ -56,6 +56,7 @@ Every **5 waves** is a boss wave. A warning message appears the wave before.
 - **Boss speed**: `bSpd × 0.35` (very slow)
 - **Size**: 0.65 (large)
 - **Reward**: `50 + wave × 5` gold
+- **Dust Override**: Yields an unscaled `10 🔮` if slain in a Lab's radius.
 - **Lives lost on escape**: 3
 
 Bosses are immune to freeze. Each boss wave also includes **3 + wave × 0.5** additional normal/fast/berserker enemies.

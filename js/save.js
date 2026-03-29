@@ -1,7 +1,7 @@
 'use strict';
 import { state, _ΨΔ, clampCam } from './main.js';
 import { SKILLS } from './skills.js';
-import { TOWER_SKILLS } from './towers.js';
+import { TOWER_SKILLS } from './data.js';
 import { spawnBees } from './support.js';
 import { hudU, panelU, showBanner, showOv, hideTT } from './ui.js';
 
@@ -47,7 +47,10 @@ function _build() {
     _t: state.towers.map(_st), _g: state.grid, _a: state.path, ps, ts,
     _va: state.volcanoActive,
     _no: state.nodes.map(n => ({ type: n.type, x: n.x, y: n.y })),
+    _bSen: Array.from(state.bSen || ['sleepy_door']),
     _rs: { ...state.resources },
+    _res: state.research ? JSON.parse(JSON.stringify(state.research)) : null,
+    _rUnlocks: { ...(state.researchUnlocks || {}) },
   };
 }
 
@@ -81,6 +84,9 @@ function _apply(d) {
   state.towers = d._t.map(t => ({ ...t, cd: 0, _buffed: false, _rateBuff: 1 }));
   state.nodes = (d._no || []).map(n => ({ ...n, wobbleTick: 0, cd: 0 }));
   state.resources = { ...(d._rs || {}) };
+  state.research = d._res || null;
+  state.researchUnlocks = { ...(d._rUnlocks || {}) };
+  state.bSen = new Set(d._bSen || ['sleepy_door']);
   state.bees = [];
   state.towers.filter(tw => tw.type === 'beehive').forEach(tw => spawnBees(tw));
 

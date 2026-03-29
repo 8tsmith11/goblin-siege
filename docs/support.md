@@ -9,6 +9,7 @@ Support structures are placed on grass tiles like towers but don't fire projecti
 | Magnificent Clown | 🤡 | 100 | Reverses enemy movement |
 | Resourceful Monkey | 🐵 | 70 | Boosts factory income |
 | AI Agent | 🤖 | 110 | Auto-casts spells |
+| The Lab | 🧪 | 120 | Single building; extracts Dust |
 
 ---
 
@@ -48,3 +49,9 @@ Support structures are placed on grass tiles like towers but don't fire projecti
   - **Freeze** — freezes all enemies for 90 ticks (if not already frozen).
   - **Heal** — restores +1 ❤️ (up to the 30-life cap).
 - Multiple robots each cast independently.
+
+## 🧪 The Lab
+
+- You may only build **one** Lab per map.
+- The Lab possesses a default **Observation Radius** of 3 tiles. 
+- Enemies that die within this radius autonomously generate **🔮 Dust**. See `research.md`.

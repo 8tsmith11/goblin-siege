@@ -1,6 +1,6 @@
 'use strict';
 import { state, _ΨΔ } from './main.js';
-import { TOWER_SKILLS, TD } from './towers.js';
+import { TOWER_SKILLS, TD } from './data.js';
 
 export const SKILLS = {
   sharpShot:     { name:'Sharp Shot',      desc:'+20% all tower DMG',       cost:1, tier:1, owned:false },

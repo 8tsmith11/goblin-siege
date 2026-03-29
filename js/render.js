@@ -1,7 +1,6 @@
 'use strict';
 import { state } from './main.js';
-import { TD } from './towers.js';
-import { SD } from './support.js';
+import { TD } from './data.js';
 import { renderNodes, renderStacks } from './resources.js';
 
 const _imgPath = new Image(); _imgPath.src = 'assets/tiles/path.png';
@@ -107,7 +106,7 @@ export function render() {
       cx.fillStyle = 'rgba(244,114,182,.04)'; cx.fill();
       cx.strokeStyle = 'rgba(244,114,182,.1)'; cx.lineWidth = 1; cx.stroke();
     }
-    const isF = tw.type === 'factory', def = TD[tw.type] || SD[tw.type];
+    const isF = tw.type === 'factory', def = TD[tw.type];
     const tx = Math.round(tw.x * CELL), ty = Math.round(tw.y * CELL);
     cx.fillStyle = tw.disabled ? '#1a0a0a' : isF ? '#0a3d2f' : tw._buffed ? '#1a2040' : '#171838';
     cx.fillRect(tx + 2, ty + 2, CELL - 4, CELL - 4);
@@ -181,7 +180,7 @@ export function render() {
     const ok = canPlace(gCell.x, gCell.y);
     // Range preview
     if (ok) {
-      const def = TD[sel.key] || SD[sel.key];
+      const def = TD[sel.key];
       const previewRange = sel.key === 'factory' ? 0 : (def?.range || 0);
       if (previewRange) {
         cx.beginPath(); cx.arc(gpx, gpy, previewRange * CELL, 0, Math.PI * 2);
@@ -193,7 +192,7 @@ export function render() {
     cx.globalAlpha = ok ? 0.4 : 0.15;
     cx.fillStyle = ok ? '#ffffff11' : '#ff000022'; cx.fillRect(gx, gy, CELL, CELL);
     cx.font = Math.floor(CELL * 0.4) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
-    const icon = sel.key === 'factory' ? '🏭' : (TD[sel.key] || SD[sel.key])?.icon || '?';
+    const icon = sel.key === 'factory' ? '🏭' : TD[sel.key]?.icon || '?';
     cx.fillText(icon, gpx, gpy); cx.globalAlpha = 1;
   }
 

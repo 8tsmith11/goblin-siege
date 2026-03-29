@@ -1,11 +1,22 @@
-export const pPool = [];
-export function getP() { return pPool.pop() || {}; }
-export function freeP(p) { pPool.push(p); }
+function createPool(createFn, resetFn) {
+  const pool = [];
+  return {
+    get: () => pool.pop() || createFn(),
+    free: (item) => {
+      if (resetFn) resetFn(item);
+      pool.push(item);
+    }
+  };
+}
 
-export const projPool = [];
-export function getProj() { return projPool.pop() || { hits: [] }; }
-export function freeProj(p) { p.hits.length = 0; p.poison = null; projPool.push(p); }
+const _pPool = createPool(() => ({}), null);
+export const getP = _pPool.get;
+export const freeP = _pPool.free;
 
-export const beamPool = [];
-export function getBeam() { return beamPool.pop() || {}; }
-export function freeBeam(b) { beamPool.push(b); }
+const _projPool = createPool(() => ({ hits: [] }), p => { p.hits.length = 0; p.poison = null; });
+export const getProj = _projPool.get;
+export const freeProj = _projPool.free;
+
+const _beamPool = createPool(() => ({}), null);
+export const getBeam = _beamPool.get;
+export const freeBeam = _beamPool.free;

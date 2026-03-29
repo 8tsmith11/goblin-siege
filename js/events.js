@@ -1,6 +1,7 @@
 'use strict';
 import { state, fIncome, _ΨΔ } from './main.js';
-import { ETYPES, mkE } from './enemies.js';
+import { mkE } from './enemies.js';
+import { ETYPES } from './data.js';
 import { sfxEvent } from './audio.js';
 
 export const EVENTS = [

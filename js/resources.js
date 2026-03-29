@@ -8,7 +8,8 @@ import { mkGain, hudU } from './ui.js';
 // Add new resources here — the HUD and save system pick them up automatically.
 export const RTYPES = {
   stone: { icon: '🪨', name: 'Stone', clr: '#94a3b8' },
-  wood: { icon: '🪵', name: 'Wood', clr: '#92400e' }
+  wood: { icon: '🪵', name: 'Wood', clr: '#92400e' },
+  dust: { icon: '🔮', name: 'Dust', clr: '#a855f7' }
 };
 
 // ─── Resource node type definitions ───────────────────────────────────────
