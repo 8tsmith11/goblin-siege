@@ -101,6 +101,18 @@ function isStockpile(gx, gy) {
   return state.grid[gy]?.[gx]?.content?.type === 'stockpile';
 }
 
+// Check if a tile can accept an item of the given type
+function destCanAccept(gx, gy, type) {
+  const cell = state.grid[gy]?.[gx];
+  if (!cell) return false;
+  const tw = cell.content;
+  if (tw?.type === 'stockpile') return true;
+  if (tw?.type === 'hoard') return !type || type === 'wood' || type === 'stone';
+  const stacks = cell.stacks;
+  if (!stacks) return true;
+  return stacks.some(s => !s) || stacks.some(s => s && (!type || s.type === type) && s.count < 64);
+}
+
 // Find nearest cell with a matching stack within range tiles of (ox, oy)
 function findNearestStack(ox, oy, range, filter, exclude) {
   const { grid, COLS, ROWS } = state;
@@ -145,6 +157,8 @@ function tickGatherer(mk, tw) {
   if (!cfg.dest || !inRange(tw, cfg.dest.x, cfg.dest.y)) { tickIdle(mk, tw); return; }
 
   if (mk.st === 'idle') {
+    // Orbit if dest is full or can't accept the item type
+    if (!destCanAccept(cfg.dest.x, cfg.dest.y, cfg.filter)) { tickIdle(mk, tw); return; }
     // Scan for nearest item in range, skip destination tile to avoid pickup loop
     const target = findNearestStack(tw.x, tw.y, tw.range, cfg.filter, cfg.dest);
     if (target) {
@@ -170,9 +184,9 @@ function tickGatherer(mk, tw) {
     }
   } else if (mk.st === 'carrying') {
     if (moveTo(mk, mk.targetX, mk.targetY)) {
-      dropItem(cfg.dest.x, cfg.dest.y, mk.carrying.type);
+      const dropped = dropItem(cfg.dest.x, cfg.dest.y, mk.carrying.type);
       mk.carrying = null;
-      mk.trips++;
+      if (dropped) mk.trips++;
       mk.st = 'idle';
     }
   }

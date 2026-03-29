@@ -106,29 +106,30 @@ export function renderNodes() {
 // ─── Ground Loot Drop ─────────────────────────────────────────────────────
 export function dropItem(cx, cy, type) {
   const cell = state.grid[cy]?.[cx];
-  if (!cell) return;
+  if (!cell) return false;
   // Tower-aware routing: deliver directly to tower if applicable
   const tw = cell.content;
   if (tw?.type === 'stockpile') {
     state.resources[type] = (state.resources[type] || 0) + 1;
     const rt = RTYPES[type]; if (rt) mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr);
-    return;
+    return true;
   }
   if (tw?.type === 'hoard' && (type === 'wood' || type === 'stone')) {
     tw.dep[type] = (tw.dep[type] || 0) + 1;
     const rt = RTYPES[type]; if (rt) mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr);
-    return;
+    return true;
   }
   // Default: place as ground stack
   if (!cell.stacks) cell.stacks = [null, null, null, null];
   let existingIndex = cell.stacks.findIndex(s => s && s.type === type && s.count < 64);
-  if (existingIndex !== -1) { cell.stacks[existingIndex].count++; return; }
+  if (existingIndex !== -1) { cell.stacks[existingIndex].count++; return true; }
   let emptyIndices = [];
   cell.stacks.forEach((s, idx) => { if (!s) emptyIndices.push(idx); });
   if (emptyIndices.length > 0) {
-    let pickedIndex = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
-    cell.stacks[pickedIndex] = { type, count: 1 };
+    cell.stacks[emptyIndices[Math.floor(Math.random() * emptyIndices.length)]] = { type, count: 1 };
+    return true;
   }
+  return false; // all slots full
 }
 
 // ─── Ground Loot Renderer ──────────────────────────────────────────────────
