@@ -1,5 +1,6 @@
 'use strict';
 import { state } from './main.js';
+import { TD } from './data.js';
 
 export const FIXED_RESEARCH = {
   settlement:  { name:'Settl. Basics',      icon:'🏘️',  cost:{wood:10,stone:10}, waves:1, unlocks:'hoard,lab',           prereqs:[] },
