@@ -62,6 +62,7 @@ function _build() {
     _rs: { ...state.resources },
     _res: state.research ? JSON.parse(JSON.stringify(state.research)) : null,
     _rUnlocks: { ...(state.researchUnlocks || {}) },
+    _unlocked: Array.from(state.unlockedTowers || []),
   };
 }
 
@@ -96,6 +97,7 @@ function _apply(d) {
   state.resources = { ...(d._rs || {}) };
   state.research = d._res || null;
   state.researchUnlocks = { ...(d._rUnlocks || {}) };
+  state.unlockedTowers = new Set(d._unlocked || ['squirrel','lion','penguin','lab']);
   state.bSen = new Set(d._bSen || ['sleepy_door']);
   state.bees = [];
   state.towers.filter(tw => tw.type === 'beehive').forEach(tw => spawnBees(tw));
