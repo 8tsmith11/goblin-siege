@@ -2,14 +2,13 @@
 import { state } from './main.js';
 import { sfxClown, sfxBee, sfxLaser } from './audio.js';
 import { getEnemiesInRadius } from './grid.js';
-import { SKILLS } from './skills.js';
 import { mkF } from './ui.js';
 import { getProj } from './pool.js';
 import { spawnParticles, getCenter } from './utils.js';
 
 export function spawnBees(hive) {
   state.bees = state.bees.filter(b => b.hive !== hive);
-  const cnt = (hive.beeCount || 3) + (SKILLS.beeKeeper?.owned ? 2 : 0);
+  const cnt = hive.beeCount || 3;
   for (let i = 0; i < cnt; i++) {
     state.bees.push({
       hive, x: getCenter(hive.x, state.CELL), y: getCenter(hive.y, state.CELL),
@@ -24,7 +23,7 @@ export function updateClam() {
   const { towers, ticks, CELL, particles } = state;
   towers.forEach(tw => { tw._buffed = false; tw._rateBuff = 1; });
   towers.filter(tw => tw.type === 'clam').forEach(cl => {
-    const br = (cl.level + 1) * (SKILLS.beeKeeper?.owned ? 1.5 : 1) * 1.5;
+    const br = (cl.level + 1) * 1.5;
     towers.forEach(tw => {
       if (tw === cl || tw.type === 'factory') return;
       if (Math.hypot(tw.x - cl.x, tw.y - cl.y) <= br) { tw._buffed = true; tw._rateBuff = 0.85; }
@@ -46,7 +45,7 @@ export function updateClown() {
     if (cl.cd > 0) { cl.cd--; return; }
     const inR = getEnemiesInRadius(grid, cl.x, cl.y, cl.reverseRange).filter(e => !e.reversed && !e.boss);
     if (!inR.length) return;
-    const dur = cl.reverseDur * (SKILLS.clownMaster?.owned ? 2 : 1);
+    const dur = cl.reverseDur;
     inR.forEach(e => { e.reversed = true; e.reverseTimer = dur; });
     cl.cd = cl.reverseCD; sfxClown();
     spawnParticles(particles, getCenter(cl.x, CELL), getCenter(cl.y, CELL), 8, { spreadX: 4, spreadY: 4, life: 20, clr: '#f472b6', sz: 3 });
@@ -61,7 +60,7 @@ export function updateRobot() {
     if (enemies.length < 3) return;
     const spells = ['lightning', 'freeze', 'heal'];
     const pick = spells[Math.floor(Math.random() * spells.length)];
-    const cd = SKILLS.robotOverclock?.owned ? 150 : 300;
+    const cd = 300;
     
     const cx = getCenter(rb.x, CELL);
     const cy = getCenter(rb.y, CELL);
@@ -112,7 +111,7 @@ export function updateFactoryLaser() {
     const inR = getEnemiesInRadius(grid, tw.x, tw.y, lr, true, false);
     if (!inR.length) return;
     const tgt = inR.reduce((a,b) => a.pi > b.pi ? a : b);
-    const ldmg = (SKILLS.doomCannon?.owned ? 2 : 1) * (10 + wave * 1.5 + tw.laserLvl * 5);
+    const ldmg = 10 + wave * 1.5 + tw.laserLvl * 5;
     tgt.hp -= Math.floor(ldmg);
     beams.push({ x1: getCenter(tw.x, CELL), y1: getCenter(tw.y, CELL), x2: getCenter(tgt.x, CELL), y2: getCenter(tgt.y, CELL), life: 6 + tw.laserLvl * 2, clr: '#ef4444', w: 1.5 + tw.laserLvl * 0.8 });
     spawnParticles(particles, getCenter(tgt.x, CELL), getCenter(tgt.y, CELL), 3, { spreadX: 3, spreadY: 3, life: 8, clr: '#ef4444', sz: 2 });

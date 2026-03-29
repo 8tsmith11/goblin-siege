@@ -16,7 +16,7 @@ export function mkE(et, bHP, bSpd) {
 
 export function genWave(w) {
   const q = [], isBoss = w % 5 === 0 && w > 0;
-  const bHP = 25 + w * 20 + Math.pow(w, 1.5) * 5, bSpd = 0.55 + Math.min(w * 0.035, 0.9);
+  const bHP = (25 + w * 20 + Math.pow(w, 1.5) * 5) * (1 + w * 0.04), bSpd = 0.55 + Math.min(w * 0.035, 0.9);
   if (isBoss) {
     state.bSen.add('boss');
     q.push({

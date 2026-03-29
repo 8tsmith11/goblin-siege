@@ -14,6 +14,7 @@ export const FIXED_RESEARCH = {
 
 export const VARIABLE_RESEARCH = [
   { id:'animal_husb',   name:'Animal Husbandry',     icon:'🐵', cost:{dust:15,wood:10},  waves:2, unlocks:'monkey,stockpile',    prereqs:['basic_obs'] },
+  { id:'monkey_training', name:'Monkey Training',    icon:'🐒', cost:{dust:20,wood:10},  waves:2, unlocks:'monkey_capacity_+1',   prereqs:['animal_husb'] },
   { id:'beekeeping',    name:'Apiculture',           icon:'🐝', cost:{dust:20,wood:15},  waves:2, unlocks:'beehive',            prereqs:['basic_obs'] },
   { id:'reptilian',     name:'Reptilian Lore',       icon:'🦎', cost:{dust:30,stone:20}, waves:3, unlocks:'lizard',             prereqs:['structural'] },
   { id:'entertainment', name:'Magnificent Show',     icon:'🤡', cost:{dust:25,stone:10}, waves:3, unlocks:'clown',              prereqs:['pattern_rec'] },
@@ -38,7 +39,7 @@ export const UNLOCK_DESC = {
   'goblin_translations':'Goblin Translations lore',
   'tower_age_counters': 'Age counters on towers',
   'steam_age':          'Steam Age unlocked',
-  'monkey_capacity_+1': '+1 Monkey capacity',
+  'monkey_capacity_+1': '+1 monkey per Monkey Hut',
   'lab_radius_+2':      '+2 Lab observation radius',
   'tower_wall':         'Wall tower available',
   'tower_campfire':     'Campfire tower available',
@@ -117,6 +118,28 @@ export function applyUnlock(node) {
     case 'lab_radius_+2': {
       const lab = state.towers?.find(t => t.type === 'lab');
       if (lab) lab.obsRange = (lab.obsRange || 3) + 2;
+      break;
+    }
+    case 'monkey_capacity_+1': {
+      state.researchUnlocks.monkey_capacity = (state.researchUnlocks.monkey_capacity || 0) + 1;
+      const maxCap = 1 + state.researchUnlocks.monkey_capacity;
+      const _names = ['Bongo','Mango','Zazu','Kiki','Popo','Tiko','Wren','Nala','Figgy','Morsel','Turnip','Widget'];
+      for (const hut of (state.towers || [])) {
+        if (hut.type !== 'monkey' || !hut.monkeys) continue;
+        while (hut.monkeys.length < maxCap) {
+          const angle = Math.random() * Math.PI * 2;
+          const cx = hut.x * state.CELL + state.CELL / 2;
+          const cy = hut.y * state.CELL + state.CELL / 2;
+          hut.monkeys.push({
+            name: _names[Math.floor(Math.random() * _names.length)],
+            role: null, cfg: { filter: null, dest: null, from: null, boost: null }, trips: 0,
+            x: cx + Math.cos(angle) * state.CELL * 0.6,
+            y: cy + Math.sin(angle) * state.CELL * 0.6,
+            st: 'idle', carrying: null, patrolAngle: angle,
+            targetX: null, targetY: null, waitCd: 0,
+          });
+        }
+      }
       break;
     }
   }

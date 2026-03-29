@@ -2,9 +2,34 @@
 import { state } from './main.js';
 import { createGrid } from './grid.js';
 
+function genLakes(cols, rows) {
+  let x = Math.floor(Math.random() * cols);
+  let y = Math.floor(Math.random() * rows);
+  state.grid[y][x].type = 'water';
+
+  let q = [{ x: x, y: y }];
+  let count = 1;
+  let limit = 16 + Math.floor(Math.random() * 10); 
+  while (q.length > 0 && limit > 0) {
+    const curr = q.shift();
+    limit--;
+    [[-1,0],[1,0],[0,-1],[0,1]].sort(() => Math.random() - .5).forEach(([dx, dy]) => {
+      const nx = curr.x + dx, ny = curr.y + dy;
+      if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && state.grid[ny][nx].type === 'empty') {
+        if (count < 10 || Math.random() < 0.35) {
+          state.grid[ny][nx].type = 'water';
+          q.push({ x: nx, y: ny });
+          count++;
+        }
+      }
+    });
+  }
+}
+
 export function buildPath() {
   const { COLS, ROWS } = state;
   state.grid = createGrid(COLS, ROWS);
+  genLakes(COLS, ROWS);
   state.path = []; state.pathSet.clear();
   const vis = new Set();
   let px = 0, py = Math.max(1, Math.min(Math.floor(ROWS * 0.3), ROWS - 2));

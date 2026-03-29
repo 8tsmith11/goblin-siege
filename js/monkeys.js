@@ -1,7 +1,8 @@
 'use strict';
 import { state } from './main.js';
 import { TD } from './data.js';
-import { dropItem } from './resources.js';
+import { dropItem, RTYPES } from './resources.js';
+import { mkGain } from './ui.js';
 
 export const MONKEY_NAMES = ['Bongo','Mango','Zazu','Kiki','Popo','Tiko','Wren','Nala',
                               'Figgy','Morsel','Turnip','Widget','Clementine','Nubs'];
@@ -35,8 +36,10 @@ export function reinitMonkeys(towers) {
     if (tw.type !== 'monkey') continue;
     if (!tw.monkeys) tw.monkeys = initMonkeys(TD.monkey?.capacity ?? 2);
     for (const mk of tw.monkeys) {
-      mk.x = tw.x * state.CELL + state.CELL / 2;
-      mk.y = tw.y * state.CELL + state.CELL / 2;
+      const cx = tw.x * state.CELL + state.CELL / 2;
+      const cy = tw.y * state.CELL + state.CELL / 2;
+      mk.x = cx + Math.cos(mk.patrolAngle || 0) * state.CELL * 0.6;
+      mk.y = cy + Math.sin(mk.patrolAngle || 0) * state.CELL * 0.6;
       mk.st = 'idle';
       mk.carrying = null;
       mk.patrolAngle = mk.patrolAngle ?? (Math.random() * Math.PI * 2);
@@ -130,11 +133,15 @@ function tickIdle(mk, tw) {
   moveTo(mk, tx, ty);
 }
 
+function inRange(tw, gx, gy) {
+  return Math.hypot(gx - tw.x, gy - tw.y) <= (tw.range || 4);
+}
+
 function tickGatherer(mk, tw) {
   const { cfg } = mk;
 
-  // No destination configured — orbit hut
-  if (!cfg.dest) { tickIdle(mk, tw); return; }
+  // No destination configured or dest out of range — orbit hut
+  if (!cfg.dest || !inRange(tw, cfg.dest.x, cfg.dest.y)) { tickIdle(mk, tw); return; }
 
   if (mk.st === 'idle') {
     // Scan for nearest item in range
@@ -173,7 +180,7 @@ function tickGatherer(mk, tw) {
 function tickCourier(mk, tw) {
   const { cfg } = mk;
 
-  if (!cfg.from || !cfg.dest) { tickIdle(mk, tw); return; }
+  if (!cfg.from || !cfg.dest || !inRange(tw, cfg.from.x, cfg.from.y) || !inRange(tw, cfg.dest.x, cfg.dest.y)) { tickIdle(mk, tw); return; }
 
   if (mk.st === 'idle') {
     if (mk.waitCd > 0) { mk.waitCd--; tickIdle(mk, tw); return; }
@@ -186,6 +193,10 @@ function tickCourier(mk, tw) {
       let item = null;
       if (isStockpile(cfg.from.x, cfg.from.y)) {
         item = takeFromResources(cfg.filter);
+        if (item) {
+          const rt = RTYPES[item.type];
+          if (rt) mkGain(cfg.from.x * state.CELL + state.CELL / 2, cfg.from.y * state.CELL + state.CELL / 2, rt.icon, -1, '#ef4444');
+        }
       } else {
         item = takeFromCell(cfg.from.x, cfg.from.y, cfg.filter);
       }
@@ -212,7 +223,7 @@ function tickCourier(mk, tw) {
 function tickBooster(mk, tw) {
   const { cfg } = mk;
 
-  if (!cfg.boost) { tickIdle(mk, tw); return; }
+  if (!cfg.boost || !inRange(tw, cfg.boost.x, cfg.boost.y)) { tickIdle(mk, tw); return; }
 
   // Check if target tower still exists
   const targetCell = state.grid[cfg.boost.y]?.[cfg.boost.x];

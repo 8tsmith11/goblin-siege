@@ -226,7 +226,7 @@ export function mkGain(px, py, icon, amount, clr) {
   p.el.style.left = (cvR.left - gcR.left + sx) + 'px';
   p.el.style.top = (cvR.top - gcR.top + sy) + 'px';
   p.el.style.color = clr;
-  p.el.textContent = '+' + amount + '\u202f' + icon;
+  p.el.textContent = (amount >= 0 ? '+' : '') + amount + '\u202f' + icon;
   p.el.style.display = 'block';
   p.tmr = setTimeout(() => { p.el.style.display = 'none'; fltGPool.push(p); }, 950);
 }
@@ -251,7 +251,7 @@ export function showTT(tw, px, py) {
   else if (tw.type === 'clam') { s = 'Buff radius: ' + ((tw.level + 1) * 1.5).toFixed(1) + ' · +50%DMG -15%CD'; }
   else if (tw.type === 'beehive') { s = 'Bees: ' + (tw.beeCount || 3) + ' · Bee DMG: ' + (tw.beeDmg || 4); }
   else if (tw.type === 'clown') { s = 'Reverse rng:' + (tw.reverseRange || 3) + ' dur:' + (tw.reverseDur || 80); }
-  else if (tw.type === 'monkey') { const mc = tw.monkeys?.length ?? 0; s = mc + ' Resourceful Monke' + (mc === 1 ? 'y' : 'ys'); }
+  else if (tw.type === 'monkey') { const mc = tw.monkeys?.length ?? 0; s = mc + ' Monke' + (mc === 1 ? 'y' : 'ys') + ' · Range:' + (tw.range || 4); }
   else if (tw.type === 'stockpile') { s = 'Monkeys deposit/withdraw resources here'; }
   else if (tw.type === 'robot') { s = 'Auto-casts spells!'; }
   else if (tw.type === 'lab') { s = 'Observation radius: ' + (tw.obsRange || 3) + ' · Gathers 🔮 Dust'; }
@@ -299,7 +299,11 @@ export function showTT(tw, px, py) {
   }
   if (tw.type === 'clown') { const uc = 40 + tw.level * 25; addTTB(a, '+Range 💰' + uc, 'ttu', state.gold >= uc, () => { _ΨΔ(() => { if (state.gold < uc) return; state.gold -= uc; tw.level++; tw.reverseRange = (tw.reverseRange || 3) + 0.5; tw.reverseDur = (tw.reverseDur || 80) + 20; }); refreshTT(tw); }); }
   if (tw.type === 'lab') { addTTB(a, '🔬 Research', 'tts2', !!state.research, () => { hideTT(); state.ttTower = null; showResearch(); }); }
-  if (tw.type === 'monkey') { buildMonkeyTT(tw, a); }
+  if (tw.type === 'monkey') {
+    const uc = 80 + tw.level * 60;
+    addTTB(a, '+Range 💰' + uc, 'ttu', state.gold >= uc, () => { _ΨΔ(() => { if (state.gold < uc) return; state.gold -= uc; tw.level++; tw.range = (tw.range || 4) + 1; }); refreshTT(tw); });
+    buildMonkeyTT(tw, a);
+  }
   if (TD[tw.type]?.cat === 'tower' && TOWER_SKILLS[tw.type]) { addTTB(a, '⚡Skill', 'ttc', true, () => { showTowerSkill(tw); hideTT(); state.ttTower = null; }); }
   const sv = Math.floor(def.cost * 0.75 + (tw.level * def.cost * 0.4));
   addTTB(a, 'Sell +💰' + sv, 'ttl', true, () => {
@@ -417,7 +421,7 @@ function buildMonkeyTT(tw, container) {
       // Destination tile pick
       const destLbl = mk.cfg.dest ? `Dest:(${mk.cfg.dest.x},${mk.cfg.dest.y})` : 'Set Dest 📍';
       addTTB(container, destLbl, 'tts2', true, () => {
-        state.sel = { type: 'tile_pick', monkey: mk, field: 'dest' };
+        state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'dest' };
         hideTT(); state.ttTower = null; panelU();
       });
     }
@@ -430,12 +434,12 @@ function buildMonkeyTT(tw, container) {
       });
       const fromLbl = mk.cfg.from ? `From:(${mk.cfg.from.x},${mk.cfg.from.y})` : 'Set From 📍';
       addTTB(container, fromLbl, 'tts2', true, () => {
-        state.sel = { type: 'tile_pick', monkey: mk, field: 'from' };
+        state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'from' };
         hideTT(); state.ttTower = null; panelU();
       });
       const toLbl = mk.cfg.dest ? `To:(${mk.cfg.dest.x},${mk.cfg.dest.y})` : 'Set To 📍';
       addTTB(container, toLbl, 'tts2', true, () => {
-        state.sel = { type: 'tile_pick', monkey: mk, field: 'dest' };
+        state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'dest' };
         hideTT(); state.ttTower = null; panelU();
       });
     }
@@ -443,7 +447,7 @@ function buildMonkeyTT(tw, container) {
     if (mk.role === 'booster') {
       const bLbl = mk.cfg.boost ? `Boost:(${mk.cfg.boost.x},${mk.cfg.boost.y})` : 'Set Target 📍';
       addTTB(container, bLbl, 'tts2', true, () => {
-        state.sel = { type: 'tile_pick', monkey: mk, field: 'boost' };
+        state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'boost' };
         hideTT(); state.ttTower = null; panelU();
       });
     }

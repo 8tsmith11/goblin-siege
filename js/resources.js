@@ -111,10 +111,12 @@ export function dropItem(cx, cy, type) {
   const tw = cell.content;
   if (tw?.type === 'stockpile') {
     state.resources[type] = (state.resources[type] || 0) + 1;
+    const rt = RTYPES[type]; if (rt) mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr);
     return;
   }
   if (tw?.type === 'hoard' && (type === 'wood' || type === 'stone')) {
     tw.dep[type] = (tw.dep[type] || 0) + 1;
+    const rt = RTYPES[type]; if (rt) mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr);
     return;
   }
   // Default: place as ground stack

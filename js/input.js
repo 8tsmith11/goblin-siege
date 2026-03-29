@@ -105,7 +105,16 @@ function tryPlaceTower(c, ex) {
     if (tw.type === 'beehive') { const d = TD.beehive; tw.beeCount = d.beeCount; tw.beeDmg = d.beeDmg; tw.beeRange = d.beeRange; tw.beeRate = d.beeRate; }
     if (tw.type === 'hoard') { tw.dep = { wood: 0, stone: 0 }; }
     if (tw.type === 'lab') { tw.obsRange = TD.lab.obsRange; }
-    if (tw.type === 'monkey') { tw.range = TD.monkey.range; tw.monkeys = initMonkeys(TD.monkey.capacity); }
+    if (tw.type === 'monkey') {
+      tw.range = TD.monkey.range;
+      const cap = 1 + (state.researchUnlocks?.monkey_capacity || 0);
+      tw.monkeys = initMonkeys(cap);
+      const hcx = c.x * state.CELL + state.CELL / 2, hcy = c.y * state.CELL + state.CELL / 2;
+      tw.monkeys.forEach(mk => {
+        mk.x = hcx + Math.cos(mk.patrolAngle) * state.CELL * 0.6;
+        mk.y = hcy + Math.sin(mk.patrolAngle) * state.CELL * 0.6;
+      });
+    }
     state.towers.push(tw);
     state.grid[c.y][c.x].type = 'tower';
     state.grid[c.y][c.x].content = tw;
@@ -129,9 +138,13 @@ function handleTap(e) {
 
   // Tile-pick mode: record clicked tile for monkey role config
   if (state.sel?.type === 'tile_pick') {
-    const { monkey, field } = state.sel;
+    const { monkey, hut, field } = state.sel;
+    if (hut && Math.hypot(c.x - hut.x, c.y - hut.y) > (hut.range || 4)) {
+      showTip('Out of range!');
+      return;
+    }
     monkey.cfg[field] = { x: c.x, y: c.y };
-    monkey.st = 'idle'; // reset movement so new config takes effect
+    monkey.st = 'idle';
     state.sel = null;
     showTip('Position set!');
     panelU();

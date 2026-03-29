@@ -1,8 +1,10 @@
 export function createGrid(cols, rows) {
   const G = [];
-  for (let y = 0; y < rows; y++) {
+  const c = Math.max(1, cols || 20);
+  const r = Math.max(1, rows || 12);
+  for (let y = 0; y < r; y++) {
     const row = [];
-    for (let x = 0; x < cols; x++) {
+    for (let x = 0; x < c; x++) {
       row.push({
         x, y,
         type: 'empty', 

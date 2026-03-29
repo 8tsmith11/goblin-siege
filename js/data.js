@@ -11,7 +11,7 @@ export const TD = {
   clam:     { name:'Intuitive Clam',     icon:'🐚', clr:'#14b8a6', cost:80,  cat:'support', buffRange:2,  buffDmg:1.5, buffRate:.85, buffDesc:'+50% DMG, -15% CD to nearby', desc:'Buffs nearby towers: +50% DMG, -15% cooldown' },
   beehive:  { name:'Beehive',            icon:'🐝', clr:'#eab308', cost:90,  cat:'support', beeCount:3,  beeDmg:4,    beeRange:3,   beeRate:30,  desc:'Deploys bees that swarm and sting enemies' },
   clown:    { name:'Magnificent Clown',  icon:'🤡', clr:'#f472b6', cost:100, cat:'support', reverseRange:3, reverseDur:80, reverseCD:200, desc:'Reverses nearby enemy movement direction' },
-  monkey:   { name:'Monkey Hut',         icon:'🛖', clr:'#fb923c', cost:70, resCost:{ stone:8, wood:8 }, cat:'support', capacity:2, range:4, desc:'Houses Resourceful Monkeys that gather, courier, or boost nearby buildings' },
+  monkey:   { name:'Monkey Hut',         icon:'🛖', clr:'#fb923c', cost:70, resCost:{ stone:8, wood:8 }, cat:'support', capacity:1, range:4, desc:'Houses Resourceful Monkeys that gather, courier, or boost nearby buildings' },
   stockpile:{ name:'Stockpile',          icon:'📦', clr:'#d97706', cost:50, resCost:{ wood:6 }, cat:'support', desc:'Interface between ground items and your inventory. Monkeys deposit/withdraw here.' },
   robot:    { name:'AI Agent',           icon:'🤖', clr:'#38bdf8', cost:110, cat:'support', autoSpell:true, reqAge: 'iron', desc:'Automatically casts spells during waves' },
 };

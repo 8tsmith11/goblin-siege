@@ -1,7 +1,6 @@
 'use strict';
 import { state, _ΨΔ } from './main.js';
 import { iA, sfxNuke, sfxVolcano, sfxFreeze, sfxLaser, sfxRage } from './audio.js';
-import { SKILLS } from './skills.js';
 import { showBanner, panelU } from './ui.js';
 
 export const SP = {
@@ -13,7 +12,7 @@ export const SP = {
 };
 
 export function castSpell(k) {
-  const cost = SKILLS.spellMaster?.owned ? Math.floor(SP[k].cost * 0.75) : SP[k].cost;
+  const cost = SP[k].cost;
   if (state.gold < cost || state.phase !== 'active') return;
   iA();
   _ΨΔ(() => { state.gold -= cost; });

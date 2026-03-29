@@ -162,17 +162,15 @@ export function render() {
   for (const tw of towers) {
     if (tw.type !== 'monkey' || !tw.monkeys) continue;
     for (const mk of tw.monkeys) {
-      cx.fillStyle = '#fb923c';
-      cx.beginPath(); cx.arc(mk.x, mk.y, CELL * 0.13, 0, Math.PI * 2); cx.fill();
       if (cam.zoom >= 0.75) {
-        cx.font = Math.floor(CELL * 0.22) + 'px serif';
+        cx.font = Math.floor(CELL * 0.5) + 'px serif';
         cx.textAlign = 'center'; cx.textBaseline = 'middle';
         cx.fillText('🐵', mk.x, mk.y);
       }
       if (mk.carrying) {
-        cx.font = Math.floor(CELL * 0.20) + 'px serif';
+        cx.font = Math.floor(CELL * 0.45) + 'px serif';
         cx.textAlign = 'center'; cx.textBaseline = 'bottom';
-        cx.fillText(RTYPES[mk.carrying.type]?.icon || '?', mk.x, mk.y - CELL * 0.15);
+        cx.fillText(RTYPES[mk.carrying.type]?.icon || '?', mk.x, mk.y - CELL * 0.28);
       }
     }
   }
