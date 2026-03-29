@@ -90,11 +90,7 @@ export function render() {
       cx.fillStyle = 'rgba(244,63,94,.04)'; cx.fill();
       cx.strokeStyle = 'rgba(244,63,94,.15)'; cx.lineWidth = 1; cx.stroke();
     }
-    if (ttTower === tw && tw.type === 'factory' && tw.hasLaser) {
-      cx.beginPath(); cx.arc(px, py, (tw.laserRange || 3) * CELL, 0, Math.PI * 2);
-      cx.fillStyle = 'rgba(239,68,68,.07)'; cx.fill();
-      cx.strokeStyle = '#ef4444'; cx.lineWidth = 1.5; cx.stroke();
-    }
+
     if (tw.type === 'clam') {
       const br = (tw.level + 1) * 1.5;
       cx.beginPath(); cx.arc(px, py, br * CELL, 0, Math.PI * 2);
@@ -106,15 +102,14 @@ export function render() {
       cx.fillStyle = 'rgba(244,114,182,.04)'; cx.fill();
       cx.strokeStyle = 'rgba(244,114,182,.1)'; cx.lineWidth = 1; cx.stroke();
     }
-    const isF = tw.type === 'factory', def = TD[tw.type];
+    const isH = tw.type === 'hoard', def = TD[tw.type];
     const tx = Math.round(tw.x * CELL), ty = Math.round(tw.y * CELL);
-    cx.fillStyle = tw.disabled ? '#1a0a0a' : isF ? '#0a3d2f' : tw._buffed ? '#1a2040' : '#171838';
+    cx.fillStyle = tw.disabled ? '#1a0a0a' : isH ? '#0a3d2f' : tw._buffed ? '#1a2040' : '#171838';
     cx.fillRect(tx + 2, ty + 2, CELL - 4, CELL - 4);
-    cx.strokeStyle = tw.disabled ? '#ef4444' : isF ? '#10b981' : tw._buffed ? '#5eead4' : (def?.clr || '#555');
+    cx.strokeStyle = tw.disabled ? '#ef4444' : isH ? '#10b981' : tw._buffed ? '#5eead4' : (def?.clr || '#555');
     cx.lineWidth = tw._buffed ? 2 : 1.5; cx.strokeRect(tx + 2, ty + 2, CELL - 4, CELL - 4);
     cx.font = Math.floor(CELL * 0.35) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
-    cx.fillText(isF ? '🏭' : (def?.icon || '?'), tx + CELL / 2, ty + CELL / 2);
-    if (isF && tw.hasLaser) { cx.fillStyle = '#ef4444'; cx.beginPath(); cx.arc(tx + CELL * 0.78, ty + CELL * 0.22, 2 + Math.sin(ticks * 0.15), 0, Math.PI * 2); cx.fill(); }
+    cx.fillText(isH ? '🏺' : (def?.icon || '?'), tx + CELL / 2, ty + CELL / 2);
     if (tw.level > 0) { cx.font = 'bold ' + Math.floor(CELL * 0.16) + 'px Anybody,sans-serif'; cx.fillStyle = '#fbbf24'; cx.fillText('★'.repeat(Math.min(tw.level, 5)), tx + CELL / 2, ty + CELL - 2); }
   });
 
@@ -179,9 +174,9 @@ export function render() {
     const gx = gCell.x * CELL, gy = gCell.y * CELL, gpx = gx + CELL / 2, gpy = gy + CELL / 2;
     const ok = canPlace(gCell.x, gCell.y);
     // Range preview
-    if (ok) {
+    if (sel && sel.type !== 'spell') {
       const def = TD[sel.key];
-      const previewRange = sel.key === 'factory' ? 0 : (def?.range || 0);
+      const previewRange = def?.range || 0;
       if (previewRange) {
         cx.beginPath(); cx.arc(gpx, gpy, previewRange * CELL, 0, Math.PI * 2);
         cx.fillStyle = 'rgba(244,63,94,.04)'; cx.fill();
@@ -192,7 +187,7 @@ export function render() {
     cx.globalAlpha = ok ? 0.4 : 0.15;
     cx.fillStyle = ok ? '#ffffff11' : '#ff000022'; cx.fillRect(gx, gy, CELL, CELL);
     cx.font = Math.floor(CELL * 0.4) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
-    const icon = sel.key === 'factory' ? '🏭' : TD[sel.key]?.icon || '?';
+    const icon = TD[sel.key]?.icon || '?';
     cx.fillText(icon, gpx, gpy); cx.globalAlpha = 1;
   }
 

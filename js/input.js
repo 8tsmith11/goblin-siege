@@ -67,12 +67,30 @@ function tryPlaceTower(c, ex) {
     else if (state.pathSet?.has(c.x + ',' + c.y)) { showTip("Path tile — towers go on dark squares."); }
     return;
   }
+  
   if (state.gold < state.sel.cost) { showTip('Not enough gold!'); return; }
-  if (state.sel.key === 'lab' && state.towers.some(t => t.type === 'lab')) { showTip('Only one Lab allowed per map!'); return; }
+  if (state.sel.resCost) {
+    for (const [res, amt] of Object.entries(state.sel.resCost)) {
+      if ((state.resources[res] || 0) < amt) {
+        showTip('Not enough ' + res + '!'); return;
+      }
+    }
+  }
+
+  if (state.sel.key === 'lab' && state.towers.some(t => t.type === 'lab')) { 
+    showTip('Only one Lab allowed per map!'); 
+    state.sel = null; hideTT(); state.ttTower = null; panelU();
+    return; 
+  }
 
   let tw;
   _ΨΔ(() => {
     state.gold -= state.sel.cost;
+    if (state.sel.resCost) {
+      for (const [res, amt] of Object.entries(state.sel.resCost)) {
+        state.resources[res] -= amt;
+      }
+    }
     const def = TD[state.sel.key];
     tw = {
       type: state.sel.key, x: c.x, y: c.y, level: 0, cd: 0, _buffed: false, _rateBuff: 1,
@@ -84,7 +102,7 @@ function tryPlaceTower(c, ex) {
     if (tw.type === 'clown') { tw.reverseRange = TD.clown.reverseRange; tw.reverseDur = TD.clown.reverseDur; tw.reverseCD = TD.clown.reverseCD; }
     if (tw.type === 'robot') tw.cd = 100;
     if (tw.type === 'beehive') { const d = TD.beehive; tw.beeCount = d.beeCount; tw.beeDmg = d.beeDmg; tw.beeRange = d.beeRange; tw.beeRate = d.beeRate; }
-    if (tw.type === 'factory') { tw.hasLaser = false; tw.laserCD = 0; }
+    if (tw.type === 'hoard') { tw.dep = { wood: 0, stone: 0 }; }
     if (tw.type === 'lab') { tw.obsRange = TD.lab.obsRange; }
     state.towers.push(tw);
     state.grid[c.y][c.x].type = 'tower';

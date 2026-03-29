@@ -2,24 +2,38 @@
 import { state } from './main.js';
 
 export const FIXED_RESEARCH = {
-  basic_obs:   { name:'Basic Observation',   icon:'👁️',  cost:{dust:10},          waves:1, unlocks:'lab_radius_+1',      prereqs:[] },
+  settlement:  { name:'Settl. Basics',      icon:'🏘️',  cost:{wood:10,stone:10}, waves:1, unlocks:'hoard,lab',           prereqs:[] },
+  basic_obs:   { name:'Basic Observation',   icon:'👁️',  cost:{dust:10},          waves:1, unlocks:'lab_radius_+1',      prereqs:['settlement'] },
   pattern_rec: { name:'Pattern Recognition', icon:'📜',  cost:{dust:30,stone:5},  waves:3, unlocks:'goblin_translations', prereqs:['basic_obs'] },
   structural:  { name:'Structural Analysis', icon:'🪨',  cost:{dust:20,wood:5},   waves:2, unlocks:'tower_age_counters',  prereqs:['basic_obs'] },
+  aquatic:     { name:'Aquatic Studies',     icon:'🦑',  cost:{dust:25,stone:15}, waves:3, unlocks:'fish,seahorse',     prereqs:['structural'] },
+  avian:       { name:'Avian Mastery',       icon:'🦩',  cost:{dust:35,wood:20},  waves:4, unlocks:'heron',              prereqs:['aquatic'] },
   the_forge:   { name:'The Forge',           icon:'⚒️',  cost:{dust:50,stone:20}, waves:5, unlocks:'steam_age',           prereqs:['pattern_rec','structural'] },
+  automation:  { name:'AI Automation',       icon:'🤖',  cost:{dust:60,stone:40}, waves:5, unlocks:'robot',              prereqs:['the_forge'] },
 };
 
 export const VARIABLE_RESEARCH = [
-  { id:'animal_husb',   name:'Animal Husbandry',     icon:'🐵', cost:{dust:15,wood:5},   waves:2, unlocks:'monkey_capacity_+1', prereqs:['basic_obs'] },
+  { id:'animal_husb',   name:'Animal Husbandry',     icon:'🐵', cost:{dust:15,wood:10},  waves:2, unlocks:'monkey',             prereqs:['basic_obs'] },
+  { id:'beekeeping',    name:'Apiculture',           icon:'🐝', cost:{dust:20,wood:15},  waves:2, unlocks:'beehive',            prereqs:['basic_obs'] },
+  { id:'reptilian',     name:'Reptilian Lore',       icon:'🦎', cost:{dust:30,stone:20}, waves:3, unlocks:'lizard',             prereqs:['structural'] },
+  { id:'entertainment', name:'Magnificent Show',     icon:'🤡', cost:{dust:25,stone:10}, waves:3, unlocks:'clown',              prereqs:['pattern_rec'] },
   { id:'crude_optics',  name:'Crude Optics',          icon:'🔭', cost:{dust:20,flint:3},  waves:2, unlocks:'lab_radius_+2',      prereqs:['basic_obs'] },
   { id:'fortification', name:'Fortification',         icon:'🏰', cost:{dust:25,stone:10}, waves:3, unlocks:'tower_wall',         prereqs:['structural'] },
   { id:'bonfire',       name:'Bonfire Theory',        icon:'🔥', cost:{dust:20,wood:8},   waves:2, unlocks:'tower_campfire',     prereqs:['basic_obs'] },
   { id:'cartography',   name:'Prim. Cartography',     icon:'🗺️', cost:{dust:25,flint:5},  waves:3, unlocks:'reveal_5_tiles',     prereqs:['basic_obs'] },
-  { id:'rope_craft',    name:'Rope Craft',            icon:'🪢', cost:{dust:15,wood:10},  waves:2, unlocks:'augment_tripwire',   prereqs:['structural'] },
   { id:'fermentation',  name:'Fermentation',          icon:'🍺', cost:{dust:15,wood:5},   waves:2, unlocks:'consumable_ale',     prereqs:['basic_obs'] },
   { id:'tremor_study',  name:'Tremor Analysis',       icon:'🌋', cost:{dust:15},          waves:2, unlocks:'lore_tremor',         prereqs:['basic_obs'], hidden:true, trigger:'tremor_event_seen' },
 ];
 
 export const UNLOCK_DESC = {
+  'hoard,lab':          'Hoard Pile & Lab unlocked',
+  'fish,seahorse':      'Fish & Seahorse towers',
+  'heron':              'Clever Heron tower',
+  'robot':              'AI Agent (Robot) tower',
+  'monkey':             'Monkey Hut building',
+  'beehive':            'Beehive building',
+  'lizard':             'Abhorrent Lizard tower',
+  'clown':              'Magnificent Clown tower',
   'lab_radius_+1':      '+1 Lab observation radius',
   'goblin_translations':'Goblin Translations lore',
   'tower_age_counters': 'Age counters on towers',
@@ -84,7 +98,17 @@ export function tickResearch() {
 }
 
 export function applyUnlock(node) {
-  switch (node.unlocks) {
+  const u = node.unlocks;
+  if (!u) return;
+
+  // Check if it's a tower unlock (csv of tower keys)
+  u.split(',').forEach(key => {
+    if (state.unlockedTowers && state.unlockedTowers.has(key) === false && TD[key]) {
+      state.unlockedTowers.add(key);
+    }
+  });
+
+  switch (u) {
     case 'lab_radius_+1': {
       const lab = state.towers?.find(t => t.type === 'lab');
       if (lab) lab.obsRange = (lab.obsRange || 3) + 1;
@@ -95,10 +119,6 @@ export function applyUnlock(node) {
       if (lab) lab.obsRange = (lab.obsRange || 3) + 2;
       break;
     }
-    case 'monkey_capacity_+1':
-      state.researchUnlocks = state.researchUnlocks || {};
-      state.researchUnlocks.monkeyCapacity = (state.researchUnlocks.monkeyCapacity || 0) + 1;
-      break;
   }
 }
 

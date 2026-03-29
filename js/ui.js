@@ -6,8 +6,16 @@ import { spawnBees } from './support.js';
 import { canAfford, spendResources, layoutNodes, UNLOCK_DESC } from './research.js';
 import { SP, castSpell } from './spells.js';
 import { SKILLS, renderSk, showTowerSkill } from './skills.js';
-import { BESTIARY } from './bestiary.js';
+import { BESTIARY, getScribeLogs } from './bestiary.js';
 import { sfxPlace, iA } from './audio.js';
+
+const HOARD_UPGS = [
+  { c: 100, rs: { stone: 10, wood: 10 }, m: 1.5 },
+  { c: 200, rs: { stone: 25, wood: 25 }, m: 2.0 },
+  { c: 400, rs: { stone: 50, wood: 50 }, m: 2.5 },
+  { c: 800, rs: { stone: 100, wood: 100 }, m: 3.0 },
+  { c: 1500, rs: { stone: 250, wood: 250 }, m: 4.0 }
+];
 
 export function hudU() {
   const { lives, gold, enemies, spawnQueue, wave, phase, prepTicks } = state;
@@ -20,6 +28,9 @@ export function hudU() {
   } else {
     wlEl.textContent = phase === 'active' ? 'Wave ' + wave + ' · ' + l + ' left' : 'Wave ' + wave;
   }
+  const wl = document.getElementById('wl');
+  if (wl) wl.textContent = 'Wave ' + (state.wave || 0);
+
   document.getElementById('hI').textContent = '+' + state.fIncome();
   document.getElementById('hSP').textContent = state.skillPts;
   const goBtn = document.getElementById('goBtn');
@@ -70,36 +81,45 @@ export function showTip(t) {
 
 function showTdesc(key, btnEl) {
   const el = document.getElementById('tdesc');
-  if (!el) return;
+  if (!el || !state.unlockedTowers) return;
 
-  let icon, name, desc, catCls, catLabel, stats = '';
-  if (key === 'factory') {
-    icon = '🏭'; name = 'Factory'; catCls = 'factory'; catLabel = 'Factory';
-    desc = 'Generates gold income each wave. Upgrade for higher income or add a laser.';
-  } else if (TD[key]) {
-    const d = TD[key]; icon = d.icon; name = d.name; desc = d.desc || '';
-    if (d.cat === 'support') {
-      catCls = 'support'; catLabel = 'Support';
+  let icon = '?', name = '?', desc = '', catCls = '', catLabel = '', stats = '', costVal = '';
+
+  if (TD[key]) {
+    const d = TD[key], isUnl = state.unlockedTowers.has(key);
+    icon = d.icon;
+    if (!isUnl) {
+      name = '???'; desc = 'Discover this building via research in the Lab.';
+      catCls = 'locked'; catLabel = 'Unknown'; costVal = 'Locked';
     } else {
-      catCls = 'offense'; catLabel = 'Offense';
-      stats = 'DMG ' + d.dmg + ' · RNG ' + d.range + ' · CD ' + d.rate;
-      if (d.slow) stats += ' · Slow ' + Math.floor(d.slow * 100) + '%';
-      if (d.splash) stats += ' · Splash ' + d.splash;
-      if (d.pierce) stats += ' · Pierce ' + d.pierce;
-      if (d.chain) stats += ' · Chain ' + d.chain;
+      name = d.name; desc = d.desc;
+      const isAgeLocked = d.reqAge && state.age !== d.reqAge && state.age === 'stone';
+      if (isAgeLocked) { name = '???'; desc = 'This building requires a future age.'; }
+      catCls = d.cat === 'tower' ? 'offense' : d.cat;
+      catLabel = d.cat === 'support' ? 'Support' : 'Offense';
+      costVal = '💰' + d.cost + (d.resCost ? ' + Mats' : '');
+      if (!isAgeLocked && d.cat === 'tower') {
+        stats = `DMG ${d.dmg} · RNG ${d.range} · CD ${d.rate}`;
+        if (d.slow) stats += ` · Slow ${Math.floor(d.slow * 100)}%`;
+        if (d.splash) stats += ` · Splash ${d.splash}`;
+        if (d.pierce) stats += ` · Pierce ${d.pierce}`;
+        if (d.chain) stats += ` · Chain ${d.chain}`;
+      }
     }
   } else if (SP[key]) {
-    const d = SP[key]; icon = d.icon; name = d.name; desc = d.desc || ''; catCls = 'spell'; catLabel = 'Spell';
+    const s = SP[key]; icon = s.icon; name = s.name; desc = s.desc || '';
+    catCls = 'spell'; catLabel = 'Spell'; costVal = '💰' + s.cost;
   } else return;
 
-  el.innerHTML = '<div class="tdi">'
-    + '<div class="tdico">' + icon + '</div>'
-    + '<div class="tdtxt">'
-    + '<span class="tdcat ' + catCls + '">' + catLabel + '</span>'
-    + '<div class="tdname">' + name + '</div>'
-    + '<div class="tddesc">' + desc + '</div>'
-    + (stats ? '<div class="tdstats">' + stats + '</div>' : '')
-    + '</div></div>';
+  el.innerHTML = `<div class="tdi">
+    <div class="tdico">${icon}</div>
+    <div class="tdtxt">
+      <span class="tdcat ${catCls}">${catLabel}</span>
+      <div class="tdname">${name} <span style="font-size:11px;color:var(--gold);opacity:0.8">${costVal}</span></div>
+      <div class="tddesc">${desc}</div>
+      ${stats ? `<div class="tdstats">${stats}</div>` : ''}
+    </div>
+  </div>`;
 
   el.classList.add('sh');
 
@@ -132,9 +152,26 @@ export function panelU() {
   if (tab === 'towers') {
     for (const k in TD) {
       const d = TD[k];
-      const el = mkIB(d.icon, d.name, d.cost, gold >= d.cost, state.sel?.key === k, () => {
+      const isUnl = state.unlockedTowers && state.unlockedTowers.has(k);
+      if (!isUnl) {
+        if (k !== 'robot') continue;
+        const el = mkIB(d.icon, '???', 'Locked', false, false, () => {});
+        addHover(el, k); pc.appendChild(el);
+        continue;
+      }
+      const isAgeLocked = d.reqAge && state.age !== d.reqAge && state.age === 'stone';
+      let afford = gold >= d.cost;
+      let costStr = '💰' + d.cost;
+      if (d.resCost) {
+        for (const [res, amt] of Object.entries(d.resCost)) {
+          if ((state.resources[res] || 0) < amt) afford = false;
+          costStr += ' ' + (RTYPES[res]?.icon || '') + amt;
+        }
+      }
+      const el = mkIB(d.icon, isAgeLocked ? '???' : d.name, costStr, !isAgeLocked && afford, state.sel?.key === k, () => {
+        if (isAgeLocked) return;
         const sel = state.sel?.key === k;
-        state.sel = sel ? null : { key:k, type:'tower', cost:d.cost };
+        state.sel = sel ? null : { key:k, type:'tower', cost:d.cost, resCost: d.resCost };
         state.ttTower = null; hideTT();
         panelU();
       });
@@ -144,22 +181,9 @@ export function panelU() {
     for (const k in SP) {
       const s = SP[k];
       const cost = SKILLS.spellMaster?.owned ? Math.floor(s.cost * 0.75) : s.cost;
-      const el = mkIB(s.icon, s.name, cost, gold >= cost && phase === 'active', false, () => castSpell(k));
+      const el = mkIB(s.icon, s.name, '💰' + cost, gold >= cost && phase === 'active', false, () => castSpell(k));
       addHover(el, k); pc.appendChild(el);
     }
-  } else if (tab === 'factory') {
-    const cnt = state.towers.filter(t => t.type === 'factory').length;
-    const cost = 50 + cnt * 25;
-    const el = mkIB('🏭', 'Factory', cost, gold >= cost, state.sel?.key === 'factory', () => {
-      const sel = state.sel?.key === 'factory';
-      state.sel = sel ? null : { key:'factory', type:'factory', cost };
-      state.ttTower = null; hideTT();
-      panelU();
-    });
-    addHover(el, 'factory'); pc.appendChild(el);
-    const i = document.createElement('div');
-    i.style.cssText = 'font-size:10px;color:#64748b;padding:4px;line-height:1.4;align-self:center;flex-shrink:0';
-    i.innerHTML = '×' + cnt + '<br>Inc:<b style="color:#10b981">+' + state.fIncome() + '</b>/w'; pc.appendChild(i);
   } else if (tab === 'skills') {
     const i = document.createElement('div');
     i.style.cssText = 'font-size:11px;color:#94a3b8;padding:4px;text-align:center;align-self:center';
@@ -167,10 +191,10 @@ export function panelU() {
   }
 }
 
-export function mkIB(icon, name, cost, ok, sl2, fn) {
+export function mkIB(icon, name, costHtml, ok, sl2, fn) {
   const b = document.createElement('div');
   b.className = 'ib' + (sl2 ? ' sel' : '') + (ok ? '' : ' off');
-  b.innerHTML = '<span class="ic">' + icon + '</span><span class="nm">' + name + '</span><span class="ct">💰' + cost + '</span>';
+  b.innerHTML = '<span class="ic">' + icon + '</span><span class="nm">' + name + '</span><span class="ct">' + costHtml + '</span>';
   b.addEventListener('pointerdown', e => { e.stopPropagation(); fn(); }); return b;
 }
 
@@ -222,10 +246,13 @@ export function showTT(tw, px, py) {
   hideTdesc();
   state.ttTower = tw;
   const el = document.getElementById('tt');
-  const isF = tw.type === 'factory', def = TD[tw.type];
-  document.getElementById('ttT').textContent = (isF ? 'Factory' : def?.name || tw.type) + (tw.level > 0 ? ' ★' + tw.level : '');
+  const isH = tw.type === 'hoard', def = TD[tw.type];
+  document.getElementById('ttT').textContent = (isH ? 'Hoard Pile' : def?.name || tw.type) + (tw.level > 0 ? ' ★' + tw.level : '');
   let s = '';
-  if (isF) { s = 'Inc:+' + (10 + tw.level * 8) + '/w' + (tw.hasLaser ? ' 🔴Laser Lv' + tw.laserLvl + ' Rng:' + (tw.laserRange || 3) : ''); }
+  if (isH) { 
+    const m = (tw.level > 0 ? HOARD_UPGS[tw.level - 1].m : 1.0);
+    s = `Mult: ${m.toFixed(1)}x | Storage: 🪵${tw.dep.wood} 🪨${tw.dep.stone}`; 
+  }
   else if (tw.type === 'clam') { s = 'Buff radius: ' + ((tw.level + 1) * 1.5).toFixed(1) + ' · +50%DMG -15%CD'; }
   else if (tw.type === 'beehive') { s = 'Bees: ' + (tw.beeCount || 3) + ' · Bee DMG: ' + (tw.beeDmg || 4); }
   else if (tw.type === 'clown') { s = 'Reverse rng:' + (tw.reverseRange || 3) + ' dur:' + (tw.reverseDur || 80); }
@@ -241,10 +268,33 @@ export function showTT(tw, px, py) {
     const upg = genUpg(TD[tw.type], tw.level);
     addTTB(a, upg.l + ' 💰' + upg.c, 'ttu', state.gold >= upg.c, () => { _ΨΔ(() => doUpg(tw, upg)); refreshTT(tw); });
   }
-  if (isF) {
-    if (!tw.hasLaser) { const lc = 60; addTTB(a, '🔴Laser 💰' + lc, 'tts2', state.gold >= lc, () => { _ΨΔ(() => { if (state.gold < lc) return; state.gold -= lc; tw.hasLaser = true; tw.laserCD = 0; tw.laserLvl = 1; tw.laserRange = 3; sfxPlace(); }); refreshTT(tw); }); }
-    if (tw.hasLaser) { const lc = 30 + tw.laserLvl * 15; addTTB(a, '⬆Laser 💰' + lc, 'tts2', state.gold >= lc, () => { _ΨΔ(() => { if (state.gold < lc) return; state.gold -= lc; tw.laserLvl++; tw.laserRange = 3 + tw.laserLvl * 0.5; sfxPlace(); }); refreshTT(tw); }); }
-    const uc = 30 + tw.level * 20; addTTB(a, '+Inc 💰' + uc, 'ttu', state.gold >= uc, () => { _ΨΔ(() => { if (state.gold < uc) return; state.gold -= uc; tw.level++; }); refreshTT(tw); });
+  if (isH) {
+    // Deposit Buttons
+    const canDepW = (state.resources.wood || 0) > 0;
+    const canDepS = (state.resources.stone || 0) > 0;
+    addTTB(a, '🪵+1', 'tts2', canDepW, () => { _ΨΔ(() => { state.resources.wood--; tw.dep.wood++; }); refreshTT(tw); });
+    addTTB(a, '🪵All', 'tts2', canDepW, () => { _ΨΔ(() => { const v = state.resources.wood; state.resources.wood -= v; tw.dep.wood += v; }); refreshTT(tw); });
+    addTTB(a, '🪨+1', 'tts2', canDepS, () => { _ΨΔ(() => { state.resources.stone--; tw.dep.stone++; }); refreshTT(tw); });
+    addTTB(a, '🪨All', 'tts2', canDepS, () => { _ΨΔ(() => { const v = state.resources.stone; state.resources.stone -= v; tw.dep.stone += v; }); refreshTT(tw); });
+
+    // Upgrade Logic
+    if (tw.level < 5) {
+      const upg = HOARD_UPGS[tw.level];
+      let afford = state.gold >= upg.c;
+      let costStr = '💰' + upg.c;
+      for (const [r, n] of Object.entries(upg.rs)) {
+        if ((state.resources[r] || 0) < n) afford = false;
+        costStr += ' ' + (RTYPES[r]?.icon || '') + n;
+      }
+      addTTB(a, '⬆' + costStr, 'ttu', afford, () => {
+        _ΨΔ(() => {
+          state.gold -= upg.c;
+          for (const [r, n] of Object.entries(upg.rs)) state.resources[r] -= n;
+          tw.level++;
+        });
+        refreshTT(tw);
+      });
+    }
   }
   if (tw.type === 'clam') { const uc = 35 + tw.level * 20; addTTB(a, '+Buff 💰' + uc, 'ttu', state.gold >= uc, () => { _ΨΔ(() => { if (state.gold < uc) return; state.gold -= uc; tw.level++; }); refreshTT(tw); }); }
   if (tw.type === 'beehive') {
@@ -254,7 +304,7 @@ export function showTT(tw, px, py) {
   if (tw.type === 'clown') { const uc = 40 + tw.level * 25; addTTB(a, '+Range 💰' + uc, 'ttu', state.gold >= uc, () => { _ΨΔ(() => { if (state.gold < uc) return; state.gold -= uc; tw.level++; tw.reverseRange = (tw.reverseRange || 3) + 0.5; tw.reverseDur = (tw.reverseDur || 80) + 20; }); refreshTT(tw); }); }
   if (tw.type === 'lab') { addTTB(a, '🔬 Research', 'tts2', !!state.research, () => { hideTT(); state.ttTower = null; showResearch(); }); }
   if (TD[tw.type]?.cat === 'tower' && TOWER_SKILLS[tw.type]) { addTTB(a, '⚡Skill', 'ttc', state.skillPts > 0, () => { showTowerSkill(tw); hideTT(); state.ttTower = null; }); }
-  const sv = Math.floor((isF ? 50 : def?.cost || 50) * 0.5);
+  const sv = Math.floor((def?.cost || 50) * 0.5);
   addTTB(a, 'Sell +💰' + sv, 'ttl', true, () => { _ΨΔ(() => doSell(tw, sv)); sell(); });
 
   const { W } = state;
@@ -360,13 +410,17 @@ export function renderBestiary() {
   const c = document.getElementById('beastC');
   if (!c) return;
   c.innerHTML = '';
-  for (const [k, d] of Object.entries(BESTIARY)) {
+  
+  const entries = { ...BESTIARY };
+
+  for (const [k, d] of Object.entries(entries)) {
     if (!state.bSen.has(k) && k !== 'sleepy_door') continue;
     
     // Determine locked presentation
     const lock = !state.bSen.has(k) && k === 'sleepy_door';
     
     const el = document.createElement('div');
+    el.id = 'beast-ent-' + k;
     el.className = 'beast-ent' + (d.boss ? ' boss' : '') + (lock ? ' locked' : '');
     el.innerHTML = '<div class="beast-ic">' + d.icon + '</div>'
       + '<div class="beast-txt">'
@@ -382,7 +436,8 @@ export function renderBestiary() {
 function syncPause() {
   const resOpen   = document.getElementById('resP')?.classList.contains('sh');
   const beastOpen = document.getElementById('beastP')?.classList.contains('sh');
-  state.paused = !!(resOpen || beastOpen);
+  const scribeOpen = document.getElementById('scribeP')?.style.display === 'flex';
+  state.paused = !!(resOpen || beastOpen || scribeOpen);
 }
 
 export function toggleBestiary() {
@@ -401,6 +456,24 @@ export function initBestiaryUI() {
   document.getElementById('beastBtn')?.addEventListener('click', toggleBestiary);
   document.getElementById('beastClose')?.addEventListener('click', () => {
     document.getElementById('beastP')?.classList.remove('sh');
+    syncPause();
+  });
+  
+  document.getElementById('scribeBtn')?.addEventListener('click', () => {
+    const sp = document.getElementById('scribeP');
+    if (!sp) return;
+    if (sp.style.display === 'none' || sp.style.display === '') {
+      sp.style.display = 'flex';
+      document.getElementById('scribeC').innerHTML = getScribeLogs(state) || "<div style='color:#94a3b8; font-style:italic;'>The journal is empty.</div>";
+    } else {
+      sp.style.display = 'none';
+    }
+    syncPause();
+  });
+
+  document.getElementById('scribeClose')?.addEventListener('click', () => {
+    const sp = document.getElementById('scribeP');
+    if (sp) sp.style.display = 'none';
     syncPause();
   });
 }
@@ -531,54 +604,83 @@ function renderResearch() {
   cx.restore();
 }
 
+function hideResTip() {
+  const tip = document.getElementById('resTip');
+  if (tip) { tip.classList.remove('sh'); tip.innerHTML = ''; }
+}
+
+function positionResTip(tip, nodeId) {
+  const pos = _rPos?.[nodeId];
+  const cv = document.getElementById('resCv');
+  if (!pos || !cv) return;
+  const nodeCSS_x = pos.x * _rCam.zoom + _rCam.panX;
+  const nodeCSS_y = pos.y * _rCam.zoom + _rCam.panY;
+  const nodeR_css = NODE_R * _rCam.zoom;
+  const TIP_W = 180, wrapW = cv.clientWidth, wrapH = cv.clientHeight;
+  let left = nodeCSS_x + nodeR_css + 8;
+  if (left + TIP_W > wrapW - 4) left = nodeCSS_x - nodeR_css - TIP_W - 8;
+  left = Math.max(4, left);
+  const h = tip.offsetHeight || 90;
+  const top = Math.max(4, Math.min(wrapH - h - 4, nodeCSS_y - h / 2));
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+}
+
 function showResearchDetail(id) {
   const nodes = state.research;
   if (!nodes || !nodes[id]) return;
   const node = nodes[id];
   const visible = isNodeVisible(node);
-  const det = document.getElementById('resDetail');
-  det.innerHTML = '';
+  const tip = document.getElementById('resTip');
+  if (!tip) return;
+
+  tip.innerHTML = '';
 
   if (!visible) {
     const s = document.createElement('span'); s.className = 'rdlocked'; s.textContent = '??? — conditions not yet met';
-    det.appendChild(s); return;
+    tip.appendChild(s);
+  } else {
+    const nm = document.createElement('span'); nm.className = 'rdname'; nm.textContent = node.icon + ' ' + node.name;
+    tip.appendChild(nm);
+
+    if (node.status === 'locked') {
+      const prereqNames = node.prereqs.map(p => nodes[p]?.name || p).join(', ');
+      const s = document.createElement('span'); s.className = 'rdlocked'; s.textContent = '🔒 ' + prereqNames;
+      tip.appendChild(s);
+    } else if (node.status === 'available') {
+      const c = document.createElement('span'); c.className = 'rdcost';
+      c.textContent = fmtCost(node.cost) + ' · ' + node.wavesTotal + 'w';
+      tip.appendChild(c);
+      const hasActive = Object.values(nodes).some(n => n.status === 'active');
+      const affordable = canAfford(node.cost);
+      const btn = document.createElement('button'); btn.className = 'rdbtn';
+      btn.textContent = 'Begin Research';
+      btn.disabled = hasActive || !affordable;
+      if (hasActive) btn.title = 'Research already in progress';
+      else if (!affordable) btn.title = 'Not enough resources';
+      btn.onclick = () => {
+        spendResources(node.cost);
+        node.status = 'active';
+        renderResearch();
+        showResearchDetail(id);
+        hudU();
+      };
+      tip.appendChild(btn);
+    } else if (node.status === 'active') {
+      const s = document.createElement('span'); s.className = 'rdprog';
+      s.textContent = '⏳ ' + node.wavesLeft + ' wave' + (node.wavesLeft !== 1 ? 's' : '') + ' left';
+      tip.appendChild(s);
+    } else if (node.status === 'complete') {
+      const s = document.createElement('span'); s.className = 'rddone';
+      s.textContent = '✓ ' + (UNLOCK_DESC[node.unlocks] || node.unlocks);
+      tip.appendChild(s);
+    }
   }
 
-  const nm = document.createElement('span'); nm.className = 'rdname'; nm.textContent = node.icon + ' ' + node.name;
-  det.appendChild(nm);
-
-  if (node.status === 'locked') {
-    const prereqNames = node.prereqs.map(p => nodes[p]?.name || p).join(', ');
-    const s = document.createElement('span'); s.className = 'rdlocked'; s.textContent = '🔒 Requires: ' + prereqNames;
-    det.appendChild(s);
-  } else if (node.status === 'available') {
-    const cost = document.createElement('span'); cost.className = 'rdcost';
-    cost.textContent = 'Cost: ' + fmtCost(node.cost) + '  ·  ' + node.wavesTotal + ' wave' + (node.wavesTotal > 1 ? 's' : '');
-    det.appendChild(cost);
-    const hasActive = Object.values(nodes).some(n => n.status === 'active');
-    const affordable = canAfford(node.cost);
-    const btn = document.createElement('button'); btn.className = 'rdbtn';
-    btn.textContent = 'Begin Research';
-    btn.disabled = hasActive || !affordable;
-    if (hasActive) btn.title = 'Research already in progress';
-    else if (!affordable) btn.title = 'Not enough resources';
-    btn.onclick = () => {
-      spendResources(node.cost);
-      node.status = 'active';
-      renderResearch();
-      showResearchDetail(id);
-      hudU();
-    };
-    det.appendChild(btn);
-  } else if (node.status === 'active') {
-    const s = document.createElement('span'); s.className = 'rdprog';
-    s.textContent = '⏳ In progress — ' + node.wavesLeft + ' wave' + (node.wavesLeft !== 1 ? 's' : '') + ' remaining';
-    det.appendChild(s);
-  } else if (node.status === 'complete') {
-    const s = document.createElement('span'); s.className = 'rddone';
-    s.textContent = '✓ Complete — ' + (UNLOCK_DESC[node.unlocks] || node.unlocks);
-    det.appendChild(s);
-  }
+  tip.classList.add('sh');
+  positionResTip(tip, id);
+  // Reposition after render so height is accurate
+  requestAnimationFrame(() => positionResTip(tip, id));
 }
 
 function fitResCv() {
@@ -597,7 +699,7 @@ export function showResearch() {
   if (!p) return;
   p.classList.add('sh');
   syncPause();
-  document.getElementById('resDetail').innerHTML = '<span class="rdhint">Click a node to see details</span>';
+  hideResTip();
   // Wait one frame for the panel to finish layout before measuring
   requestAnimationFrame(fitResCv);
 }
@@ -613,6 +715,7 @@ export function initResearchUI() {
 
   document.getElementById('resClose')?.addEventListener('click', () => {
     document.getElementById('resP')?.classList.remove('sh');
+    hideResTip();
     syncPause();
   });
 
@@ -663,7 +766,7 @@ export function initResearchUI() {
     const wasDrag = _drag.moved;
     _drag = null;
     if (wasDrag || !_rPos || !state.research) return;
-    // It was a tap/click — hit test in world coords
+    // Tap/click — hit test in world coords
     const rect = cv.getBoundingClientRect();
     const scaleX = cv.width / rect.width, scaleY = cv.height / rect.height;
     const sx = (e.clientX - rect.left) * scaleX, sy = (e.clientY - rect.top) * scaleY;
@@ -674,6 +777,7 @@ export function initResearchUI() {
         return;
       }
     }
+    hideResTip(); // clicked background
   });
 }
 

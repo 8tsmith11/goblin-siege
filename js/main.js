@@ -6,6 +6,7 @@ import { dropItem } from './resources.js';
 import { buildPath } from './path.js';
 
 bus.on('enemyDeath', e => {
+  state._kills = (state._kills || 0) + 1;
   let rew = e.rew; if (SKILLS.greed?.owned) rew += 3;
   state.gold += rew; sfxKill();
   for (let j = 0; j < (e.boss ? 18 : 6); j++) {
@@ -72,10 +73,11 @@ export const state = {
   spawnQueue: [], spawnTimer: 0,
   nodes: [], resources: {},
   research: null, researchUnlocks: {},
+  unlockedTowers: new Set(['squirrel', 'lion', 'penguin', 'lab']),
   sel: null, tab: 'towers',
   bSen: new Set(['sleepy_door']),
   volcanoActive: null, freezeActive: 0,
-  autoplay: false, paused: false,
+  autoplay: false, age: 'stone', paused: false,
   gameOver: false, started: false,
   ttTower: null,
   W: 0, H: 0, CELL: 0, COLS: 0, ROWS: 0, pathReady: false,
@@ -139,7 +141,7 @@ export function fIncome() {
   let t = 0;
   const mc = state.towers.filter(tw => tw.type === 'monkey').length;
   state.towers.forEach(tw => {
-    if (tw.type === 'factory') { let inc = 10 + tw.level * 8; if (mc > 0) inc = Math.floor(inc * (1 + mc * 0.25)); t += inc; }
+    if (tw.type === 'hoard') { /* No passive income per user request */ }
   });
   if (SKILLS.goldRush?.owned) t = Math.floor(t * 1.3);
   if (SKILLS.megaFactory?.owned) t = Math.floor(t * 1.5);
@@ -222,8 +224,17 @@ function update() {
   // Wave complete
   if (state.phase === 'active' && state.spawnQueue.length === 0 && state.enemies.length === 0) {
     if (state.volcanoActive) { state.volcanoActive.rds--; if (state.volcanoActive.rds <= 0) state.volcanoActive = null; }
-    const inc = fIncome(); state.gold += inc;
-    if (inc > 0) mkF(state.W / 2, state.H / 2, '+' + inc + ' 🏭', '#10b981');
+    let hInc = 0;
+    state.towers.forEach(tw => {
+      if (tw.type === 'hoard') {
+        const m = (tw.level > 0 ? [1.5, 2.0, 2.5, 3.0, 4.0][tw.level - 1] : 1.0);
+        const amt = Math.floor((tw.dep.wood + tw.dep.stone) * m);
+        hInc += amt;
+        tw.dep.wood = 0; tw.dep.stone = 0;
+      }
+    });
+    const inc = fIncome() + hInc; state.gold += inc;
+    if (inc > 0) mkF(state.W / 2, state.H / 2, '+' + inc + ' 🏺', '#10b981');
     if (state.wave % 3 === 0) { state.skillPts++; mkF(state.W / 2, state.H / 3, '+1 ⚡ Skill!', '#a78bfa'); }
     
     // Research tick
@@ -284,11 +295,14 @@ export function resetGame() {
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
     gameOver: false, started: false, pathReady: false, paused: false, sel: null, ttTower: null,
-    nodes: [], resources: {}, research: null, researchUnlocks: {}, bSen: new Set(['sleepy_door']),
+    nodes: [], resources: {}, research: null, researchUnlocks: {}, bSen: new Set(['sleepy_door']), age: 'stone',
     cam: { panX: 0, panY: 0, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
     _Σ: 0, _Ω: 0,
   });
+  import('./dev.js').then(m => { m.devMode(state, hudU, panelU); }).catch(() => {});
+
   state.pathSet.clear(); state.grid = [];
+  buildPath(); placeNodes();
   Object.values(SKILLS).forEach(s => s.owned = false);
   clearSave(); hideTT(); startGame();
 }

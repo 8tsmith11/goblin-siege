@@ -44,6 +44,7 @@ Support structures are placed on grass tiles like towers but don't fire projecti
 
 ## 🤖 AI Agent
 
+- **Age Locked**: This unit requires the **Iron Age** and cannot be built initially.
 - Every **300 ticks** (150 with **Robot Overclock** skill), auto-casts one of three abilities when 3+ enemies are on the field:
   - **Lightning** — zaps the highest-HP enemy for 20 + wave×5 damage and a short stun.
   - **Freeze** — freezes all enemies for 90 ticks (if not already frozen).

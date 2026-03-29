@@ -10,3 +10,6 @@ Thumbs.db
 
 # Dev servers (if used)
 node_modules/
+
+# Local Dev Mode
+js/dev.js

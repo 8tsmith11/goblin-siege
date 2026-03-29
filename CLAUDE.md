@@ -54,10 +54,13 @@ All shared mutable game state lives in a single `const state = {}` object export
 - `state.nodes` — array of active resource nodes `{ type, x, y, wobbleTick, cd }`
 - `state.resources` — plain object keyed by resource type e.g. `{ stone: 3, wood: 1, dust: 5 }`
 - `state.phase` — `'idle'` | `'prep'` | `'active'`; prep phase lasts 1800 ticks (30s) between waves
-- `state.paused` — `true` while the Research or Bestiary overlay is open; `update()` returns immediately
+- `state.age` — current age string: `'stone'` (more planned); used for age-gated logic
+- `state.paused` — `true` while Research, Bestiary, or Scribe's Journal overlay is open; `update()` returns immediately
+- `state.unlockedTowers` — `Set` of tower/building keys the player may place; starts as `['squirrel','lion','penguin','lab']`; expanded by research unlocks
 - `state.research` — the current run's research graph: object keyed by node id, each node has `status`, `wavesLeft`, `wavesTotal`, `cost`, `prereqs`, `unlocks`
-- `state.researchUnlocks` — plain object tracking applied research effects e.g. `{ monkeyCapacity: 1 }`
+- `state.researchUnlocks` — plain object for numeric research effects (e.g. future capacity bonuses)
 - `state.bSen` — `Set` of string keys for bestiary entries the player has seen (enemies spawned, towers built, events triggered)
+- `state._kills` — running kill counter incremented in the `enemyDeath` bus handler
 
 ## Towers vs Supports
 
@@ -67,7 +70,17 @@ The Lab (`cat:'support'`) is a singleton — only one may be placed per map. It 
 
 ## Research system
 
-On game start, `buildResearchGraph()` picks 4–5 random nodes from `VARIABLE_RESEARCH` and merges them with `FIXED_RESEARCH` into `state.research`. `basic_obs` is always the leftmost node; `the_forge` is forced to the rightmost column. `tickResearch()` is called at wave-end and decrements `wavesLeft` on the active node; when it reaches 0 the node completes and `applyUnlock()` fires. Only one research may be active at a time (Stone Age rule). The Research panel (`#resP`) supports zoom (scroll wheel, 0.4×–3×) and pan (drag) with graph-aware clamping.
+On game start, `buildResearchGraph()` picks 4–5 random nodes from `VARIABLE_RESEARCH` and merges them with `FIXED_RESEARCH` into `state.research`. The fixed tree root is `settlement` (unlocks Hoard + Lab); `the_forge` is forced to the rightmost column. `tickResearch()` is called at wave-end; when a node completes, `applyUnlock()` fires and handles two cases: (1) comma-separated tower keys (e.g. `'fish,seahorse'`) are added to `state.unlockedTowers`; (2) named effects like `lab_radius_+1` are applied directly to state. Only one research may be active at a time. The Research panel (`#resP`) supports zoom (scroll wheel, 0.4×–3×) and pan (drag) with graph-aware clamping; clicking a node shows a floating square tooltip (`#resTip`) positioned next to it.
+
+Most towers start **locked** — only squirrel, lion, penguin, and lab are available at game start. The panel should filter `TD` entries by `state.unlockedTowers` before showing them.
+
+## Hoard building
+
+The Hoard (`tw.type === 'hoard'`) accepts wood and stone deposits stored in `tw.dep.wood` / `tw.dep.stone`. At wave-end, deposits are converted to gold using a level-based multiplier (`1.0` base, up to `4.0` at level 5), then the deposits are zeroed. The Hoard is unlocked via the `settlement` research node.
+
+## Overlays that pause the game
+
+Research (`#resP`), Bestiary (`#beastP`), and Scribe's Journal (`#scribeP`) all call `syncPause()` on open/close. `syncPause()` sets `state.paused` based on whether any of the three panels has the `sh` class (or `display:flex` for scribeP). The Scribe's Journal (`📓` button, `#scribeBtn`) is a separate lore panel styled in purple.
 
 ## Code style
 

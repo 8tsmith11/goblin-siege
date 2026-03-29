@@ -15,6 +15,14 @@ export function toggleSound() {
   sOn = !sOn;
   document.getElementById('snd').textContent = sOn ? '🔊' : '🔇';
   if (MG) MG.gain.value = sOn ? 0.25 : 0;
+  if (window.bgm) {
+    window.bgm.volume = sOn ? 0.3 : 0;
+    if (sOn) {
+      if (!window.bgmWaiting && window.bgm.paused) window.bgm.play().catch(()=>{});
+    } else {
+      window.bgm.pause();
+    }
+  }
 }
 
 function pT(f, d, t, v) {
@@ -45,63 +53,23 @@ export function sfxHeal() { pT(440, 0.15, 'sine', 0.12); }
 export function sfxGoldBoost() { pT(660, 0.1, 'triangle', 0.1); }
 export function sfxRage() { pT(300, 0.2, 'sawtooth', 0.15); }
 
-// Retro fantasy music engine
-let mStep = 0;
-const SCALES = [[0,2,4,5,7,9,11],[0,2,3,5,7,8,10]];
-const BASS_PAT = [0,0,4,3,5,5,4,3];
-const MELODY_PAT = [7,9,11,12,11,9,7,5,4,5,7,9,7,5,4,2];
-const DRUM_PAT = [1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0];
-const ARPEG = [0,4,7,12,7,4];
+window.bgm = null;
+window.bgmWaiting = false;
 
 function startMusic() {
   if (mOn) return; mOn = true;
-  const int = 60000 / 110 / 4;
-  setInterval(() => {
-    if (!AC || !sOn) return;
-    const t = AC.currentTime, key = 48, sc = SCALES[1];
-    const beat16 = mStep % 16, bar = Math.floor(mStep / 16) % 4;
-    if (beat16 % 4 === 0) {
-      const bn = BASS_PAT[(bar * 2 + Math.floor(beat16 / 8)) % BASS_PAT.length];
-      const bf = midiToFreq(key + sc[bn % sc.length] - 12);
-      const o = AC.createOscillator(), g = AC.createGain();
-      o.type = 'triangle'; o.frequency.value = bf;
-      g.gain.setValueAtTime(0.045, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-      o.connect(g); g.connect(MG); o.start(t); o.stop(t + 0.3);
-    }
-    if (beat16 % 2 === 0) {
-      const mn = MELODY_PAT[(mStep / 2) % MELODY_PAT.length];
-      const mf = midiToFreq(key + 12 + sc[mn % sc.length] + (mn >= 7 ? 12 : 0));
-      const o = AC.createOscillator(), g = AC.createGain();
-      o.type = 'square'; o.frequency.value = mf;
-      g.gain.setValueAtTime(0.02, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-      o.connect(g); g.connect(MG); o.start(t); o.stop(t + 0.15);
-    }
-    {
-      const an = ARPEG[mStep % ARPEG.length];
-      const af = midiToFreq(key + 24 + sc[an % sc.length] + (an >= 7 ? 12 : 0));
-      const o = AC.createOscillator(), g = AC.createGain();
-      o.type = 'sine'; o.frequency.value = af;
-      g.gain.setValueAtTime(0.012, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-      o.connect(g); g.connect(MG); o.start(t); o.stop(t + 0.1);
-    }
-    if (DRUM_PAT[beat16]) {
-      const o = AC.createOscillator(), g = AC.createGain();
-      o.type = 'square'; o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(30, t + 0.06);
-      g.gain.setValueAtTime(0.06, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-      o.connect(g); g.connect(MG); o.start(t); o.stop(t + 0.08);
-    }
-    if (beat16 % 2 === 1) {
-      const buf = AC.createBuffer(1, AC.sampleRate * 0.02, AC.sampleRate);
-      const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.3;
-      const n = AC.createBufferSource(), g = AC.createGain();
-      n.buffer = buf; g.gain.setValueAtTime(0.015, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
-      n.connect(g); g.connect(MG); n.start(t);
-    }
-    mStep++;
-  }, int);
+  window.bgm = new Audio('assets/Breath_of_the_Cedar.mp3');
+  window.bgm.volume = sOn ? 0.3 : 0;
+  window.bgm.addEventListener('ended', () => {
+    window.bgmWaiting = true;
+    setTimeout(() => {
+      window.bgmWaiting = false;
+      window.bgm.currentTime = 0;
+      if (sOn) window.bgm.play().catch(()=>{});
+    }, 5000);
+  });
+  if (sOn) window.bgm.play().catch(()=>{});
 }
-
-function midiToFreq(n) { return 440 * Math.pow(2, (n - 69) / 12); }
 
 export function speak(text) {
   if (!sOn || !window.speechSynthesis) return;

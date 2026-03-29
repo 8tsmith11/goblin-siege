@@ -2,6 +2,8 @@ export const TD = {
   squirrel: { name:'Thoughtful Squirrel', icon:'🐿️', clr:'#8b5cf6', cost:40,  dmg:8,  range:3.2, rate:50, pClr:'#a78bfa', pSpd:4,   splash:0,   slow:0,  target:'weakest', cat:'tower', desc:'Long range · targets weakest enemy' },
   lion:     { name:'Rash Lion',           icon:'🦁',  clr:'#ef4444', cost:60,  dmg:15, range:2.0, rate:25, pClr:'#f87171', pSpd:6,   splash:0,   slow:0,  target:'first',   cat:'tower', desc:'Very fast · high single-target DPS' },
   penguin:  { name:'Ambitious Penguin',   icon:'🐧',  clr:'#06b6d4', cost:55,  dmg:5,  range:2.8, rate:35, pClr:'#67e8f9', pSpd:3,   splash:0,   slow:.4, target:'first',   cat:'tower', desc:'Slows enemies on hit' },
+  lab:      { name:'Lab',                icon:'🧪', clr:'#a78bfa', cost:120, cat:'support', obsRange: 3, desc:'Gathers Dust 🔮 from enemies slain within 3 tiles' },
+  hoard:    { name:'Hoard Pile',         icon:'🏺', clr:'#10b981', cost:60, cat:'support', desc:'Generates gold. Somebody has to do it.' },
   fish:     { name:'Arrogant Fish',       icon:'🐟',  clr:'#f59e0b', cost:75,  dmg:12, range:2.5, rate:60, pClr:'#fcd34d', pSpd:3.5, splash:1.2, slow:0,  target:'first',   cat:'tower', desc:'Splash damage · hits nearby enemies' },
   seahorse: { name:'Insightful Seahorse', icon:'🦑',  clr:'#ec4899', cost:65,  dmg:6,  range:3.5, rate:40, pClr:'#f472b6', pSpd:3,   splash:0,   slow:0,  target:'strongest',pierce:3, cat:'tower', desc:'Piercing shots · passes through enemies' },
   lizard:   { name:'Abhorrent Lizard',    icon:'🦎',  clr:'#84cc16', cost:85,  dmg:45, range:2.5, rate:65, pClr:'#a3e635', pSpd:5,   splash:1.0, slow:0,  target:'first',   speedUp:true, voiceLine:"I DESPISE YOU ALL!", cat:'tower', desc:'Massive damage · splash · speeds up enemies' },
@@ -9,9 +11,8 @@ export const TD = {
   clam:     { name:'Intuitive Clam',     icon:'🐚', clr:'#14b8a6', cost:80,  cat:'support', buffRange:2,  buffDmg:1.5, buffRate:.85, buffDesc:'+50% DMG, -15% CD to nearby', desc:'Buffs nearby towers: +50% DMG, -15% cooldown' },
   beehive:  { name:'Beehive',            icon:'🐝', clr:'#eab308', cost:90,  cat:'support', beeCount:3,  beeDmg:4,    beeRange:3,   beeRate:30,  desc:'Deploys bees that swarm and sting enemies' },
   clown:    { name:'Magnificent Clown',  icon:'🤡', clr:'#f472b6', cost:100, cat:'support', reverseRange:3, reverseDur:80, reverseCD:200, desc:'Reverses nearby enemy movement direction' },
-  monkey:   { name:'Resourceful Monkey', icon:'🐵', clr:'#fb923c', cost:70,  cat:'support', factoryBuff:true, desc:'Boosts all factory income by +25% each' },
-  robot:    { name:'AI Agent',           icon:'🤖', clr:'#38bdf8', cost:110, cat:'support', autoSpell:true,  desc:'Automatically casts spells during waves' },
-  lab:      { name:'Lab',                icon:'🧪', clr:'#a78bfa', cost:120, cat:'support', obsRange: 3, desc:'Gathers Dust 🔮 from enemies slain within 3 tiles' },
+  monkey:   { name:'Monkey Hut',         icon:'🛖', clr:'#fb923c', cost:70, resCost: { stone: 8, wood: 8 }, cat:'support', factoryBuff:true, desc:'Boosts all factory income by +25% each' },
+  robot:    { name:'AI Agent',           icon:'🤖', clr:'#38bdf8', cost:110, cat:'support', autoSpell:true, reqAge: 'iron', desc:'Automatically casts spells during waves' },
 };
 
 export const TOWER_SKILLS = {

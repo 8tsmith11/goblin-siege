@@ -46,22 +46,7 @@ export const BESTIARY = {
     stats: "HP: High | Speed: Below Average | Reward: 9g"
   },
   
-  // Future Unimplemented Enemies - Stubbed into Bestiary
-  pilgrim: {
-    name: "Lonesome Pilgrim", icon: "🕯️", cls: "🟣 Unknown", clr: "#a855f7",
-    desc: "It carries a light. Not a weapon — a light. It walks more slowly than other beasts, and it does not deviate from the path. When killed, the light remains. The light heals other creatures that pass near it. I find myself reluctant to document this. The light is warm. The creature was warm. This is not relevant to defense operations. I'm including it anyway.",
-    stats: "HP: Above Average | Speed: Low | Reward: 5g"
-  },
-  digger: {
-    name: "Hungry Digger", icon: "⛏️", cls: "🔴 Hostile", clr: "#ef4444",
-    desc: "A burrowing variant. Circumvents the first barrier on its path by digging beneath it. Specializes in undermining fortifications. Not particularly dangerous on its own, but its tunnels weaken the ground — subsequent creatures move faster over disturbed earth.",
-    stats: "HP: Below Average | Speed: Average | Reward: 6g"
-  },
-  geologist: {
-    name: "Curious Geologist", icon: "🪨", cls: "🟡 Neutral", clr: "#eab308",
-    desc: "Classification note: this beast does not approach the castle. It walks to resource nodes and extracts material, then departs via the nearest exit. It is, in effect, mining. It is doing what we do. The only difference is that we arrived first. Classified as Neutral because it poses no direct threat to the castle — only to our supply lines. Whether this distinction matters is above my clearance.",
-    stats: "HP: Standard | Speed: Below Average | Reward: 7g"
-  },
+
 
   // Bosses
   herald: {
@@ -88,7 +73,7 @@ export const BESTIARY = {
   // Allied Towers / Entities
   squirrel: {
     name: "Thoughtful Squirrel", icon: "🐿️", cls: "🟢 Allied", clr: "#22c55e",
-    desc: "A trained beast that throws stones at hostiles. Prefers to target the weakest enemy in range — whether this reflects strategy or mercy is debated. Long range. Patient. Has been observed watching the path during prep phase with an expression that I am not qualified to interpret.",
+    desc: "A trained creature that throws stones at the beasts. Prefers to target the weakest enemy. Long range. Patient. Has been observed watching the path during prep phase with an expression that I am not qualified to interpret.",
     stats: ""
   },
   lizard: {
@@ -101,16 +86,16 @@ export const BESTIARY = {
     desc: "Our workforce. Capable of carrying materials, boosting production, and following basic instructions. They work without complaint. They work with enthusiasm. I have begun to wonder whether the enthusiasm is authentic or performed. This is not a useful line of inquiry.",
     stats: ""
   },
+  clown: {
+    name: "Magnificent Clown", icon: "🤡", cls: "🟢 Allied", clr: "#22c55e",
+    desc: "It reverses them. They walk forward, and then they walk backward, and then they walk forward again. The Clown finds this hilarious.",
+    stats: ""
+  },
 
   // NPCs
   pip: {
     name: "Pip", icon: "🧳", cls: "🟡 Neutral", clr: "#eab308",
     desc: "A merchant. Appears during preparation phases. Sells tools, resources, and information. Origin unknown. Clientele unknown (he references 'other customers' but will not elaborate). The quality of his goods is consistent. The source of his goods is not documented. I have chosen not to investigate.",
-    stats: ""
-  },
-  scribe: {
-    name: "The Scribe", icon: "📓", cls: "🟣 Unknown", clr: "#a855f7",
-    desc: "A journal that writes itself. The handwriting is consistent across entries but does not match any known personnel. Entries appear between waves, sometimes between sessions. The journal was not requisitioned. It was present when operations began. The inside cover reads 'Version 847.' I do not know what this means. I do not know who writes in it. I suspect I am being documented as thoroughly as I document others.",
     stats: ""
   },
   
@@ -121,3 +106,34 @@ export const BESTIARY = {
     stats: ""
   }
 };
+
+export function getScribeLogs(state) {
+  const w = state.wave || 0;
+  let logs = [];
+  if (w >= 1) logs.push({ w: 'Wave 1', t: 'I should start writing again. One more time.' });
+  if (w >= 3) {
+    const hasLab = state.towers?.some(t => t.type === 'lab') || state.bSen?.has('lab');
+    if (w >= 5 && !hasLab) logs.push({ w: 'Wave 3', t: 'No lab. Interesting.' });
+    else if (hasLab) logs.push({ w: 'Wave 3', t: 'They built a lab.' });
+  }
+  if (w >= 5) logs.push({ w: 'Wave 5', t: "The first boss. They survived. They always survive the first one." });
+  if (w >= 8) logs.push({ w: 'Wave 8', t: "One walked backward. In Version 412 the backward walker stopped and faced the camera. That hasn't happened yet." });
+  if (w >= 10) logs.push({ w: 'Wave 10', t: "They're building faster now. It's beautiful in a way. The way an avalanche is beautiful." });
+  if (w >= 12) logs.push({ w: 'Wave 12', t: "The ground shook. It always shakes at this point." });
+  if (w >= 15) logs.push({ w: 'Wave 15', t: "The fog came. You can't fight fog." });
+  if (w >= 18) logs.push({ w: 'Wave 18', t: 'They translated the first sounds. Give it time.' });
+  if (w >= 20) logs.push({ w: 'Wave 20', t: `The Ledger appeared. The number was ${(state._kills||0)}. I wrote it down.` });
+  if (w >= 22) logs.push({ w: 'Wave 22', t: "New material on the surface. They can't use it yet. They will." });
+  if (w >= 25) logs.push({ w: 'Wave 25', t: "The age is ending. Whatever comes next will be louder. It's always louder." });
+
+  if (logs.length === 0) return "";
+  
+  const html = logs.map(l => 
+    `<div style="display:flex; gap:16px; padding-bottom:12px; border-bottom:1px solid rgba(168,85,247,0.2);">
+      <div style="min-width:75px; font-weight:bold; color:#c084fc;">${l.w}</div>
+      <div style="flex:1; line-height:1.4;">${l.t}</div>
+    </div>`
+  ).join('');
+
+  return `<div class='scribe-logs' style='margin-top:4px; padding:12px; background:rgba(0,0,0,0.2); border-left:3px solid #a855f7; border-radius:4px; font-family:"Courier New", Courier, monospace; font-size:14px; color:#e2e8f0; display:flex; flex-direction:column; gap:12px;'>${html}</div>`;
+}

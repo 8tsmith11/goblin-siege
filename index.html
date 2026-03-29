@@ -29,7 +29,6 @@
     <div id="tabs">
       <div class="tab on" data-t="towers">Towers</div>
       <div class="tab" data-t="spells">Spells</div>
-      <div class="tab" data-t="factory">Factory</div>
       <div class="tab" data-t="skills">Skill Tree</div>
     </div>
     <div id="pc"></div>
@@ -67,16 +66,28 @@
       <h2>🧪 Research Web</h2>
       <button id="resClose">✕</button>
     </div>
-    <div id="resCvWrap"><canvas id="resCv"></canvas></div>
-    <div id="resDetail"><span class="rdhint">Click a node to see details</span></div>
+    <div id="resCvWrap">
+      <canvas id="resCv"></canvas>
+      <div id="resTip"></div>
+    </div>
   </div>
   <div id="beastBtn">📖</div>
+  <div id="scribeBtn" title="The Scribe's Journal">📓</div>
+  
   <div id="beastP">
     <div id="beastH">
       <h2>📖 Bestiary</h2>
       <button id="beastClose">✕</button>
     </div>
     <div id="beastC"></div>
+  </div>
+
+  <div id="scribeP">
+    <div id="scribeH">
+      <h2><span>📓 The Scribe's Journal</span> <span style="font-size:12px; opacity:0.6; font-family:sans-serif;">Version 847</span></h2>
+      <button id="scribeClose">✕</button>
+    </div>
+    <div id="scribeC"></div>
   </div>
 </div>
 <script type="module" src="js/main.js"></script>
