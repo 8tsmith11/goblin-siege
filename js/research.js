@@ -3,28 +3,29 @@ import { state } from './main.js';
 import { TD } from './data.js';
 
 export const FIXED_RESEARCH = {
-  settlement:  { name:'Settl. Basics',      icon:'🏘️',  cost:{wood:10,stone:10}, waves:1, unlocks:'hoard,lab',           prereqs:[] },
-  basic_obs:   { name:'Basic Observation',   icon:'👁️',  cost:{dust:10},          waves:1, unlocks:'lab_radius_+1',      prereqs:['settlement'] },
-  pattern_rec: { name:'Pattern Recognition', icon:'📜',  cost:{dust:30,stone:5},  waves:3, unlocks:'goblin_translations', prereqs:['basic_obs'] },
-  structural:  { name:'Structural Analysis', icon:'🪨',  cost:{dust:20,wood:5},   waves:2, unlocks:'tower_age_counters',  prereqs:['basic_obs'] },
-  aquatic:     { name:'Aquatic Studies',     icon:'🦑',  cost:{dust:25,stone:15}, waves:3, unlocks:'fish,seahorse',     prereqs:['structural'] },
-  avian:       { name:'Avian Mastery',       icon:'🦩',  cost:{dust:35,wood:20},  waves:4, unlocks:'heron',              prereqs:['aquatic'] },
-  the_forge:   { name:'The Forge',           icon:'⚒️',  cost:{dust:50,stone:20}, waves:5, unlocks:'steam_age',           prereqs:['pattern_rec','structural'] },
-  automation:  { name:'AI Automation',       icon:'🤖',  cost:{dust:60,stone:40}, waves:5, unlocks:'robot',              prereqs:['the_forge'] },
+  settlement:  { name:'Settl. Basics',      icon:'🏘️',  cost:{wood:10,stone:10}, waves:1, unlocks:'hoard,lab',           prereqs:[],                       desc:'Establishes the foundations of your settlement.',         tooltip:'Unlocks the Hoard Pile for storing resources and the Lab for gathering Dust.' },
+  basic_obs:   { name:'Basic Observation',  icon:'👁️',  cost:{dust:10},          waves:1, unlocks:'lab_radius_+1',      prereqs:['settlement'],           desc:'Trains observers to watch enemy movements more closely.',  tooltip:'Expands the Lab\'s observation radius by 1 tile, collecting Dust from a wider area.' },
+  pattern_rec: { name:'Pattern Recognition',icon:'📜',  cost:{dust:30,stone:5},  waves:3, unlocks:'goblin_translations', prereqs:['basic_obs'],            desc:'Deciphers the goblin tongue from battlefield recordings.',  tooltip:'Unlocks Goblin Translations lore entries in the Bestiary.' },
+  structural:  { name:'Structural Analysis',icon:'🪨',  cost:{dust:20,wood:5},   waves:2, unlocks:'tower_age_counters',  prereqs:['basic_obs'],            desc:'Studies how goblins wear down fortifications over time.',   tooltip:'Displays age counters on towers, showing how many waves they have survived.' },
+  aquatic:     { name:'Aquatic Studies',    icon:'🦑',  cost:{dust:25,stone:15}, waves:3, unlocks:'fish,seahorse',       prereqs:['structural'],           desc:'Catalogues creatures lurking in the coastal shallows.',     tooltip:'Unlocks the Fish tower (fast attack) and the Seahorse tower (stealth detection).' },
+  avian:       { name:'Avian Mastery',      icon:'🦩',  cost:{dust:35,wood:20},  waves:4, unlocks:'heron',              prereqs:['aquatic'],              desc:'Trains a great heron as a precision aerial striker.',       tooltip:'Unlocks the Heron tower, a high-damage single-target sniper.' },
+  the_forge:   { name:'The Forge',          icon:'⚒️',  cost:{dust:50,stone:20}, waves:5, unlocks:'steam_age',           prereqs:['pattern_rec','structural'], desc:'Harnesses steam and iron to push beyond the stone age.', tooltip:'Advances the settlement to the Steam Age, enabling industrial buildings.' },
+  automation:  { name:'AI Automation',      icon:'🤖',  cost:{dust:60,stone:40}, waves:5, unlocks:'robot',              prereqs:['the_forge'],            desc:'Constructs a mechanical agent that never sleeps.',          tooltip:'Unlocks the Robot support, which automatically casts spells during waves.' },
 };
 
 export const VARIABLE_RESEARCH = [
-  { id:'animal_husb',   name:'Animal Husbandry',     icon:'🐵', cost:{dust:15,wood:10},  waves:2, unlocks:'monkey,stockpile',    prereqs:['basic_obs'] },
-  { id:'monkey_training', name:'Monkey Training',    icon:'🐒', cost:{dust:20,wood:10},  waves:2, unlocks:'monkey_capacity_+1',   prereqs:['animal_husb'] },
-  { id:'beekeeping',    name:'Apiculture',           icon:'🐝', cost:{dust:20,wood:15},  waves:2, unlocks:'beehive',            prereqs:['basic_obs'] },
-  { id:'reptilian',     name:'Reptilian Lore',       icon:'🦎', cost:{dust:30,stone:20}, waves:3, unlocks:'lizard',             prereqs:['structural'] },
-  { id:'entertainment', name:'Magnificent Show',     icon:'🤡', cost:{dust:25,stone:10}, waves:3, unlocks:'clown',              prereqs:['pattern_rec'] },
-  { id:'crude_optics',  name:'Crude Optics',          icon:'🔭', cost:{dust:20,flint:3},  waves:2, unlocks:'lab_radius_+2',      prereqs:['basic_obs'] },
-  { id:'fortification', name:'Fortification',         icon:'🏰', cost:{dust:25,stone:10}, waves:3, unlocks:'tower_wall',         prereqs:['structural'] },
-  { id:'bonfire',       name:'Bonfire Theory',        icon:'🔥', cost:{dust:20,wood:8},   waves:2, unlocks:'tower_campfire',     prereqs:['basic_obs'] },
-  { id:'cartography',   name:'Prim. Cartography',     icon:'🗺️', cost:{dust:25,flint:5},  waves:3, unlocks:'reveal_5_tiles',     prereqs:['basic_obs'] },
-  { id:'fermentation',  name:'Fermentation',          icon:'🍺', cost:{dust:15,wood:5},   waves:2, unlocks:'consumable_ale',     prereqs:['basic_obs'] },
-  { id:'tremor_study',  name:'Tremor Analysis',       icon:'🌋', cost:{dust:15},          waves:2, unlocks:'lore_tremor',         prereqs:['basic_obs'], hidden:true, trigger:'tremor_event_seen' },
+  { id:'animal_husb',     name:'Animal Husbandry',  icon:'🐵', cost:{dust:15,wood:10},  waves:2, unlocks:'monkey,stockpile',   prereqs:['basic_obs'],    desc:'Domesticates local primates for resource logistics.',       tooltip:'Unlocks the Monkey Hut (assigns monkeys to gather, courier, or boost) and the Stockpile.' },
+  { id:'stockpile_iface', name:'Resource Interface', icon:'📬', cost:{dust:25,wood:10},  waves:3, unlocks:'stockpile_interface', prereqs:['animal_husb'],  desc:'Reroutes the stockpile directly into the settlement ledger.', tooltip:'Unlocks Interface Mode on Stockpiles — deposited items go straight to your inventory.' },
+  { id:'monkey_training', name:'Monkey Training',   icon:'🐒', cost:{dust:20,wood:10},  waves:2, unlocks:'monkey_capacity_+1', prereqs:['animal_husb'],  desc:'Refines training regimens to house an extra monkey.',       tooltip:'Each existing and future Monkey Hut gains +1 monkey capacity.' },
+  { id:'beekeeping',      name:'Apiculture',        icon:'🐝', cost:{dust:20,wood:15},  waves:2, unlocks:'beehive',            prereqs:['basic_obs'],    desc:'Cultivates hives whose swarms harry goblin raiders.',       tooltip:'Unlocks the Beehive building, which sends bees to sting and slow nearby enemies.' },
+  { id:'reptilian',       name:'Reptilian Lore',    icon:'🦎', cost:{dust:30,stone:20}, waves:3, unlocks:'lizard',             prereqs:['structural'],   desc:'Bonds with a vicious lizard that haunts the stone walls.',  tooltip:'Unlocks the Lizard tower, a close-range area-damage attacker.' },
+  { id:'entertainment',   name:'Magnificent Show',  icon:'🤡', cost:{dust:25,stone:10}, waves:3, unlocks:'clown',              prereqs:['pattern_rec'],  desc:'A charismatic performer who disorients enemy formations.',   tooltip:'Unlocks the Clown support, which periodically reverses enemy movement direction.' },
+  { id:'crude_optics',    name:'Crude Optics',      icon:'🔭', cost:{dust:20,flint:3},  waves:2, unlocks:'lab_radius_+2',     prereqs:['basic_obs'],    desc:'Grinds rough lenses that dramatically extend Lab range.',   tooltip:'Expands the Lab\'s observation radius by 2 tiles.' },
+  { id:'fortification',   name:'Fortification',     icon:'🏰', cost:{dust:25,stone:10}, waves:3, unlocks:'tower_wall',        prereqs:['structural'],   desc:'Designs reinforced stone barriers to funnel enemy paths.',  tooltip:'Unlocks the Wall tower, a cheap placeable obstacle with no attack.' },
+  { id:'bonfire',         name:'Bonfire Theory',    icon:'🔥', cost:{dust:20,wood:8},   waves:2, unlocks:'tower_campfire',    prereqs:['basic_obs'],    desc:'Studies the morale effect of light and warmth on defenders.',tooltip:'Unlocks the Campfire tower, which buffs the fire rate of adjacent towers.' },
+  { id:'cartography',     name:'Prim. Cartography', icon:'🗺️', cost:{dust:25,flint:5},  waves:3, unlocks:'reveal_5_tiles',    prereqs:['basic_obs'],    desc:'Charts the surrounding terrain to expose hidden routes.',   tooltip:'Immediately reveals 5 random map tiles, potentially uncovering resource nodes.' },
+  { id:'fermentation',    name:'Fermentation',      icon:'🍺', cost:{dust:15,wood:5},   waves:2, unlocks:'consumable_ale',    prereqs:['basic_obs'],    desc:'Brews a potent ale to bolster defenders between waves.',    tooltip:'Unlocks a consumable Ale item that temporarily boosts gold income.' },
+  { id:'tremor_study',    name:'Tremor Analysis',   icon:'🌋', cost:{dust:15},          waves:2, unlocks:'lore_tremor',        prereqs:['basic_obs'],    desc:'Documents the rumbling patterns beneath the settlement.',   tooltip:'Unlocks a secret lore entry about the tremors in the Bestiary.', hidden:true, trigger:'tremor_event_seen' },
 ];
 
 export const UNLOCK_DESC = {
@@ -33,6 +34,7 @@ export const UNLOCK_DESC = {
   'heron':              'Clever Heron tower',
   'robot':              'AI Agent (Robot) tower',
   'monkey,stockpile':   'Monkey Hut & Stockpile',
+  'stockpile_interface':'Stockpile Interface Mode',
   'beehive':            'Beehive building',
   'lizard':             'Abhorrent Lizard tower',
   'clown':              'Magnificent Clown tower',
@@ -49,6 +51,17 @@ export const UNLOCK_DESC = {
   'consumable_ale':     'Consumable: Ale',
   'lore_tremor':        'Tremor lore entry',
 };
+
+// Evaluate a game-state prerequisite string against current state.
+export function checkGamePrereq(node) {
+  const gp = node.gamePrereq;
+  if (!gp) return true;
+  if (gp === 'has_lab')    return (state.towers || []).some(t => t.type === 'lab');
+  if (gp === 'has_hoard')  return (state.towers || []).some(t => t.type === 'hoard');
+  if (gp === 'has_monkey') return (state.towers || []).some(t => t.type === 'monkey');
+  if (gp.startsWith('wave>=')) return (state.wave || 0) >= parseInt(gp.slice(6));
+  return true;
+}
 
 export function buildResearchGraph() {
   const pool = [...VARIABLE_RESEARCH].sort(() => Math.random() - 0.5);
@@ -141,6 +154,10 @@ export function applyUnlock(node) {
           });
         }
       }
+      break;
+    }
+    case 'stockpile_interface': {
+      state.researchUnlocks.stockpile_interface = true;
       break;
     }
   }

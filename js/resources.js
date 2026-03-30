@@ -110,13 +110,26 @@ export function dropItem(cx, cy, type) {
   // Tower-aware routing: deliver directly to tower if applicable
   const tw = cell.content;
   if (tw?.type === 'stockpile') {
-    state.resources[type] = (state.resources[type] || 0) + 1;
-    const rt = RTYPES[type]; if (rt) mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr);
-    return true;
+    if (tw.mode === 'interface') {
+      state.resources[type] = (state.resources[type] || 0) + 1;
+      const rt = RTYPES[type]; if (rt) mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr);
+      return true;
+    }
+    // Storage mode — deposit into slots (dust not accepted)
+    if (type === 'dust') return false;
+    if (!tw.slots) tw.slots = [null, null, null, null];
+    const cap = 64 << (tw.level || 0);
+    for (let i = 0; i < tw.slots.length; i++) {
+      const s = tw.slots[i];
+      if (s && s.type === type && s.count < cap) { s.count++; const rt = RTYPES[type]; if (rt) mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr); return true; }
+    }
+    for (let i = 0; i < tw.slots.length; i++) {
+      if (!tw.slots[i]) { tw.slots[i] = { type, count: 1 }; const rt = RTYPES[type]; if (rt) mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr); return true; }
+    }
+    return false; // all slots full
   }
   if (tw?.type === 'hoard' && (type === 'wood' || type === 'stone')) {
     tw.dep[type] = (tw.dep[type] || 0) + 1;
-    const rt = RTYPES[type]; if (rt) mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr);
     return true;
   }
   // Default: place as ground stack

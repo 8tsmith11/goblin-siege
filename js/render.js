@@ -1,5 +1,5 @@
 'use strict';
-import { state } from './main.js';
+import { state, PAD } from './main.js';
 import { TD } from './data.js';
 import { renderNodes, renderStacks, RTYPES } from './resources.js';
 
@@ -25,54 +25,58 @@ function updateBgCache() {
   const { CELL, COLS, ROWS, path, grid } = state;
   if (!grid || !grid.length) return;
   if (!bgCache) bgCache = document.createElement('canvas');
-  bgCache.width = COLS * CELL;
-  bgCache.height = ROWS * CELL;
+  bgCache.width = (COLS + 2 * PAD) * CELL;
+  bgCache.height = (ROWS + 2 * PAD) * CELL;
   const bcx = bgCache.getContext('2d');
-  
+
   const grassReady = _imgGrassL.complete && _imgGrassL.naturalWidth && _imgGrassD.complete && _imgGrassD.naturalWidth;
+
+  // Fill entire canvas (including forest padding) with dark grass
+  for (let r = 0; r < ROWS + 2 * PAD; r++) for (let c = 0; c < COLS + 2 * PAD; c++) {
+    if (grassReady) bcx.drawImage(_imgGrassD, c * CELL, r * CELL, CELL, CELL);
+    else { bcx.fillStyle = '#131929'; bcx.fillRect(c * CELL, r * CELL, CELL, CELL); }
+  }
+
+  // Draw buildable grid cells at offset (PAD, PAD) inside the bgCache
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const bx = (c + PAD) * CELL, by = (r + PAD) * CELL;
     const isWater = grid[r][c].type === 'water';
     if (isWater) {
-       bcx.fillStyle = '#162d66'; bcx.fillRect(c * CELL, r * CELL, CELL, CELL);
+       bcx.fillStyle = '#162d66'; bcx.fillRect(bx, by, CELL, CELL);
        bcx.strokeStyle = 'rgba(255,255,255,0.1)'; bcx.lineWidth = 1;
-       bcx.beginPath(); bcx.moveTo(c * CELL + 2, r * CELL + CELL / 2); bcx.bezierCurveTo(c*CELL+CELL/4, r*CELL+CELL/4, c*CELL+3*CELL/4, r*CELL+3*CELL/4, c*CELL+CELL-2, r*CELL+CELL/2); bcx.stroke();
+       bcx.beginPath(); bcx.moveTo(bx + 2, by + CELL / 2); bcx.bezierCurveTo(bx+CELL/4, by+CELL/4, bx+3*CELL/4, by+3*CELL/4, bx+CELL-2, by+CELL/2); bcx.stroke();
     } else if (grassReady) {
-      bcx.drawImage((r + c) % 2 === 0 ? _imgGrassD : _imgGrassL, c * CELL, r * CELL, CELL, CELL);
+      bcx.drawImage((r + c) % 2 === 0 ? _imgGrassD : _imgGrassL, bx, by, CELL, CELL);
     } else {
       bcx.fillStyle = (r + c) % 2 === 0 ? '#131929' : '#151b2b';
-      bcx.fillRect(c * CELL, r * CELL, CELL, CELL);
+      bcx.fillRect(bx, by, CELL, CELL);
     }
   }
 
-  // Path
+  // Path (offset by PAD)
   path.forEach(p => {
-    if (_imgPath.complete && _imgPath.naturalWidth) {
-      bcx.drawImage(_imgPath, p.x * CELL, p.y * CELL, CELL, CELL);
-    } else {
-      bcx.fillStyle = '#3a2518'; bcx.fillRect(p.x * CELL, p.y * CELL, CELL, CELL);
-    }
+    const bx = (p.x + PAD) * CELL, by = (p.y + PAD) * CELL;
+    if (_imgPath.complete && _imgPath.naturalWidth) bcx.drawImage(_imgPath, bx, by, CELL, CELL);
+    else { bcx.fillStyle = '#3a2518'; bcx.fillRect(bx, by, CELL, CELL); }
   });
 
-  // Visual Path Extension
+  // Visual Path Extension — stretch to the edges of the forest
   if (path.length > 0) {
     const start = path[0], end = path[path.length - 1];
     bcx.fillStyle = '#3a2518';
-    // Extend Left
-    for (let x = start.x - 1; x >= -2; x--) {
-      if (_imgPath.complete && _imgPath.naturalWidth) bcx.drawImage(_imgPath, x * CELL, start.y * CELL, CELL, CELL);
-      else bcx.fillRect(x * CELL, start.y * CELL, CELL, CELL);
-    }
-    // Extend Right
-    for (let x = end.x + 1; x <= COLS + 2; x++) {
-      if (_imgPath.complete && _imgPath.naturalWidth) bcx.drawImage(_imgPath, x * CELL, end.y * CELL, CELL, CELL);
-      else bcx.fillRect(x * CELL, end.y * CELL, CELL, CELL);
+    // Extend Right through forest to right edge
+    for (let x = end.x + 1; x < COLS + PAD; x++) {
+      const bx = (x + PAD) * CELL, by = (end.y + PAD) * CELL;
+      if (_imgPath.complete && _imgPath.naturalWidth) bcx.drawImage(_imgPath, bx, by, CELL, CELL);
+      else bcx.fillRect(bx, by, CELL, CELL);
     }
   }
 
   if (path.length > 2) {
-    bcx.fillStyle = 'rgba(34,197,94,.12)'; bcx.fillRect(path[0].x * CELL, path[0].y * CELL, CELL, CELL);
+    const sx = (path[0].x + PAD) * CELL, sy = (path[0].y + PAD) * CELL;
+    bcx.fillStyle = 'rgba(34,197,94,.12)'; bcx.fillRect(sx, sy, CELL, CELL);
     bcx.font = Math.floor(CELL * 0.4) + 'px serif'; bcx.textAlign = 'center'; bcx.textBaseline = 'middle';
-    bcx.fillStyle = '#22c55e77'; bcx.fillText('▶', path[0].x * CELL + CELL / 2, path[0].y * CELL + CELL / 2);
+    bcx.fillStyle = '#22c55e77'; bcx.fillText('▶', sx + CELL / 2, sy + CELL / 2);
   }
 }
 
@@ -87,11 +91,28 @@ export function render() {
   cx.setTransform(cam.zoom, 0, 0, cam.zoom, -cam.panX * cam.zoom, -cam.panY * cam.zoom);
   
   if (!bgCache && state.pathReady && CELL > 0) updateBgCache();
-  if (bgCache) cx.drawImage(bgCache, 0, 0);
+  if (bgCache) cx.drawImage(bgCache, -PAD * CELL, -PAD * CELL);
 
-  // Resource Nodes & Stacks
+  // Monkey hut tile highlights
+  if (ttTower?.type === 'monkey' && ttTower.monkeys) {
+    for (const mk of ttTower.monkeys) {
+      if (mk.role === 'courier' && mk.cfg.from) {
+        cx.strokeStyle = 'rgba(59,130,246,.9)'; cx.lineWidth = 2;
+        cx.strokeRect(mk.cfg.from.x * CELL + 2, mk.cfg.from.y * CELL + 2, CELL - 4, CELL - 4);
+      }
+      if ((mk.role === 'gatherer' || mk.role === 'courier') && mk.cfg.dest) {
+        cx.strokeStyle = 'rgba(244,63,94,.9)'; cx.lineWidth = 2;
+        cx.strokeRect(mk.cfg.dest.x * CELL + 2, mk.cfg.dest.y * CELL + 2, CELL - 4, CELL - 4);
+      }
+      if (mk.role === 'booster' && mk.cfg.boost) {
+        cx.strokeStyle = 'rgba(244,63,94,.9)'; cx.lineWidth = 2;
+        cx.strokeRect(mk.cfg.boost.x * CELL + 2, mk.cfg.boost.y * CELL + 2, CELL - 4, CELL - 4);
+      }
+    }
+  }
+
+  // Resource Nodes
   renderNodes();
-  renderStacks();
 
   // Volcano
   if (volcanoActive) {
@@ -106,22 +127,23 @@ export function render() {
   // Towers
   towers.forEach(tw => {
     const px = tw.x * CELL + CELL / 2, py = tw.y * CELL + CELL / 2;
-    if (ttTower === tw && tw.range) {
-      cx.beginPath(); cx.arc(px, py, tw.range * CELL, 0, Math.PI * 2);
-      cx.fillStyle = 'rgba(244,63,94,.04)'; cx.fill();
-      cx.strokeStyle = 'rgba(244,63,94,.15)'; cx.lineWidth = 1; cx.stroke();
+    if (ttTower === tw && (tw.range || tw.obsRange)) {
+      const r = (tw.obsRange || tw.range) * CELL;
+      cx.beginPath(); cx.arc(px, py, r, 0, Math.PI * 2);
+      cx.fillStyle = 'rgba(244,63,94,.08)'; cx.fill();
+      cx.strokeStyle = 'rgba(244,63,94,.7)'; cx.lineWidth = 2; cx.stroke();
     }
 
-    if (tw.type === 'clam') {
+    if (ttTower === tw && tw.type === 'clam') {
       const br = (tw.level + 1) * 1.5;
       cx.beginPath(); cx.arc(px, py, br * CELL, 0, Math.PI * 2);
-      cx.fillStyle = 'rgba(94,234,212,.05)'; cx.fill();
-      cx.strokeStyle = 'rgba(94,234,212,.12)'; cx.lineWidth = 1; cx.stroke();
+      cx.fillStyle = 'rgba(244,63,94,.08)'; cx.fill();
+      cx.strokeStyle = 'rgba(244,63,94,.7)'; cx.lineWidth = 2; cx.stroke();
     }
-    if (tw.type === 'clown') {
+    if (ttTower === tw && tw.type === 'clown') {
       cx.beginPath(); cx.arc(px, py, (tw.reverseRange || 3) * CELL, 0, Math.PI * 2);
-      cx.fillStyle = 'rgba(244,114,182,.04)'; cx.fill();
-      cx.strokeStyle = 'rgba(244,114,182,.1)'; cx.lineWidth = 1; cx.stroke();
+      cx.fillStyle = 'rgba(244,63,94,.08)'; cx.fill();
+      cx.strokeStyle = 'rgba(244,63,94,.7)'; cx.lineWidth = 2; cx.stroke();
     }
     const isH = tw.type === 'hoard', def = TD[tw.type];
     const tx = Math.round(tw.x * CELL), ty = Math.round(tw.y * CELL);
@@ -136,11 +158,7 @@ export function render() {
       cx.fillText(isH ? '🏺' : (def?.icon || '?'), tx + CELL / 2, ty + CELL / 2);
     }
     if (tw.level > 0) { cx.font = 'bold ' + Math.floor(CELL * 0.16) + 'px Anybody,sans-serif'; cx.fillStyle = '#fbbf24'; cx.fillText('★'.repeat(Math.min(tw.level, 5)), tx + CELL / 2, ty + CELL - 2); }
-    if (tw._monkeyBoosted) {
-      cx.font = Math.floor(CELL * 0.22) + 'px serif';
-      cx.textAlign = 'right'; cx.textBaseline = 'top';
-      cx.fillText('🐵', tx + CELL - 1, ty + 1);
-    }
+
   });
 
   // Castle (end of path) — drawn oversized so it overlaps surrounding tiles
@@ -158,11 +176,14 @@ export function render() {
     if (ticks % 4 === 0) state.particles.push({ x: bee.x, y: bee.y, vx: 0, vy: 0, life: 8, clr: '#fbbf2444', sz: 1.5 });
   });
 
+  // Stacks (rendered above towers)
+  renderStacks();
+
   // Monkeys
   for (const tw of towers) {
     if (tw.type !== 'monkey' || !tw.monkeys) continue;
     for (const mk of tw.monkeys) {
-      if (cam.zoom >= 0.75) {
+      if (cam.zoom >= 0.75 && mk.st !== 'boosting') {
         cx.font = Math.floor(CELL * 0.5) + 'px serif';
         cx.textAlign = 'center'; cx.textBaseline = 'middle';
         cx.fillText('🐵', mk.x, mk.y);

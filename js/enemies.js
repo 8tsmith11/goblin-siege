@@ -16,7 +16,7 @@ export function mkE(et, bHP, bSpd) {
 
 export function genWave(w) {
   const q = [], isBoss = w % 5 === 0 && w > 0;
-  const bHP = (25 + w * 20 + Math.pow(w, 1.5) * 5) * (1 + w * 0.04), bSpd = 0.55 + Math.min(w * 0.035, 0.9);
+  const bHP = 50 * (1 + w * 0.04), bSpd = 0.5 + Math.min(w * 0.02, 0.5);
   if (isBoss) {
     state.bSen.add('boss');
     q.push({
@@ -35,7 +35,7 @@ export function genWave(w) {
     if (w >= 4) avail.push('berserker'); if (w >= 5) avail.push('shaman');
     if (w >= 6) avail.push('stealth'); if (w >= 7) avail.push('healer');
     if (w >= 8) avail.push('swarm'); if (w >= 9) avail.push('shield');
-    const cnt = Math.floor(6 + w * 2.2 + Math.pow(w, 1.1));
+    const cnt = Math.floor(5 + w * 1.5 + Math.pow(w, 0.95));
     for (let i = 0; i < cnt; i++) {
       const tp = avail[Math.floor(Math.random() * avail.length)];
       state.bSen.add(tp);

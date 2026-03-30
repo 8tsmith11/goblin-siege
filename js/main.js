@@ -37,6 +37,7 @@ bus.on('enemyDeath', e => {
   }
 });
 import { buildResearchGraph, tickResearch } from './research.js';
+import { TOWER_SKILLS } from './data.js';
 import { updateEnemies, genWave } from './enemies.js';
 import { updateTowers } from './towers.js';
 import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser } from './support.js';
@@ -44,7 +45,7 @@ import { updateMonkeys } from './monkeys.js';
 import { render, invalidateBg } from './render.js';
 import { triggerEvent } from './events.js';
 import { sfxBoss, sfxWave, sfxKill, sfxHit } from './audio.js';
-import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch } from './ui.js';
+import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, initInventoryUI } from './ui.js';
 import { initInput, updateCameraKeys } from './input.js';
 import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
 import { placeNodes, updateNodes } from './resources.js';
@@ -52,6 +53,7 @@ import { placeNodes, updateNodes } from './resources.js';
 export const VERSION = 'v1.1';
 export const WORLD_COLS = 20;
 export const WORLD_ROWS = 12;
+export const PAD = 6; // forest padding tiles around the buildable grid
 
 // ─── Protected state internals ───────────────────────────────────────────────
 // _gg/_ll: actual gold / lives stored in module scope.
@@ -71,11 +73,12 @@ export const state = {
   spawnQueue: [], spawnTimer: 0,
   nodes: [], resources: {},
   research: null, researchUnlocks: {},
+  inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null] },
   unlockedTowers: new Set(['squirrel', 'lion', 'penguin', 'lab']),
   sel: null, tab: 'towers',
   bSen: new Set(['sleepy_door']),
   volcanoActive: null, freezeActive: 0,
-  autoplay: false, age: 'stone', paused: false,
+  age: 'stone', paused: false,
   gameOver: false, started: false,
   ttTower: null,
   W: 0, H: 0, CELL: 0, COLS: 0, ROWS: 0, pathReady: false,
@@ -120,9 +123,10 @@ export function measure() {
 export function clampCam() {
   const { cam, CELL, W, H } = state;
   const worldW = WORLD_COLS * CELL, worldH = WORLD_ROWS * CELL;
+  const pad = PAD * CELL;
   const viewW = W / cam.zoom, viewH = H / cam.zoom;
-  cam.panX = viewW >= worldW ? -(viewW - worldW) / 2 : Math.max(0, Math.min(cam.panX, worldW - viewW));
-  cam.panY = viewH >= worldH ? -(viewH - worldH) / 2 : Math.max(0, Math.min(cam.panY, worldH - viewH));
+  cam.panX = viewW >= worldW ? -(viewW - worldW) / 2 : Math.max(-pad, Math.min(cam.panX, worldW + pad - viewW));
+  cam.panY = viewH >= worldH ? -(viewH - worldH) / 2 : Math.max(-pad, Math.min(cam.panY, worldH + pad - viewH));
 }
 
 export function minZoom() {
@@ -176,7 +180,7 @@ function update() {
       e.x = state.path[0].x; e.y = state.path[0].y; e.pi = 0;
       state.enemies.push(e);
       if (e.boss) { sfxBoss(); showBL(e.line); }
-      state.spawnTimer = Math.max(6, 22 - state.wave * 0.7);
+      state.spawnTimer = Math.max(8, 28 - state.wave * 0.6);
     }
   }
 
@@ -235,6 +239,7 @@ function update() {
         const amt = Math.floor((tw.dep.wood + tw.dep.stone) * m);
         hInc += amt;
         tw.dep.wood = 0; tw.dep.stone = 0;
+        if (amt > 0) mkGain(tw.x * state.CELL + state.CELL / 2, tw.y * state.CELL + state.CELL / 2, '💰', amt, '#fbbf24');
       }
     });
     const inc = fIncome() + hInc; state.gold += inc;
@@ -248,7 +253,6 @@ function update() {
     autoSave();
     if (Math.random() < 0.4 && state.wave > 1) setTimeout(() => triggerEvent(), 500);
     showBanner('✅ Wave ' + state.wave + ' Complete!');
-    if (state.autoplay) { startWave(); return; }
     hudU(); panelU();
     return;
   }
@@ -282,26 +286,25 @@ export function startWave() {
 }
 
 export function startPrep() {
-  if (state.autoplay) { startWave(); return; }
   state.phase = 'prep'; state.prepTicks = 1800;
   invalidateBg();
   clampCam(); hideTT(); hudU(); panelU();
 }
 
 export function resetGame() {
-  import('./dev.js').then(m => { m.devMode(state, hudU, panelU); }).catch(() => {});
   _ΨΔ(() => { _wG(200); _wL(20); });
   Object.assign(state, {
     wave: 0, phase: 'idle', ticks: 0, prepTicks: 0,
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
     gameOver: false, started: false, pathReady: false, paused: false, sel: null, ttTower: null,
-    nodes: [], resources: {}, research: null, researchUnlocks: {}, bSen: new Set(['sleepy_door']), age: 'stone',
+    nodes: [], resources: {}, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin','lab']), bSen: new Set(['sleepy_door']), age: 'stone',
+    inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null] },
     cam: { panX: 0, panY: 0, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
     _Σ: 0, _Ω: 0,
   });
-  import('./dev.js').then(m => { m.devMode(state, hudU, panelU); }).catch(() => {});
 
+  for (const tree of Object.values(TOWER_SKILLS)) for (const s of Object.values(tree)) s.owned = false;
   state.pathSet.clear(); state.grid = [];
   initSz();
   clearSave(); hideTT(); startGame();
@@ -326,11 +329,6 @@ function loop() {
 
 /* ═══ Boot ═══ */
 document.getElementById('snd').addEventListener('click', () => import('./audio.js').then(m => m.toggleSound()));
-document.getElementById('autoBtn').addEventListener('click', () => {
-  state.autoplay = !state.autoplay;
-  document.getElementById('autoBtn').classList.toggle('on', state.autoplay);
-  if (state.autoplay && state.phase === 'prep') startWave();
-});
 document.getElementById('rstBtn').addEventListener('click', () => {
   showOv('🔄 Restart?', '<label id="exportLbl"><input type="checkbox" id="chkExport" checked> Export save file before restarting</label>', 'Restart', false, () => {
     if (document.getElementById('chkExport')?.checked) exportSave();
@@ -339,7 +337,8 @@ document.getElementById('rstBtn').addEventListener('click', () => {
 });
 document.getElementById('goBtn').addEventListener('click', () => { if (state.phase === 'prep') startWave(); });
 initTabs(); initInput(); measure();
-initSaveUI(); initBestiaryUI(); initResearchUI();
-const _sv = hasSave() && loadGame(); 
+initSaveUI(); initBestiaryUI(); initResearchUI(); initInventoryUI();
+const _sv = hasSave() && loadGame();
 initSz(); panelU(); hudU(); loop();
-showWelcome(VERSION, _sv ? null : startGame);
+showWelcome(VERSION, _sv ? startPrep : startGame);
+import('./dev.js').then(m => m.initDev(state, hudU)).catch(() => {});

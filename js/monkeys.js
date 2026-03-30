@@ -83,22 +83,26 @@ function takeFromCell(gx, gy, filter) {
   return null;
 }
 
-// Take 1 item from state.resources, respecting filter. Returns { type } or null.
-function takeFromResources(filter) {
-  const res = state.resources || {};
-  const keys = filter ? [filter] : Object.keys(res);
-  for (const k of keys) {
-    if ((res[k] || 0) > 0) {
-      res[k]--;
-      return { type: k };
-    }
+// Take 1 item from a stockpile's slots, respecting filter. Returns { type } or null.
+function takeFromStockpileSlots(gx, gy, filter) {
+  const sp = state.grid[gy]?.[gx]?.content;
+  if (!sp?.slots) return null;
+  for (let i = 0; i < sp.slots.length; i++) {
+    const s = sp.slots[i];
+    if (!s || s.count <= 0) continue;
+    if (filter && s.type !== filter) continue;
+    const type = s.type;
+    s.count--;
+    if (s.count === 0) sp.slots[i] = null;
+    return { type };
   }
   return null;
 }
 
-// Check if the tower at (gx, gy) is a stockpile
-function isStockpile(gx, gy) {
-  return state.grid[gy]?.[gx]?.content?.type === 'stockpile';
+// Check if the tower at (gx, gy) is a stockpile in storage mode
+function isStorageStockpile(gx, gy) {
+  const tw = state.grid[gy]?.[gx]?.content;
+  return tw?.type === 'stockpile' && tw?.mode !== 'interface';
 }
 
 // Check if a tile can accept an item of the given type
@@ -106,7 +110,12 @@ function destCanAccept(gx, gy, type) {
   const cell = state.grid[gy]?.[gx];
   if (!cell) return false;
   const tw = cell.content;
-  if (tw?.type === 'stockpile') return true;
+  if (tw?.type === 'stockpile') {
+    if (tw.mode === 'interface') return true;
+    if (!tw.slots) return true;
+    const cap = 64 << (tw.level || 0);
+    return tw.slots.some(s => !s) || tw.slots.some(s => s && (!type || s.type === type) && s.count < cap);
+  }
   if (tw?.type === 'hoard') return !type || type === 'wood' || type === 'stone';
   const stacks = cell.stacks;
   if (!stacks) return true;
@@ -198,16 +207,43 @@ function tickCourier(mk, tw) {
   if (!cfg.from || !cfg.dest || !inRange(tw, cfg.from.x, cfg.from.y) || !inRange(tw, cfg.dest.x, cfg.dest.y)) { tickIdle(mk, tw); return; }
 
   if (mk.st === 'idle') {
-    if (mk.waitCd > 0) { mk.waitCd--; tickIdle(mk, tw); return; }
+    // Travel to from tile
     const c = cellCenter(cfg.from.x, cfg.from.y);
     mk.targetX = c.x; mk.targetY = c.y;
     mk.st = 'moving';
+  } else if (mk.st === 'at_from') {
+    // Orbit from tile, retry pickup periodically
+    mk.patrolAngle += IDLE_SPEED;
+    const c = cellCenter(cfg.from.x, cfg.from.y);
+    const tx = c.x + Math.cos(mk.patrolAngle) * IDLE_RADIUS * state.CELL;
+    const ty = c.y + Math.sin(mk.patrolAngle) * IDLE_RADIUS * state.CELL;
+    moveTo(mk, tx, ty);
+    if (mk.waitCd > 0) { mk.waitCd--; return; }
+    // Try pickup
+    let item = null;
+    if (isStorageStockpile(cfg.from.x, cfg.from.y)) {
+      item = takeFromStockpileSlots(cfg.from.x, cfg.from.y, cfg.filter);
+      if (item) {
+        const rt = RTYPES[item.type];
+        if (rt) mkGain(cfg.from.x * state.CELL + state.CELL / 2, cfg.from.y * state.CELL + state.CELL / 2, rt.icon, -1, '#ef4444');
+      }
+    } else {
+      item = takeFromCell(cfg.from.x, cfg.from.y, cfg.filter);
+    }
+    if (item) {
+      mk.carrying = item;
+      const dest = cellCenter(cfg.dest.x, cfg.dest.y);
+      mk.targetX = dest.x; mk.targetY = dest.y;
+      mk.st = 'carrying';
+    } else {
+      mk.waitCd = 30;
+    }
   } else if (mk.st === 'moving') {
     if (moveTo(mk, mk.targetX, mk.targetY)) {
-      // Arrived at source — pick up
+      // Arrived at from tile — try pickup
       let item = null;
-      if (isStockpile(cfg.from.x, cfg.from.y)) {
-        item = takeFromResources(cfg.filter);
+      if (isStorageStockpile(cfg.from.x, cfg.from.y)) {
+        item = takeFromStockpileSlots(cfg.from.x, cfg.from.y, cfg.filter);
         if (item) {
           const rt = RTYPES[item.type];
           if (rt) mkGain(cfg.from.x * state.CELL + state.CELL / 2, cfg.from.y * state.CELL + state.CELL / 2, rt.icon, -1, '#ef4444');
@@ -221,8 +257,8 @@ function tickCourier(mk, tw) {
         mk.targetX = c.x; mk.targetY = c.y;
         mk.st = 'carrying';
       } else {
-        mk.waitCd = 30; // nothing available, wait before retrying
-        mk.st = 'idle';
+        mk.waitCd = 30;
+        mk.st = 'at_from';
       }
     }
   } else if (mk.st === 'carrying') {
@@ -249,12 +285,16 @@ function tickBooster(mk, tw) {
   }
 
   const c = cellCenter(cfg.boost.x, cfg.boost.y);
-  if (mk.st !== 'boosting') {
+  if (mk.st !== 'boosting' && mk.st !== 'going_boost') {
     mk.targetX = c.x; mk.targetY = c.y;
-    mk.st = 'boosting';
+    mk.st = 'going_boost';
   }
-  // Stay at target (drift back if nudged)
-  moveTo(mk, c.x, c.y);
+  if (mk.st === 'going_boost') {
+    if (moveTo(mk, c.x, c.y)) mk.st = 'boosting';
+  } else {
+    // Stay at target (drift back if nudged)
+    moveTo(mk, c.x, c.y);
+  }
 }
 
 // ─── Booster effects ─────────────────────────────────────────────────────────

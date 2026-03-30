@@ -1,8 +1,8 @@
 'use strict';
-import { state, _ΨΔ, clampCam } from './main.js';
+import { state, _ΨΔ, clampCam, startPrep } from './main.js';
 import { TOWER_SKILLS } from './data.js';
 import { spawnBees } from './support.js';
-import { hudU, panelU, showBanner, showOv, hideTT } from './ui.js';
+import { hudU, panelU, showBanner, showOv, hideOv, hideTT } from './ui.js';
 import { reinitMonkeys } from './monkeys.js';
 
 // ─── Encode / decode ──────────────────────────────────────────────────────────
@@ -132,7 +132,6 @@ export function loadGame() {
   const d = _unpack(localStorage.getItem(_K));
   if (!d || d._ν !== 1) { localStorage.removeItem(_K); return false; }
   _apply(d);
-  showOv('⚔️ Continue', 'Wave ' + d._w + ' complete — build & prepare.', 'Next Wave', false);
   return true;
 }
 
@@ -171,7 +170,8 @@ export function importSave() {
       if (!d || d._ν !== 1) { showBanner('⚠️ Invalid save file'); return; }
       localStorage.setItem(_K, stored);
       _apply(d);
-      showOv('📂 Save Imported', 'Wave ' + d._w + ' — build & prepare.', 'Next Wave', false);
+      hideOv(); startPrep();
+      showBanner('📂 Wave ' + d._w + ' imported');
     };
     reader.readAsText(file);
   };

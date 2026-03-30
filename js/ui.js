@@ -3,7 +3,7 @@ import { state, startGame, startWave, startPrep, resetGame, _ΨΔ } from './main
 import { RTYPES, dropItem } from './resources.js';
 import { TD, TOWER_SKILLS } from './data.js';
 import { spawnBees } from './support.js';
-import { canAfford, spendResources, layoutNodes, UNLOCK_DESC } from './research.js';
+import { canAfford, spendResources, layoutNodes, UNLOCK_DESC, checkGamePrereq, applyUnlock, refreshStatuses } from './research.js';
 import { SP, castSpell } from './spells.js';
 import { renderSk, showTowerSkill } from './skills.js';
 import { BESTIARY, getScribeLogs } from './bestiary.js';
@@ -29,12 +29,11 @@ export function hudU() {
     wlEl.textContent = phase === 'active' ? 'Wave ' + wave + ' · ' + l + ' left' : 'Wave ' + wave;
   }
 
-  document.getElementById('hI').textContent = '+' + state.fIncome();
-  const goBtn = document.getElementById('goBtn');
+const goBtn = document.getElementById('goBtn');
   if (goBtn) goBtn.style.display = phase === 'prep' ? '' : 'none';
   const hRes = document.getElementById('hRes');
   if (hRes) hRes.innerHTML = Object.entries(RTYPES).map(([k, r]) =>
-    `<div class="hi">${r.icon}<span class="v" style="color:${r.clr}">${state.resources[k] || 0}</span></div>`
+    `<div class="hi" data-res="${k}">${r.icon}<span class="v" style="color:${r.clr}">${state.resources[k] || 0}</span></div>`
   ).join('');
 }
 
@@ -228,13 +227,131 @@ export function mkGain(px, py, icon, amount, clr) {
   p.el.style.color = clr;
   p.el.textContent = (amount >= 0 ? '+' : '') + amount + '\u202f' + icon;
   p.el.style.display = 'block';
-  p.tmr = setTimeout(() => { p.el.style.display = 'none'; fltGPool.push(p); }, 950);
+  p.tmr = setTimeout(() => { p.el.style.display = 'none'; fltGPool.push(p); }, 1900);
 }
 
 export function hideTT() { document.getElementById('tt').style.display = 'none'; }
 
 let _ttPx = 0, _ttPy = 0;
 function refreshTT(tw) { hudU(); panelU(); showTT(tw, _ttPx, _ttPy); }
+
+function buildStockpileTT(tw, a) {
+  if (!tw.slots) tw.slots = [null, null, null, null];
+  const ifaceUnlocked = !!state.researchUnlocks?.stockpile_interface;
+  const isInterface = tw.mode === 'interface';
+  const cap = 64 << (tw.level || 0);
+
+  if (!isInterface) {
+    // Slot grid
+    const slotWrap = document.createElement('div');
+    slotWrap.style.cssText = 'width:100%;display:flex;flex-direction:column;gap:3px';
+    for (let i = 0; i < 4; i++) {
+      const slot = tw.slots[i];
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:5px;background:#0d1525;border-radius:4px;padding:3px 6px;min-height:24px';
+      if (slot) {
+        const rt = RTYPES[slot.type];
+        const lbl = document.createElement('span');
+        lbl.style.cssText = 'flex:1;font-size:11px;color:#e2e8f0';
+        lbl.textContent = (rt?.icon || slot.type) + ' ' + slot.count + ' / ' + cap;
+        row.appendChild(lbl);
+        const take1Btn = document.createElement('button');
+        take1Btn.className = 'ttb tts2';
+        take1Btn.style.cssText = 'min-width:28px;padding:2px 4px;font-size:9px;flex-shrink:0';
+        take1Btn.textContent = '+1';
+        take1Btn.onclick = e => {
+          e.stopPropagation();
+          const s = tw.slots[i]; if (!s) return;
+          state.resources[s.type] = (state.resources[s.type] || 0) + 1;
+          s.count--;
+          if (s.count <= 0) tw.slots[i] = null;
+          refreshTT(tw);
+        };
+        row.appendChild(take1Btn);
+        const takeAllBtn = document.createElement('button');
+        takeAllBtn.className = 'ttb tts2';
+        takeAllBtn.style.cssText = 'min-width:36px;padding:2px 4px;font-size:9px;flex-shrink:0';
+        takeAllBtn.textContent = 'All';
+        takeAllBtn.onclick = e => {
+          e.stopPropagation();
+          const s = tw.slots[i]; if (!s) return;
+          state.resources[s.type] = (state.resources[s.type] || 0) + s.count;
+          tw.slots[i] = null;
+          refreshTT(tw);
+        };
+        row.appendChild(takeAllBtn);
+      } else {
+        const lbl = document.createElement('span');
+        lbl.style.cssText = 'flex:1;font-size:10px;color:#374151;font-style:italic';
+        lbl.textContent = 'Empty';
+        row.appendChild(lbl);
+      }
+      slotWrap.appendChild(row);
+    }
+    a.appendChild(slotWrap);
+
+    // Manual deposit row — resources player currently has
+    const res = state.resources || {};
+    const depKeys = Object.keys(RTYPES).filter(k => k !== 'dust' && (res[k] || 0) > 0);
+    if (depKeys.length > 0) {
+      const depRow = document.createElement('div');
+      depRow.style.cssText = 'width:100%;display:flex;flex-wrap:wrap;gap:3px;margin-top:2px';
+      for (const k of depKeys) {
+        const rt = RTYPES[k];
+        const hasRoom = tw.slots.some(s => !s) || tw.slots.some(s => s?.type === k && s.count < cap);
+        const btn = document.createElement('button');
+        btn.className = 'ttb tts2' + (hasRoom ? '' : ' off2');
+        btn.style.cssText = 'font-size:9px;padding:2px 5px';
+        btn.textContent = (rt?.icon || k) + ' +1';
+        btn.onclick = e => {
+          e.stopPropagation();
+          if ((state.resources[k] || 0) <= 0) return;
+          const cap2 = 64 << (tw.level || 0);
+          for (let si = 0; si < tw.slots.length; si++) {
+            const s = tw.slots[si];
+            if (s && s.type === k && s.count < cap2) { s.count++; state.resources[k]--; refreshTT(tw); return; }
+          }
+          for (let si = 0; si < tw.slots.length; si++) {
+            if (!tw.slots[si]) { tw.slots[si] = { type: k, count: 1 }; state.resources[k]--; refreshTT(tw); return; }
+          }
+        };
+        depRow.appendChild(btn);
+      }
+      a.appendChild(depRow);
+    }
+
+    // Upgrade capacity (max level 3)
+    if (tw.level < 3) {
+      const uc = 30 + tw.level * 40;
+      addTTB(a, '⬆ Capacity 💰' + uc, 'ttu', state.gold >= uc, () => {
+        _ΨΔ(() => { if (state.gold < uc) return; state.gold -= uc; tw.level++; });
+        refreshTT(tw);
+      });
+    }
+  }
+
+  // Mode toggle (only after research)
+  if (ifaceUnlocked) {
+    if (!isInterface) {
+      addTTB(a, '→ Interface Mode', 'tts2', true, () => {
+        const hasItems = tw.slots?.some(s => s && s.count > 0);
+        if (hasItems) {
+          showOv('Switch to Interface Mode?', 'Stored items will be destroyed. Continue?', 'Switch', false, () => {
+            tw.mode = 'interface'; tw.slots = [null, null, null, null];
+            hideOv(); refreshTT(tw);
+          }, () => hideOv());
+        } else {
+          tw.mode = 'interface'; refreshTT(tw);
+        }
+      });
+    } else {
+      addTTB(a, '→ Storage Mode', 'tts2', true, () => {
+        tw.mode = 'storage'; tw.slots = [null, null, null, null];
+        refreshTT(tw);
+      });
+    }
+  }
+}
 
 export function showTT(tw, px, py) {
   _ttPx = px; _ttPy = py;
@@ -252,7 +369,15 @@ export function showTT(tw, px, py) {
   else if (tw.type === 'beehive') { s = 'Bees: ' + (tw.beeCount || 3) + ' · Bee DMG: ' + (tw.beeDmg || 4); }
   else if (tw.type === 'clown') { s = 'Reverse rng:' + (tw.reverseRange || 3) + ' dur:' + (tw.reverseDur || 80); }
   else if (tw.type === 'monkey') { const mc = tw.monkeys?.length ?? 0; s = mc + ' Monke' + (mc === 1 ? 'y' : 'ys') + ' · Range:' + (tw.range || 4); }
-  else if (tw.type === 'stockpile') { s = 'Monkeys deposit/withdraw resources here'; }
+  else if (tw.type === 'stockpile') {
+    const ifaceUnlocked = !!state.researchUnlocks?.stockpile_interface;
+    const cap = 64 << (tw.level || 0);
+    if (ifaceUnlocked) {
+      s = tw.mode === 'interface' ? 'Interface · Items → Inventory' : 'Storage · ' + cap + '/slot · 4 slots';
+    } else {
+      s = 'Resource storage · ' + cap + '/slot · 4 slots';
+    }
+  }
   else if (tw.type === 'robot') { s = 'Auto-casts spells!'; }
   else if (tw.type === 'lab') { s = 'Observation radius: ' + (tw.obsRange || 3) + ' · Gathers 🔮 Dust'; }
   else { s = 'DMG:' + tw.dmg + ' RNG:' + tw.range?.toFixed(1) + ' CD:' + tw.rate; if (tw.slow > 0) s += ' Slow:' + Math.floor(tw.slow * 100) + '%'; if (tw.splash > 0) s += ' Spl:' + tw.splash.toFixed(1); if (tw.pierce) s += ' Prc:' + tw.pierce; if (tw.chain) s += ' Chn:' + tw.chain; if (tw._buffed) s += ' 🐚'; }
@@ -260,9 +385,12 @@ export function showTT(tw, px, py) {
 
   const a = document.getElementById('ttA'); a.innerHTML = '';
   const sell = () => { hideTT(); state.ttTower = null; hudU(); panelU(); };
-  if (TD[tw.type]?.cat === 'tower') {
-    const upg = genUpg(TD[tw.type], tw.level);
-    addTTB(a, upg.l + ' 💰' + upg.c, 'ttu', state.gold >= upg.c, () => { _ΨΔ(() => doUpg(tw, upg)); refreshTT(tw); });
+  {
+    const upgs = TOWER_UPGS[tw.type];
+    if (upgs && tw.level < upgs.length) {
+      const upg = upgs[tw.level];
+      addTTB(a, upg.name + '  💰' + upg.cost, 'ttu', state.gold >= upg.cost, () => { _ΨΔ(() => doUpg(tw)); refreshTT(tw); });
+    }
   }
   if (isH) {
     // Deposit Buttons
@@ -292,22 +420,17 @@ export function showTT(tw, px, py) {
       });
     }
   }
-  if (tw.type === 'clam') { const uc = 35 + tw.level * 20; addTTB(a, '+Buff 💰' + uc, 'ttu', state.gold >= uc, () => { _ΨΔ(() => { if (state.gold < uc) return; state.gold -= uc; tw.level++; }); refreshTT(tw); }); }
-  if (tw.type === 'beehive') {
-    const uc = 40 + tw.level * 25;
-    addTTB(a, '+Bees 💰' + uc, 'ttu', state.gold >= uc, () => { _ΨΔ(() => { if (state.gold < uc) return; state.gold -= uc; tw.level++; tw.beeCount = (tw.beeCount || 3) + 1; tw.beeDmg = (tw.beeDmg || 4) + 2; spawnBees(tw); }); refreshTT(tw); });
-  }
-  if (tw.type === 'clown') { const uc = 40 + tw.level * 25; addTTB(a, '+Range 💰' + uc, 'ttu', state.gold >= uc, () => { _ΨΔ(() => { if (state.gold < uc) return; state.gold -= uc; tw.level++; tw.reverseRange = (tw.reverseRange || 3) + 0.5; tw.reverseDur = (tw.reverseDur || 80) + 20; }); refreshTT(tw); }); }
+  if (tw.type === 'stockpile') buildStockpileTT(tw, a);
   if (tw.type === 'lab') { addTTB(a, '🔬 Research', 'tts2', !!state.research, () => { hideTT(); state.ttTower = null; showResearch(); }); }
-  if (tw.type === 'monkey') {
-    const uc = 80 + tw.level * 60;
-    addTTB(a, '+Range 💰' + uc, 'ttu', state.gold >= uc, () => { _ΨΔ(() => { if (state.gold < uc) return; state.gold -= uc; tw.level++; tw.range = (tw.range || 4) + 1; }); refreshTT(tw); });
-    buildMonkeyTT(tw, a);
-  }
+  if (tw.type === 'monkey') buildMonkeyTT(tw, a);
   if (TD[tw.type]?.cat === 'tower' && TOWER_SKILLS[tw.type]) { addTTB(a, '⚡Skill', 'ttc', true, () => { showTowerSkill(tw); hideTT(); state.ttTower = null; }); }
   const sv = Math.floor(def.cost * 0.75 + (tw.level * def.cost * 0.4));
   addTTB(a, 'Sell +💰' + sv, 'ttl', true, () => {
-    showOv('Sell ' + def.name + '?', 'Are you sure you want to sell this tower? You will receive 💰' + sv + '.', 'Sell', false, () => {
+    const hasStored = tw.type === 'stockpile' && tw.mode !== 'interface' && tw.slots?.some(s => s);
+    const sellMsg = hasStored
+      ? 'Selling this stockpile will destroy all stored items. You will receive 💰' + sv + '.'
+      : 'Are you sure you want to sell this tower? You will receive 💰' + sv + '.';
+    showOv('Sell ' + def.name + '?', sellMsg, 'Sell', false, () => {
       _ΨΔ(() => doSell(tw, sv));
       sell();
       hideOv();
@@ -330,29 +453,94 @@ function addTTB(parent, txt, cls, ok, fn) {
   parent.appendChild(b);
 }
 
-function genUpg(def, lvl) {
-  const r = m32(state.wave * 7 + lvl * 13 + def.cost);
-  const ts = ['dmg', 'range', 'rate'], t = ts[Math.floor(r() * ts.length)];
-  const c = Math.floor(def.cost * 0.5 * (1 + lvl * 0.4));
-  if (t === 'dmg') { const v = Math.ceil(def.dmg * 0.3 * (1 + lvl * 0.15)); return { l: '+' + v + 'DMG', s: 'dmg', v, c }; }
-  if (t === 'range') { const v = +(0.3 + lvl * 0.1).toFixed(1); return { l: '+' + v + 'RNG', s: 'range', v, c }; }
-  const v = Math.max(2, Math.floor(def.rate * 0.12)); return { l: '-' + v + 'CD', s: 'rate', v, c };
-}
+const TOWER_UPGS = {
+  squirrel: [
+    { name:'+6 DMG',               cost: 30,  apply: tw => { tw.dmg += 6; } },
+    { name:'+1.0 Range',            cost: 55,  apply: tw => { tw.range += 1.0; } },
+    { name:'-14 Cooldown',          cost: 85,  apply: tw => { tw.rate = Math.max(5, tw.rate - 14); } },
+    { name:'+10 DMG',               cost: 130, apply: tw => { tw.dmg += 10; } },
+    { name:'+1.4 Range  −12 CD',    cost: 200, apply: tw => { tw.range += 1.4; tw.rate = Math.max(5, tw.rate - 12); } },
+  ],
+  lion: [
+    { name:'+10 DMG',               cost: 45,  apply: tw => { tw.dmg += 10; } },
+    { name:'-6 Cooldown',           cost: 75,  apply: tw => { tw.rate = Math.max(5, tw.rate - 6); } },
+    { name:'+0.6 Range',            cost: 115, apply: tw => { tw.range += 0.6; } },
+    { name:'+20 DMG',               cost: 170, apply: tw => { tw.dmg += 20; } },
+    { name:'+15 DMG  −6 CD',        cost: 260, apply: tw => { tw.dmg += 15; tw.rate = Math.max(5, tw.rate - 6); } },
+  ],
+  penguin: [
+    { name:'+20% Slow',             cost: 40,  apply: tw => { tw.slow = Math.min(0.95, tw.slow + 0.20); } },
+    { name:'+4 DMG',                cost: 65,  apply: tw => { tw.dmg += 4; } },
+    { name:'+0.8 Range',            cost: 100, apply: tw => { tw.range += 0.8; } },
+    { name:'-10 Cooldown  +15% Slow',cost:150, apply: tw => { tw.rate = Math.max(5, tw.rate - 10); tw.slow = Math.min(0.95, tw.slow + 0.15); } },
+    { name:'+6 DMG  +10% Slow',     cost: 230, apply: tw => { tw.dmg += 6; tw.slow = Math.min(0.95, tw.slow + 0.10); } },
+  ],
+  fish: [
+    { name:'+8 DMG',                cost: 55,  apply: tw => { tw.dmg += 8; } },
+    { name:'+0.6 Splash',           cost: 85,  apply: tw => { tw.splash += 0.6; } },
+    { name:'-15 Cooldown',          cost: 130, apply: tw => { tw.rate = Math.max(5, tw.rate - 15); } },
+    { name:'+12 DMG',               cost: 190, apply: tw => { tw.dmg += 12; } },
+    { name:'+0.8 Splash',           cost: 280, apply: tw => { tw.splash += 0.8; } },
+  ],
+  seahorse: [
+    { name:'+3 Pierce',             cost: 50,  apply: tw => { tw.pierce += 3; } },
+    { name:'+6 DMG',                cost: 80,  apply: tw => { tw.dmg += 6; } },
+    { name:'+1.0 Range',            cost: 125, apply: tw => { tw.range += 1.0; } },
+    { name:'+4 Pierce  −10 CD',     cost: 180, apply: tw => { tw.pierce += 4; tw.rate = Math.max(5, tw.rate - 10); } },
+    { name:'+10 DMG',               cost: 270, apply: tw => { tw.dmg += 10; } },
+  ],
+  lizard: [
+    { name:'+20 DMG',               cost: 70,  apply: tw => { tw.dmg += 20; } },
+    { name:'+0.6 Splash',           cost: 110, apply: tw => { tw.splash += 0.6; } },
+    { name:'-18 Cooldown',          cost: 160, apply: tw => { tw.rate = Math.max(5, tw.rate - 18); } },
+    { name:'+30 DMG',               cost: 240, apply: tw => { tw.dmg += 30; } },
+    { name:'+0.5 Range  +0.6 Splash',cost:360, apply: tw => { tw.range += 0.5; tw.splash += 0.6; } },
+  ],
+  heron: [
+    { name:'+2 Chain',              cost: 55,  apply: tw => { tw.chain += 2; } },
+    { name:'+8 DMG',                cost: 90,  apply: tw => { tw.dmg += 8; } },
+    { name:'+0.8 Range',            cost: 135, apply: tw => { tw.range += 0.8; } },
+    { name:'+2 Chain',              cost: 200, apply: tw => { tw.chain += 2; } },
+    { name:'+12 DMG  −12 CD',       cost: 300, apply: tw => { tw.dmg += 12; tw.rate = Math.max(5, tw.rate - 12); } },
+  ],
+  clam: [
+    { name:'+1.5 Buff Range',       cost: 65,  apply: tw => { tw.buffRange += 1.5; } },
+    { name:'+25% DMG Bonus',        cost: 110, apply: tw => { tw.buffDmg = +((tw.buffDmg + 0.25).toFixed(2)); } },
+    { name:'+1.5 Buff Range',       cost: 165, apply: tw => { tw.buffRange += 1.5; } },
+    { name:'−10% Cooldown Bonus',   cost: 240, apply: tw => { tw.buffRate = Math.max(0.5, +(tw.buffRate - 0.10).toFixed(2)); } },
+    { name:'+2 Range  +25% DMG',    cost: 350, apply: tw => { tw.buffRange += 2; tw.buffDmg = +((tw.buffDmg + 0.25).toFixed(2)); } },
+  ],
+  beehive: [
+    { name:'+3 Bees',               cost: 70,  apply: tw => { tw.beeCount += 3; spawnBees(tw); } },
+    { name:'+5 Bee DMG',            cost: 110, apply: tw => { tw.beeDmg += 5; } },
+    { name:'+3 Bees',               cost: 165, apply: tw => { tw.beeCount += 3; spawnBees(tw); } },
+    { name:'+8 Bee DMG',            cost: 240, apply: tw => { tw.beeDmg += 8; } },
+    { name:'+4 Bees  Faster Sting', cost: 350, apply: tw => { tw.beeCount += 4; tw.beeRate = Math.max(5, tw.beeRate - 8); spawnBees(tw); } },
+  ],
+  clown: [
+    { name:'+1.5 Reverse Range',    cost: 75,  apply: tw => { tw.reverseRange += 1.5; } },
+    { name:'+50 Reverse Duration',  cost: 115, apply: tw => { tw.reverseDur += 50; } },
+    { name:'+1.5 Reverse Range',    cost: 170, apply: tw => { tw.reverseRange += 1.5; } },
+    { name:'−60 Recharge',          cost: 245, apply: tw => { tw.reverseCD = Math.max(40, tw.reverseCD - 60); } },
+    { name:'+2 Range  +80 Duration',cost: 360, apply: tw => { tw.reverseRange += 2; tw.reverseDur += 80; } },
+  ],
+  monkey: [
+    { name:'+1 Range',              cost: 80,  apply: tw => { tw.range += 1; } },
+    { name:'+1 Range',              cost: 130, apply: tw => { tw.range += 1; } },
+    { name:'+2 Range',              cost: 195, apply: tw => { tw.range += 2; } },
+    { name:'+2 Range',              cost: 280, apply: tw => { tw.range += 2; } },
+    { name:'+3 Range',              cost: 400, apply: tw => { tw.range += 3; } },
+  ],
+};
 
-function m32(a) {
-  return function () {
-    a |= 0; a = a + 0x6D2B79F5 | 0;
-    let t = Math.imul(a ^ a >>> 15, 1 | a); t ^= t + Math.imul(t ^ t >>> 7, 61 | t);
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-
-function doUpg(tw, upg) {
-  if (state.gold < upg.c) return;
-  state.gold -= upg.c; tw.level++;
-  if (upg.s === 'dmg') tw.dmg += upg.v;
-  else if (upg.s === 'range') tw.range += upg.v;
-  else if (upg.s === 'rate') tw.rate = Math.max(5, tw.rate - upg.v);
+function doUpg(tw) {
+  const upgs = TOWER_UPGS[tw.type];
+  if (!upgs || tw.level >= upgs.length) return;
+  const upg = upgs[tw.level];
+  if (state.gold < upg.cost) return;
+  state.gold -= upg.cost;
+  upg.apply(tw);
+  tw.level++;
   sfxPlace();
 }
 
@@ -395,15 +583,15 @@ function buildMonkeyTT(tw, container) {
   if (!tw.monkeys) return;
   for (const mk of tw.monkeys) {
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;gap:4px;align-items:center;margin:2px 0';
+    row.style.cssText = 'display:flex;gap:4px;align-items:center;margin:2px 0;flex-wrap:nowrap';
     const nameEl = document.createElement('span');
-    nameEl.style.cssText = 'color:#fb923c;font-size:10px;min-width:44px;font-weight:700';
+    nameEl.style.cssText = 'color:#fb923c;font-size:10px;min-width:44px;font-weight:700;flex-shrink:0';
     nameEl.textContent = mk.name;
     row.appendChild(nameEl);
     container.appendChild(row);
 
     // Role cycle button
-    addTTB(container, ROLE_LABEL[mk.role] ?? 'Idle 💤', 'tts2', true, () => {
+    addTTB(row, ROLE_LABEL[mk.role] ?? 'Idle 💤', 'tts2', true, () => {
       const idx = ROLE_CYCLE.indexOf(mk.role);
       mk.role = ROLE_CYCLE[(idx + 1) % ROLE_CYCLE.length];
       mk.cfg = { filter: null, dest: null, from: null, boost: null };
@@ -412,33 +600,31 @@ function buildMonkeyTT(tw, container) {
     });
 
     if (mk.role === 'gatherer') {
-      // Filter toggle
-      addTTB(container, 'Filter:' + FILTER_LABEL[mk.cfg.filter ?? null], 'tts2', true, () => {
+      addTTB(row, 'Filter:' + FILTER_LABEL[mk.cfg.filter ?? null], 'tts2', true, () => {
         const fi = FILTER_CYCLE.indexOf(mk.cfg.filter ?? null);
         mk.cfg.filter = FILTER_CYCLE[(fi + 1) % FILTER_CYCLE.length] ?? null;
         refreshTT(tw);
       });
-      // Destination tile pick
       const destLbl = mk.cfg.dest ? `Dest:(${mk.cfg.dest.x},${mk.cfg.dest.y})` : 'Set Dest 📍';
-      addTTB(container, destLbl, 'tts2', true, () => {
+      addTTB(row, destLbl, 'tts2', true, () => {
         state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'dest' };
         hideTT(); state.ttTower = null; panelU();
       });
     }
 
     if (mk.role === 'courier') {
-      addTTB(container, 'Filter:' + FILTER_LABEL[mk.cfg.filter ?? null], 'tts2', true, () => {
+      addTTB(row, 'Filter:' + FILTER_LABEL[mk.cfg.filter ?? null], 'tts2', true, () => {
         const fi = FILTER_CYCLE.indexOf(mk.cfg.filter ?? null);
         mk.cfg.filter = FILTER_CYCLE[(fi + 1) % FILTER_CYCLE.length] ?? null;
         refreshTT(tw);
       });
       const fromLbl = mk.cfg.from ? `From:(${mk.cfg.from.x},${mk.cfg.from.y})` : 'Set From 📍';
-      addTTB(container, fromLbl, 'tts2', true, () => {
+      addTTB(row, fromLbl, 'tts2', true, () => {
         state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'from' };
         hideTT(); state.ttTower = null; panelU();
       });
       const toLbl = mk.cfg.dest ? `To:(${mk.cfg.dest.x},${mk.cfg.dest.y})` : 'Set To 📍';
-      addTTB(container, toLbl, 'tts2', true, () => {
+      addTTB(row, toLbl, 'tts2', true, () => {
         state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'dest' };
         hideTT(); state.ttTower = null; panelU();
       });
@@ -446,17 +632,17 @@ function buildMonkeyTT(tw, container) {
 
     if (mk.role === 'booster') {
       const bLbl = mk.cfg.boost ? `Boost:(${mk.cfg.boost.x},${mk.cfg.boost.y})` : 'Set Target 📍';
-      addTTB(container, bLbl, 'tts2', true, () => {
+      addTTB(row, bLbl, 'tts2', true, () => {
         state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'boost' };
         hideTT(); state.ttTower = null; panelU();
       });
     }
 
     if (mk.trips > 0) {
-      const tripEl = document.createElement('div');
-      tripEl.style.cssText = 'color:#64748b;font-size:9px;margin-left:2px';
+      const tripEl = document.createElement('span');
+      tripEl.style.cssText = 'color:#64748b;font-size:9px;margin-left:2px;flex-shrink:0';
       tripEl.textContent = mk.trips + ' trip' + (mk.trips === 1 ? '' : 's');
-      container.appendChild(tripEl);
+      row.appendChild(tripEl);
     }
   }
 }
@@ -483,6 +669,7 @@ function mdToHtml(md) {
 
 export async function showWelcome(version, onClose) {
   const el = document.getElementById('welcome');
+  state.paused = true;
   document.getElementById('welcomeTitle').textContent = '⚔️ Welcome to Goblin Siege ' + version + ' ⚔️';
   const notesEl = document.getElementById('welcomeNotes');
   try {
@@ -495,7 +682,11 @@ export async function showWelcome(version, onClose) {
   const box = document.getElementById('welcomeBox');
   const startAudio = () => { iA(); box.removeEventListener('pointerdown', startAudio); };
   box.addEventListener('pointerdown', startAudio);
-  document.getElementById('welcomeX').onclick = () => { el.classList.add('hid'); if (onClose) onClose(); };
+  document.getElementById('welcomeX').onclick = () => {
+    el.classList.add('hid');
+    syncPause();
+    if (onClose) onClose();
+  };
 }
 
 export function initTabs() {
@@ -503,8 +694,7 @@ export function initTabs() {
     state.tab = t.dataset.t;
     document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
     state.sel = null; state.ttTower = null; hideTT(); hideTdesc();
-    if (state.tab === 'skills') { renderSk(); document.getElementById('skP').classList.add('sh'); }
-    else document.getElementById('skP').classList.remove('sh');
+    document.getElementById('skP').classList.remove('sh');
     panelU();
   }));
   document.getElementById('skClose').addEventListener('click', () => document.getElementById('skP').classList.remove('sh'));
@@ -541,7 +731,9 @@ function syncPause() {
   const resOpen = document.getElementById('resP')?.classList.contains('sh');
   const beastOpen = document.getElementById('beastP')?.classList.contains('sh');
   const scribeOpen = document.getElementById('scribeP')?.style.display === 'flex';
-  state.paused = !!(resOpen || beastOpen || scribeOpen);
+  const welcomeOpen = !document.getElementById('welcome')?.classList.contains('hid');
+  const invOpen = document.getElementById('invP')?.classList.contains('sh');
+  state.paused = !!(resOpen || beastOpen || scribeOpen || welcomeOpen || invOpen);
 }
 
 export function toggleBestiary() {
@@ -588,14 +780,25 @@ const NODE_R = 22;
 let _rPos = null; // cached layout positions (world coords)
 const _rCam = { panX: 0, panY: 0, zoom: 1 };
 const R_ZOOM_MIN = 0.4, R_ZOOM_MAX = 3;
+let _openNodeId = null; // currently open tooltip node
 
 function fmtCost(cost) {
   return Object.entries(cost).map(([r, n]) => (RES_ICONS[r] || r) + n).join(' ');
 }
 
+// Whether to show node content (icon vs ?)
 function isNodeVisible(node) {
   if (!node.hidden) return true;
   return state.bSen?.has(node.trigger);
+}
+
+// Whether to render the node at all: all prereqs must be non-locked and gamePrereq met
+function shouldShowNode(id, nodes) {
+  const node = nodes[id];
+  if (!node) return false;
+  if (node.hidden && !state.bSen?.has(node.trigger)) return false;
+  if (!checkGamePrereq(node)) return false;
+  return node.prereqs.every(p => nodes[p]?.status !== 'locked');
 }
 
 // Clamp pan so the graph never goes fully off-screen
@@ -635,9 +838,11 @@ function renderResearch() {
 
   // Draw edges
   for (const [id, node] of Object.entries(nodes)) {
+    if (!shouldShowNode(id, nodes)) continue;
     const to = _rPos[id];
     if (!to) continue;
     for (const pid of node.prereqs) {
+      if (!shouldShowNode(pid, nodes)) continue;
       const from = _rPos[pid];
       if (!from) continue;
       const complete = nodes[pid]?.status === 'complete';
@@ -649,6 +854,7 @@ function renderResearch() {
 
   // Draw nodes
   for (const [id, node] of Object.entries(nodes)) {
+    if (!shouldShowNode(id, nodes)) continue;
     const pos = _rPos[id];
     if (!pos) continue;
     const visible = isNodeVisible(node);
@@ -672,10 +878,12 @@ function renderResearch() {
     }
 
     cx.beginPath(); cx.arc(pos.x, pos.y, NODE_R, 0, Math.PI * 2);
-    if (status === 'complete') { cx.strokeStyle = '#22c55e'; cx.lineWidth = 2 / _rCam.zoom; }
-    else if (status === 'active') { cx.strokeStyle = '#a78bfa'; cx.lineWidth = 2 / _rCam.zoom; }
+    const isSelected = id === _pinnedNodeId;
+    if (isSelected)            { cx.strokeStyle = '#c4b5fd'; cx.lineWidth = 2.5 / _rCam.zoom; }
+    else if (status === 'complete')  { cx.strokeStyle = '#22c55e'; cx.lineWidth = 2 / _rCam.zoom; }
+    else if (status === 'active')    { cx.strokeStyle = '#a78bfa'; cx.lineWidth = 2 / _rCam.zoom; }
     else if (status === 'available') { cx.strokeStyle = '#7c3aed'; cx.lineWidth = 1.5 / _rCam.zoom; }
-    else { cx.strokeStyle = '#1e1e30'; cx.lineWidth = 1 / _rCam.zoom; }
+    else                             { cx.strokeStyle = '#1e1e30'; cx.lineWidth = 1 / _rCam.zoom; }
     cx.stroke();
 
     cx.font = '14px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
@@ -708,7 +916,11 @@ function renderResearch() {
   cx.restore();
 }
 
+let _pinnedNodeId = null;
+
 function hideResTip() {
+  _openNodeId = null;
+  _pinnedNodeId = null;
   const tip = document.getElementById('resTip');
   if (tip) { tip.classList.remove('sh'); tip.innerHTML = ''; }
 }
@@ -747,24 +959,44 @@ function showResearchDetail(id) {
     const nm = document.createElement('span'); nm.className = 'rdname'; nm.textContent = node.icon + ' ' + node.name;
     tip.appendChild(nm);
 
+    // Unlock description — shown for all states; turns green+checkmark when complete
+    const unlockText = UNLOCK_DESC[node.unlocks] || node.unlocks || '';
+    if (unlockText) {
+      const d = document.createElement('span');
+      if (node.status === 'complete') {
+        d.className = 'rddone'; d.textContent = '✓ ' + unlockText;
+      } else {
+        d.className = 'rddesc'; d.textContent = unlockText;
+      }
+      tip.appendChild(d);
+    }
+
     if (node.status === 'locked') {
       const prereqNames = node.prereqs.map(p => nodes[p]?.name || p).join(', ');
       const s = document.createElement('span'); s.className = 'rdlocked'; s.textContent = '🔒 ' + prereqNames;
       tip.appendChild(s);
     } else if (node.status === 'available') {
       const c = document.createElement('span'); c.className = 'rdcost';
-      c.textContent = fmtCost(node.cost) + ' · ' + node.wavesTotal + 'w';
+      c.textContent = fmtCost(node.cost) + ' · ⏱ ' + node.wavesTotal + ' wave' + (node.wavesTotal !== 1 ? 's' : '');
       tip.appendChild(c);
       const hasActive = Object.values(nodes).some(n => n.status === 'active');
       const affordable = canAfford(node.cost);
+      const devMode = !!state._devMode;
       const btn = document.createElement('button'); btn.className = 'rdbtn';
-      btn.textContent = 'Begin Research';
-      btn.disabled = hasActive || !affordable;
-      if (hasActive) btn.title = 'Research already in progress';
-      else if (!affordable) btn.title = 'Not enough resources';
+      btn.textContent = devMode ? '⚡ Instant (Dev)' : 'Begin Research';
+      if (!devMode) {
+        btn.disabled = hasActive || !affordable;
+        if (hasActive) btn.title = 'Research already in progress';
+        else if (!affordable) btn.title = 'Not enough resources';
+      }
       btn.onclick = () => {
-        spendResources(node.cost);
-        node.status = 'active';
+        if (devMode) {
+          node.status = 'complete'; node.wavesLeft = 0;
+          applyUnlock(node); refreshStatuses(nodes);
+        } else {
+          spendResources(node.cost);
+          node.status = 'active';
+        }
         renderResearch();
         showResearchDetail(id);
         hudU();
@@ -774,16 +1006,16 @@ function showResearchDetail(id) {
       const s = document.createElement('span'); s.className = 'rdprog';
       s.textContent = '⏳ ' + node.wavesLeft + ' wave' + (node.wavesLeft !== 1 ? 's' : '') + ' left';
       tip.appendChild(s);
-    } else if (node.status === 'complete') {
-      const s = document.createElement('span'); s.className = 'rddone';
-      s.textContent = '✓ ' + (UNLOCK_DESC[node.unlocks] || node.unlocks);
-      tip.appendChild(s);
+    }
+    if (node.tooltip) {
+      const t = document.createElement('span'); t.className = 'rdtooltip'; t.textContent = node.tooltip;
+      tip.appendChild(t);
     }
   }
 
+  _openNodeId = id;
   tip.classList.add('sh');
   positionResTip(tip, id);
-  // Reposition after render so height is accurate
   requestAnimationFrame(() => positionResTip(tip, id));
 }
 
@@ -792,8 +1024,11 @@ function fitResCv() {
   if (!cv || !state.research) return;
   cv.width = cv.clientWidth || 520;
   cv.height = cv.clientHeight || 280;
-  _rPos = layoutNodes(state.research, cv.width, cv.height);
-  _rCam.zoom = 1; _rCam.panX = 0; _rCam.panY = 0;
+  // Compute positions once per research graph; never recompute mid-game
+  if (!_rPos) {
+    _rPos = layoutNodes(state.research, cv.width, cv.height);
+    _rCam.zoom = 1; _rCam.panX = 0; _rCam.panY = 0;
+  }
   clampResCam(cv.width, cv.height);
   renderResearch();
 }
@@ -801,10 +1036,11 @@ function fitResCv() {
 export function showResearch() {
   const p = document.getElementById('resP');
   if (!p) return;
+  // If the graph changed (new game), clear cached positions
+  if (_rPos && state.research && !Object.keys(state.research).some(id => _rPos[id])) _rPos = null;
   p.classList.add('sh');
   syncPause();
   hideResTip();
-  // Wait one frame for the panel to finish layout before measuring
   requestAnimationFrame(fitResCv);
 }
 
@@ -853,17 +1089,51 @@ export function initResearchUI() {
     const rect = cv.getBoundingClientRect();
     _drag = { startX: e.clientX, startY: e.clientY, panX: _rCam.panX, panY: _rCam.panY, moved: false };
   });
+  let _hoverNodeId = null;
   cv.addEventListener('pointermove', e => {
-    if (!_drag) return;
     const rect = cv.getBoundingClientRect();
     const scaleX = cv.width / rect.width, scaleY = cv.height / rect.height;
-    const dx = (e.clientX - _drag.startX) * scaleX;
-    const dy = (e.clientY - _drag.startY) * scaleY;
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) _drag.moved = true;
-    _rCam.panX = _drag.panX + dx;
-    _rCam.panY = _drag.panY + dy;
-    clampResCam(cv.width, cv.height);
-    renderResearch();
+    if (_drag) {
+      const dx = (e.clientX - _drag.startX) * scaleX;
+      const dy = (e.clientY - _drag.startY) * scaleY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) _drag.moved = true;
+      _rCam.panX = _drag.panX + dx;
+      _rCam.panY = _drag.panY + dy;
+      clampResCam(cv.width, cv.height);
+      renderResearch();
+      if (_openNodeId) {
+        const tip = document.getElementById('resTip');
+        if (tip?.classList.contains('sh')) positionResTip(tip, _openNodeId);
+      }
+      return;
+    }
+    // Hover hit-test — ignored while a node is pinned
+    if (_pinnedNodeId || !_rPos || !state.research) return;
+    const sx = (e.clientX - rect.left) * scaleX, sy = (e.clientY - rect.top) * scaleY;
+    const { x: wx, y: wy } = toWorld(sx, sy);
+    let hit = null;
+    for (const [id, pos] of Object.entries(_rPos)) {
+      if (Math.hypot(wx - pos.x, wy - pos.y) <= NODE_R) { hit = id; break; }
+    }
+    // Skip hover tooltip for locked/unavailable nodes
+    if (hit && state.research[hit]?.status === 'locked') hit = null;
+    if (hit !== _hoverNodeId) {
+      _hoverNodeId = hit;
+      if (hit) showResearchDetail(hit);
+      else hideResTip();
+    }
+  });
+  let _hideDelay = null;
+  const tip = document.getElementById('resTip');
+  if (tip) {
+    tip.addEventListener('pointerenter', () => { clearTimeout(_hideDelay); _hideDelay = null; });
+    tip.addEventListener('pointerleave', () => {
+      if (!_pinnedNodeId) { _hoverNodeId = null; hideResTip(); }
+    });
+  }
+  cv.addEventListener('mouseleave', () => {
+    if (_pinnedNodeId) return;
+    _hideDelay = setTimeout(() => { _hoverNodeId = null; hideResTip(); }, 120);
   });
   cv.addEventListener('pointerup', e => {
     if (!_drag) return;
@@ -877,11 +1147,224 @@ export function initResearchUI() {
     const { x: wx, y: wy } = toWorld(sx, sy);
     for (const [id, pos] of Object.entries(_rPos)) {
       if (Math.hypot(wx - pos.x, wy - pos.y) <= NODE_R) {
+        if (state.research[id]?.status === 'locked') return;
+        _pinnedNodeId = id;
+        _hoverNodeId = null;
         showResearchDetail(id);
+        renderResearch();
         return;
       }
     }
-    hideResTip(); // clicked background
+    // Clicked background — unpin and hide
+    _pinnedNodeId = null;
+    _hoverNodeId = null;
+    hideResTip();
+    renderResearch();
   });
 }
 
+// ── Inventory ─────────────────────────────────────────────────────────────────
+const INV_MAX = 512;
+let _invSel = null; // { source: 'inv'|'equip', section: string, index: number }
+
+const INV_ROW = 6; // slots per row
+
+function _slotsToShow(arr) {
+  // Always show complete rows, with at least one empty slot beyond filled items
+  const filled = arr.length;
+  const rows = Math.max(1, Math.ceil((filled + 1) / INV_ROW));
+  return rows * INV_ROW;
+}
+
+function renderInventory() {
+  const c = document.getElementById('invC');
+  if (!c) return;
+  const inv = state.inventory;
+  if (!inv) return;
+  c.innerHTML = '';
+
+  // ── Artifacts (with equipped row) ──
+  const artSec = document.createElement('div');
+  artSec.className = 'inv-section';
+  const artTitle = document.createElement('div');
+  artTitle.className = 'inv-section-title';
+  artTitle.textContent = 'Artifacts';
+  artSec.appendChild(artTitle);
+
+  // Equipped label + row
+  const eqLabel = document.createElement('div');
+  eqLabel.className = 'inv-equipped-label';
+  eqLabel.textContent = 'Equipped';
+  artSec.appendChild(eqLabel);
+  const eqGrid = document.createElement('div');
+  eqGrid.className = 'inv-grid';
+  eqGrid.style.marginBottom = '12px';
+  for (let i = 0; i < 3; i++) {
+    const item = inv.equipped[i];
+    const isSel = _invSel?.source === 'equip' && _invSel?.index === i;
+    const cell = document.createElement('div');
+    cell.className = 'inv-cell equip-slot' + (item ? ' filled' : '') + (isSel ? ' sel' : '');
+    if (item) {
+      cell.innerHTML = '<div class="inv-ic">' + item.icon + '</div><div class="inv-nm">' + item.name + '</div>';
+    } else {
+      cell.innerHTML = '<div style="font-size:22px;opacity:.25">○</div><div class="inv-nm" style="color:#374151">Empty</div>';
+    }
+    cell.addEventListener('click', () => _invClickEquip(i));
+    eqGrid.appendChild(cell);
+  }
+  artSec.appendChild(eqGrid);
+
+  // Artifact slot grid — always at least one full row
+  const artGrid = document.createElement('div');
+  artGrid.className = 'inv-grid';
+  const artSlots = _slotsToShow(inv.artifacts);
+  for (let i = 0; i < artSlots; i++) {
+    const item = inv.artifacts[i];
+    if (item) {
+      const isSel = _invSel?.source === 'inv' && _invSel?.section === 'artifacts' && _invSel?.index === i;
+      const cell = _mkInvCell(item, isSel);
+      cell.addEventListener('click', () => _invClickItem('artifacts', i));
+      artGrid.appendChild(cell);
+    } else {
+      const cell = document.createElement('div');
+      cell.className = 'inv-cell empty-slot';
+      artGrid.appendChild(cell);
+    }
+  }
+  artSec.appendChild(artGrid);
+  c.appendChild(artSec);
+
+  // ── Other sections ──
+  const sections = [
+    { key: 'augments',    label: 'Tower Augments' },
+    { key: 'blueprints',  label: 'Blueprints' },
+    { key: 'consumables', label: 'Consumables' },
+  ];
+  for (const { key, label } of sections) {
+    const sec = document.createElement('div');
+    sec.className = 'inv-section';
+    const title = document.createElement('div');
+    title.className = 'inv-section-title';
+    title.textContent = label;
+    sec.appendChild(title);
+    const grid = document.createElement('div');
+    grid.className = 'inv-grid';
+    const arr = inv[key] || [];
+    const slots = _slotsToShow(arr);
+    for (let i = 0; i < slots; i++) {
+      const item = arr[i];
+      if (item) {
+        const isSel = _invSel?.source === 'inv' && _invSel?.section === key && _invSel?.index === i;
+        const cell = _mkInvCell(item, isSel);
+        cell.addEventListener('click', () => _invClickItem(key, i));
+        grid.appendChild(cell);
+      } else {
+        const cell = document.createElement('div');
+        cell.className = 'inv-cell empty-slot';
+        grid.appendChild(cell);
+      }
+    }
+    sec.appendChild(grid);
+    c.appendChild(sec);
+  }
+}
+
+function _mkInvCell(item, selected) {
+  const cell = document.createElement('div');
+  cell.className = 'inv-cell' + (selected ? ' sel' : '');
+  cell.innerHTML = '<div class="inv-ic">' + item.icon + '</div><div class="inv-nm">' + item.name + '</div>';
+  return cell;
+}
+
+function _invClickItem(section, index) {
+  if (section !== 'artifacts') {
+    // Non-artifact: just toggle select (no equipped slots to swap with)
+    if (_invSel?.source === 'inv' && _invSel?.section === section && _invSel?.index === index) {
+      _invSel = null;
+    } else {
+      _invSel = { source: 'inv', section, index };
+    }
+    renderInventory();
+    return;
+  }
+  // Artifact clicked
+  if (_invSel?.source === 'equip') {
+    // Swap selected equipped slot with this artifact
+    const eqIdx = _invSel.index;
+    const inv = state.inventory;
+    const artifact = inv.artifacts[index];
+    const was = inv.equipped[eqIdx];
+    inv.equipped[eqIdx] = artifact;
+    if (was) {
+      inv.artifacts[index] = was;
+    } else {
+      inv.artifacts.splice(index, 1);
+    }
+    _invSel = null;
+  } else if (_invSel?.source === 'inv' && _invSel?.section === 'artifacts' && _invSel?.index === index) {
+    // Deselect
+    _invSel = null;
+  } else {
+    _invSel = { source: 'inv', section: 'artifacts', index };
+  }
+  renderInventory();
+}
+
+function _invClickEquip(slotIndex) {
+  const inv = state.inventory;
+  if (_invSel?.source === 'inv' && _invSel?.section === 'artifacts') {
+    // Swap artifact into equipped slot
+    const artIdx = _invSel.index;
+    const artifact = inv.artifacts[artIdx];
+    const was = inv.equipped[slotIndex];
+    inv.equipped[slotIndex] = artifact;
+    if (was) {
+      inv.artifacts[artIdx] = was;
+    } else {
+      inv.artifacts.splice(artIdx, 1);
+    }
+    _invSel = null;
+  } else if (_invSel?.source === 'equip' && _invSel?.index === slotIndex) {
+    // Deselect
+    _invSel = null;
+  } else if (_invSel?.source === 'equip') {
+    // Swap two equipped slots
+    const other = _invSel.index;
+    [inv.equipped[slotIndex], inv.equipped[other]] = [inv.equipped[other], inv.equipped[slotIndex]];
+    _invSel = null;
+  } else {
+    // Select equipped slot (only if filled)
+    if (inv.equipped[slotIndex]) {
+      _invSel = { source: 'equip', index: slotIndex };
+    }
+  }
+  renderInventory();
+}
+
+export function initInventoryUI() {
+  document.getElementById('invBtn')?.addEventListener('click', () => {
+    const p = document.getElementById('invP');
+    if (!p) return;
+    if (p.classList.contains('sh')) {
+      p.classList.remove('sh');
+    } else {
+      _invSel = null;
+      renderInventory();
+      p.classList.add('sh');
+    }
+    syncPause();
+  });
+  document.getElementById('invClose')?.addEventListener('click', () => {
+    document.getElementById('invP')?.classList.remove('sh');
+    _invSel = null;
+    syncPause();
+  });
+}
+
+export function addToInventory(section, item) {
+  const inv = state.inventory;
+  if (!inv) return;
+  const arr = inv[section];
+  if (!arr) return;
+  if (arr.length < INV_MAX) arr.push(item);
+}
