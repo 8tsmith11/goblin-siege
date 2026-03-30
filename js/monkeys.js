@@ -116,7 +116,11 @@ function destCanAccept(gx, gy, type) {
     const cap = 64 << (tw.level || 0);
     return tw.slots.some(s => !s) || tw.slots.some(s => s && (!type || s.type === type) && s.count < cap);
   }
-  if (tw?.type === 'hoard') return !type || type === 'wood' || type === 'stone';
+  if (tw?.type === 'hoard') {
+    if (type === 'dust') return false;
+    const caps = [20, 30, 40, 50, 60];
+    return (tw.stored || 0) < (caps[tw.level || 0] ?? 20);
+  }
   const stacks = cell.stacks;
   if (!stacks) return true;
   return stacks.some(s => !s) || stacks.some(s => s && (!type || s.type === type) && s.count < 64);
@@ -305,15 +309,19 @@ function applyBoosterEffects() {
     tw._monkeyBoosted = false;
     tw._monkeyBoostCount = 0;
   }
-  // Accumulate from active boosters
+  // Only the first booster per building counts — no stacking
+  const boostedKeys = new Set();
   for (const hut of state.towers) {
     if (hut.type !== 'monkey' || !hut.monkeys) continue;
     for (const mk of hut.monkeys) {
       if (mk.role !== 'booster' || mk.st !== 'boosting' || !mk.cfg.boost) continue;
       const target = state.towers.find(t => t.x === mk.cfg.boost.x && t.y === mk.cfg.boost.y);
       if (!target) continue;
+      const key = `${target.x},${target.y}`;
+      if (boostedKeys.has(key)) continue; // already boosted — ignore extra monkey
+      boostedKeys.add(key);
       target._monkeyBoosted = true;
-      target._monkeyBoostCount = (target._monkeyBoostCount || 0) + 1;
+      target._monkeyBoostCount = 1;
     }
   }
 }

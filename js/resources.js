@@ -2,6 +2,7 @@
 import { state } from './main.js';
 import { sfxMine } from './audio.js';
 import { mkGain, hudU } from './ui.js';
+import { HOARD_LEVELS } from './data.js';
 
 // ─── Resource type definitions ─────────────────────────────────────────────
 // Each entry is one collectable resource that exists in the player's inventory.
@@ -128,8 +129,12 @@ export function dropItem(cx, cy, type) {
     }
     return false; // all slots full
   }
-  if (tw?.type === 'hoard' && (type === 'wood' || type === 'stone')) {
-    tw.dep[type] = (tw.dep[type] || 0) + 1;
+  if (tw?.type === 'hoard') {
+    if (type === 'dust') return false;
+    const cap = (HOARD_LEVELS[tw.level || 0] ?? HOARD_LEVELS[0]).cap;
+    if ((tw.stored || 0) >= cap) return false;
+    tw.stored = (tw.stored || 0) + 1;
+    mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, '🏺', 1, '#10b981');
     return true;
   }
   // Default: place as ground stack

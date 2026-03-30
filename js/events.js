@@ -1,14 +1,14 @@
 'use strict';
 import { state, fIncome, _ΨΔ } from './main.js';
 import { mkE } from './enemies.js';
-import { ETYPES } from './data.js';
+import { ETYPES, HOARD_LEVELS } from './data.js';
 import { sfxEvent } from './audio.js';
 
 export const EVENTS = [
   { name:'💰 Gold Rush!',      desc:'+50 gold',                  good:true,  fn:()=>{ state.gold += 50; } },
   { name:'❤️ Reinforcements!', desc:'+3 lives',                  good:true,  fn:()=>{ state.lives += 3; } },
   { name:'⚡ Power Surge!',    desc:'All towers +5 DMG this wave',good:true,  fn:()=>{ state.towers.forEach(t=>{ if(t.dmg) t.dmg += 5; }); } },
-  { name:'🏺 Hoard Bonus!',    desc:'Double hoard yield this wave',good:true,  fn:()=>{ state.gold += fIncome(); } },
+  { name:'🏺 Hoard Bonus!',    desc:'+50% hoard income this wave', good:true,  fn:()=>{ let b=0; state.towers.forEach(tw=>{ if(tw.type==='hoard'){ const hl=HOARD_LEVELS[tw.level||0]??HOARD_LEVELS[0]; b+=Math.floor((hl.base+Math.floor((tw.stored||0)*hl.m))*0.5); } }); _ΨΔ(()=>{ state.gold+=b; }); } },
   { name:'🐝 Bee Frenzy!',     desc:'All bees fire 2x fast',      good:true,  fn:()=>{ state.bees.forEach(b=>{ b.rate = Math.max(5, Math.floor(b.rate * 0.5)); }); } },
   { name:'💀 Goblin Ambush!',  desc:'5 fast goblins spawn!',      good:false, fn:()=>{ for(let i=0;i<5;i++){ const e=mkE(ETYPES.fast, 20+state.wave*18, 0.6+state.wave*0.035); e.x=state.path[0].x; e.y=state.path[0].y; state.enemies.push(e); } } },
   { name:'🌑 Darkness!',       desc:'All stealth for 3 sec',      good:false, fn:()=>{ state.enemies.forEach(e=>{ e.stealth=true; e.stealthTimer=180; }); } },

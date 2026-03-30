@@ -149,7 +149,7 @@ Most towers start **locked** — only squirrel, lion, penguin, and lab are avail
 
 ## Hoard building
 
-The Hoard (`tw.type === 'hoard'`) accepts wood and stone deposits stored in `tw.dep.wood` / `tw.dep.stone`. At wave-end, deposits are converted to gold using a level-based multiplier (`1.0` base, up to `4.0` at level 5), then the deposits are zeroed. The Hoard is unlocked via the `settlement` research node.
+The Hoard (`tw.type === 'hoard'`) stores resources in a single `tw.stored` integer (resource-type agnostic, capped at `HOARD_LEVELS[level].cap`, starting at 20). Accepts any resource type via monkey delivery or manual deposit (cannot withdraw). At wave-end: income = `base + floor(stored × multiplier)` per `HOARD_LEVELS`; decay = `max(1, floor(stored × 0.1))` removed (halved to 5% when monkey-boosted). `HOARD_LEVELS` and `HOARD_UPGS` are exported from `js/data.js`. Unlocked via the `settlement` research node.
 
 ## Bestiary & Scribe's Journal
 

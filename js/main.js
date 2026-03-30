@@ -37,7 +37,7 @@ bus.on('enemyDeath', e => {
   }
 });
 import { buildResearchGraph, tickResearch } from './research.js';
-import { TOWER_SKILLS } from './data.js';
+import { TOWER_SKILLS, HOARD_LEVELS } from './data.js';
 import { updateEnemies, genWave } from './enemies.js';
 import { updateTowers } from './towers.js';
 import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser } from './support.js';
@@ -234,12 +234,15 @@ function update() {
     let hInc = 0;
     state.towers.forEach(tw => {
       if (tw.type === 'hoard') {
-        const baseM = (tw.level > 0 ? [1.5, 2.0, 2.5, 3.0, 4.0][tw.level - 1] : 1.0);
-        const m = baseM + (tw._monkeyBoostCount || 0) * 0.5;
-        const amt = Math.floor((tw.dep.wood + tw.dep.stone) * m);
-        hInc += amt;
-        tw.dep.wood = 0; tw.dep.stone = 0;
-        if (amt > 0) mkGain(tw.x * state.CELL + state.CELL / 2, tw.y * state.CELL + state.CELL / 2, '💰', amt, '#fbbf24');
+        const stored = tw.stored || 0;
+        const hl = HOARD_LEVELS[tw.level || 0] ?? HOARD_LEVELS[0];
+        const income = hl.base + Math.floor(stored * hl.m);
+        hInc += income;
+        // Decay: 10% per wave (halved to 5% when monkey-boosted)
+        const decayRate = tw._monkeyBoosted ? 0.05 : 0.1;
+        const decay = Math.max(1, Math.floor(stored * decayRate));
+        tw.stored = Math.max(0, stored - decay);
+        if (income > 0) mkGain(tw.x * state.CELL + state.CELL / 2, tw.y * state.CELL + state.CELL / 2, '💰', income, '#fbbf24');
       }
     });
     const inc = fIncome() + hInc; state.gold += inc;

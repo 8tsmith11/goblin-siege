@@ -1,21 +1,13 @@
 'use strict';
 import { state, startGame, startWave, startPrep, resetGame, _ΨΔ } from './main.js';
 import { RTYPES, dropItem } from './resources.js';
-import { TD, TOWER_SKILLS } from './data.js';
+import { TD, TOWER_SKILLS, HOARD_LEVELS, HOARD_UPGS } from './data.js';
 import { spawnBees } from './support.js';
-import { canAfford, spendResources, layoutNodes, UNLOCK_DESC, checkGamePrereq, applyUnlock, refreshStatuses } from './research.js';
+import { canAfford, spendResources, layoutNodes, UNLOCK_DESC, checkGamePrereq, applyUnlock, refreshStatuses, RESEARCH_JSON } from './research.js';
 import { SP, castSpell } from './spells.js';
 import { renderSk, showTowerSkill } from './skills.js';
 import { BESTIARY, getScribeLogs } from './bestiary.js';
 import { sfxPlace, iA } from './audio.js';
-
-const HOARD_UPGS = [
-  { c: 100, rs: { stone: 10, wood: 10 }, m: 1.5 },
-  { c: 200, rs: { stone: 25, wood: 25 }, m: 2.0 },
-  { c: 400, rs: { stone: 50, wood: 50 }, m: 2.5 },
-  { c: 800, rs: { stone: 100, wood: 100 }, m: 3.0 },
-  { c: 1500, rs: { stone: 250, wood: 250 }, m: 4.0 }
-];
 
 export function hudU() {
   const { lives, gold, enemies, spawnQueue, wave, phase, prepTicks } = state;
@@ -362,8 +354,11 @@ export function showTT(tw, px, py) {
   document.getElementById('ttT').textContent = (isH ? 'Hoard Pile' : def?.name || tw.type) + (tw.level > 0 ? ' ★' + tw.level : '');
   let s = '';
   if (isH) {
-    const m = (tw.level > 0 ? HOARD_UPGS[tw.level - 1].m : 1.0);
-    s = `Mult: ${m.toFixed(1)}x | Storage: 🪵${tw.dep.wood} 🪨${tw.dep.stone}`;
+    const hl = HOARD_LEVELS[tw.level || 0] ?? HOARD_LEVELS[0];
+    const stored = tw.stored || 0;
+    const income = hl.base + Math.floor(stored * hl.m);
+    const decay = Math.max(1, Math.floor(stored * (tw._monkeyBoosted ? 0.05 : 0.1)));
+    s = `${stored}/${hl.cap} · +${income}💰/wave · -${decay}⬇${tw._monkeyBoosted ? ' 🐵' : ''}`;
   }
   else if (tw.type === 'clam') { s = 'Buff radius: ' + ((tw.level + 1) * 1.5).toFixed(1) + ' · +50%DMG -15%CD'; }
   else if (tw.type === 'beehive') { s = 'Bees: ' + (tw.beeCount || 3) + ' · Bee DMG: ' + (tw.beeDmg || 4); }
@@ -393,24 +388,38 @@ export function showTT(tw, px, py) {
     }
   }
   if (isH) {
-    // Deposit Buttons
-    const canDepW = (state.resources.wood || 0) > 0;
-    const canDepS = (state.resources.stone || 0) > 0;
-    addTTB(a, '🪵+1', 'tts2', canDepW, () => { _ΨΔ(() => { state.resources.wood--; tw.dep.wood++; }); refreshTT(tw); });
-    addTTB(a, '🪵All', 'tts2', canDepW, () => { _ΨΔ(() => { const v = state.resources.wood; state.resources.wood -= v; tw.dep.wood += v; }); refreshTT(tw); });
-    addTTB(a, '🪨+1', 'tts2', canDepS, () => { _ΨΔ(() => { state.resources.stone--; tw.dep.stone++; }); refreshTT(tw); });
-    addTTB(a, '🪨All', 'tts2', canDepS, () => { _ΨΔ(() => { const v = state.resources.stone; state.resources.stone -= v; tw.dep.stone += v; }); refreshTT(tw); });
-
-    // Upgrade Logic
-    if (tw.level < 5) {
+    // Deposit buttons for each resource type the player has
+    const hl = HOARD_LEVELS[tw.level || 0] ?? HOARD_LEVELS[0];
+    const cap = hl.cap;
+    const stored = tw.stored || 0;
+    const space = cap - stored;
+    for (const [rk, rt] of Object.entries(RTYPES)) {
+      if (rk === 'dust') continue;
+      const have = state.resources[rk] || 0;
+      if (have <= 0) continue;
+      const depOne = space > 0;
+      const depAll = space > 0;
+      const allAmt = Math.min(have, space);
+      addTTB(a, rt.icon + '+1', 'tts2', depOne, () => {
+        _ΨΔ(() => { state.resources[rk]--; tw.stored = (tw.stored || 0) + 1; });
+        refreshTT(tw);
+      });
+      if (allAmt > 1) addTTB(a, rt.icon + 'All(' + allAmt + ')', 'tts2', depAll, () => {
+        _ΨΔ(() => { state.resources[rk] -= allAmt; tw.stored = (tw.stored || 0) + allAmt; });
+        refreshTT(tw);
+      });
+    }
+    // Upgrade button
+    if (tw.level < HOARD_UPGS.length) {
       const upg = HOARD_UPGS[tw.level];
       let afford = state.gold >= upg.c;
       let costStr = '💰' + upg.c;
       for (const [r, n] of Object.entries(upg.rs)) {
         if ((state.resources[r] || 0) < n) afford = false;
-        costStr += ' ' + (RTYPES[r]?.icon || '') + n;
+        costStr += ' ' + (RTYPES[r]?.icon || r) + n;
       }
-      addTTB(a, '⬆' + costStr, 'ttu', afford, () => {
+      const nextHl = HOARD_LEVELS[tw.level + 1];
+      addTTB(a, `⬆ ${costStr} → cap${nextHl.cap} ${nextHl.m.toFixed(1)}x`, 'ttu', afford, () => {
         _ΨΔ(() => {
           state.gold -= upg.c;
           for (const [r, n] of Object.entries(upg.rs)) state.resources[r] -= n;
@@ -782,6 +791,9 @@ const _rCam = { panX: 0, panY: 0, zoom: 1 };
 const R_ZOOM_MIN = 0.4, R_ZOOM_MAX = 3;
 let _openNodeId = null; // currently open tooltip node
 
+// Dev-mode layout editing: grid step in px (positions snap to multiples of this)
+const RES_GRID_STEP = () => RESEARCH_JSON?.gridStep ?? 120;
+
 function fmtCost(cost) {
   return Object.entries(cost).map(([r, n]) => (RES_ICONS[r] || r) + n).join(' ');
 }
@@ -914,6 +926,19 @@ function renderResearch() {
   }
 
   cx.restore();
+
+  // Dev mode: draw grid coords hint on pinned node
+  if (state._devMode && _pinnedNodeId && _rPos?.[_pinnedNodeId]) {
+    const pp = _rPos[_pinnedNodeId];
+    const step = RES_GRID_STEP();
+    const sx = pp.x * _rCam.zoom + _rCam.panX;
+    const sy = pp.y * _rCam.zoom + _rCam.panY;
+    cx.save();
+    cx.font = 'bold 10px monospace'; cx.textAlign = 'center'; cx.textBaseline = 'bottom';
+    cx.fillStyle = '#fbbf24';
+    cx.fillText(`⬆⬇⬅➡  (${pp.x / step},${pp.y / step})`, sx, sy - NODE_R * _rCam.zoom - 4);
+    cx.restore();
+  }
 }
 
 let _pinnedNodeId = null;
@@ -1041,6 +1066,9 @@ export function showResearch() {
   p.classList.add('sh');
   syncPause();
   hideResTip();
+  // Update dev save button visibility
+  const saveBtn = document.getElementById('resSaveBtn');
+  if (saveBtn) saveBtn.style.display = state._devMode ? '' : 'none';
   requestAnimationFrame(fitResCv);
 }
 
@@ -1147,7 +1175,7 @@ export function initResearchUI() {
     const { x: wx, y: wy } = toWorld(sx, sy);
     for (const [id, pos] of Object.entries(_rPos)) {
       if (Math.hypot(wx - pos.x, wy - pos.y) <= NODE_R) {
-        if (state.research[id]?.status === 'locked') return;
+        if (state.research[id]?.status === 'locked' && !state._devMode) return;
         _pinnedNodeId = id;
         _hoverNodeId = null;
         showResearchDetail(id);
@@ -1161,6 +1189,84 @@ export function initResearchUI() {
     hideResTip();
     renderResearch();
   });
+
+  // ── Dev mode: arrow key node positioning ──────────────────────────────────
+  // Use capture phase so we intercept before input.js adds to keysDown
+  document.addEventListener('keydown', e => {
+    if (!state._devMode) return;
+    if (!document.getElementById('resP')?.classList.contains('sh')) return;
+    if (!_pinnedNodeId || !_rPos) return;
+    const DIRS = { ArrowUp:[0,-1], ArrowDown:[0,1], ArrowLeft:[-1,0], ArrowRight:[1,0] };
+    const dir = DIRS[e.key];
+    if (!dir) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const step = RES_GRID_STEP();
+    const pos = _rPos[_pinnedNodeId];
+    // Snap to grid then offset
+    const nx = Math.round(pos.x / step) * step + dir[0] * step;
+    const ny = Math.round(pos.y / step) * step + dir[1] * step;
+    pos.x = nx;
+    pos.y = ny;
+    // Keep node definition in sync so JSON export is accurate
+    if (state.research[_pinnedNodeId]) {
+      state.research[_pinnedNodeId].x = nx;
+      state.research[_pinnedNodeId].y = ny;
+    }
+    // Also update the loaded RESEARCH_JSON source for accurate saves
+    if (RESEARCH_JSON) {
+      if (RESEARCH_JSON.fixed[_pinnedNodeId]) {
+        RESEARCH_JSON.fixed[_pinnedNodeId].x = nx;
+        RESEARCH_JSON.fixed[_pinnedNodeId].y = ny;
+      } else {
+        const vn = RESEARCH_JSON.variable.find(n => n.id === _pinnedNodeId);
+        if (vn) { vn.x = nx; vn.y = ny; }
+      }
+    }
+    clampResCam(cv.width, cv.height);
+    renderResearch();
+    if (_openNodeId) {
+      const tip = document.getElementById('resTip');
+      if (tip?.classList.contains('sh')) positionResTip(tip, _openNodeId);
+    }
+  }, true /* capture */);
+
+  // ── Dev mode: save layout button ──────────────────────────────────────────
+  const resHeader = document.getElementById('resH');
+  if (resHeader) {
+    const saveBtn = document.createElement('button');
+    saveBtn.id = 'resSaveBtn';
+    saveBtn.textContent = '💾';
+    saveBtn.title = 'Dev: download updated research.json with current node positions';
+    Object.assign(saveBtn.style, {
+      display: 'none', marginLeft: '8px', background: '#374151', color: '#fbbf24',
+      border: '1px solid #f59e0b', padding: '2px 7px', cursor: 'pointer',
+      fontSize: '14px', borderRadius: '3px',
+    });
+    saveBtn.onclick = () => {
+      if (!RESEARCH_JSON) return;
+      // Sync all current _rPos positions into RESEARCH_JSON before downloading
+      if (_rPos && state.research) {
+        for (const [id, pos] of Object.entries(_rPos)) {
+          if (RESEARCH_JSON.fixed[id]) {
+            RESEARCH_JSON.fixed[id].x = pos.x;
+            RESEARCH_JSON.fixed[id].y = pos.y;
+          } else {
+            const vn = RESEARCH_JSON.variable.find(n => n.id === id);
+            if (vn) { vn.x = pos.x; vn.y = pos.y; }
+          }
+        }
+      }
+      const blob = new Blob([JSON.stringify(RESEARCH_JSON, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'research.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    };
+    resHeader.appendChild(saveBtn);
+
+  }
 }
 
 // ── Inventory ─────────────────────────────────────────────────────────────────

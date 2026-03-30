@@ -103,7 +103,7 @@ function tryPlaceTower(c, ex) {
     if (tw.type === 'clown') { tw.reverseRange = TD.clown.reverseRange; tw.reverseDur = TD.clown.reverseDur; tw.reverseCD = TD.clown.reverseCD; }
     if (tw.type === 'robot') tw.cd = 100;
     if (tw.type === 'beehive') { const d = TD.beehive; tw.beeCount = d.beeCount; tw.beeDmg = d.beeDmg; tw.beeRange = d.beeRange; tw.beeRate = d.beeRate; }
-    if (tw.type === 'hoard') { tw.dep = { wood: 0, stone: 0 }; }
+    if (tw.type === 'hoard') { tw.stored = 0; }
     if (tw.type === 'stockpile') { tw.slots = [null, null, null, null]; tw.mode = 'storage'; }
     if (tw.type === 'lab') { tw.obsRange = TD.lab.obsRange; }
     if (tw.type === 'monkey') {

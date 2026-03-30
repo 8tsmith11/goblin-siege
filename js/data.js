@@ -3,7 +3,7 @@ export const TD = {
   lion:     { name:'Rash Lion',           icon:'🦁',  clr:'#ef4444', cost:60,  dmg:15, range:2.0, rate:25, pClr:'#f87171', pSpd:6,   splash:0,   slow:0,  target:'first',   cat:'tower', desc:'Very fast · high single-target DPS' },
   penguin:  { name:'Ambitious Penguin',   icon:'🐧',  clr:'#06b6d4', cost:55,  dmg:5,  range:2.8, rate:35, pClr:'#67e8f9', pSpd:3,   splash:0,   slow:.4, target:'first',   cat:'tower', desc:'Slows enemies on hit' },
   lab:      { name:'Lab',                icon:'🧪', clr:'#a78bfa', cost:120, cat:'support', obsRange: 3, desc:'Gathers Dust 🔮 from enemies slain within 3 tiles' },
-  hoard:    { name:'Hoard Pile',         icon:'🏺', clr:'#10b981', cost:60, cat:'support', desc:'Generates gold. Somebody has to do it.' },
+  hoard:    { name:'Hoard Pile',         icon:'🏺', clr:'#10b981', cost:60, cat:'support', desc:'Store resources; earns gold each wave. Decays slowly — boost to slow decay.' },
   fish:     { name:'Arrogant Fish',       icon:'🐟',  clr:'#f59e0b', cost:75,  dmg:12, range:2.5, rate:60, pClr:'#fcd34d', pSpd:3.5, splash:1.2, slow:0,  target:'first',   cat:'tower', desc:'Splash damage · hits nearby enemies' },
   seahorse: { name:'Insightful Seahorse', icon:'🦑',  clr:'#ec4899', cost:65,  dmg:6,  range:3.5, rate:40, pClr:'#f472b6', pSpd:3,   splash:0,   slow:0,  target:'strongest',pierce:3, cat:'tower', desc:'Piercing shots · passes through enemies' },
   lizard:   { name:'Abhorrent Lizard',    icon:'🦎',  clr:'#84cc16', cost:85,  dmg:45, range:2.5, rate:65, pClr:'#a3e635', pSpd:5,   splash:1.0, slow:0,  target:'first',   speedUp:true, voiceLine:"I DESPISE YOU ALL!", cat:'tower', desc:'Massive damage · splash · speeds up enemies' },
@@ -65,6 +65,24 @@ export const ETYPES = {
   swarm:   { hpM:.18, spdM:1.7, sz:.18, rew:1,  clr:'#a3e635', em:'🐜', drops: [] },
   shield:  { hpM:2,   spdM:.7,  sz:.40, rew:9,  clr:'#3b82f6', em:'🛡️', drops: [{ type: 'stone', chance: 0.35 }] },
 };
+
+// Per-level stats for the Hoard Pile (tw.level 0 = Level 1, etc.)
+// income = base + floor(stored × m)  |  decay = max(1, floor(stored × 0.1))
+export const HOARD_LEVELS = [
+  { cap: 20, m: 1.5, base: 0 }, // level 1
+  { cap: 30, m: 2.0, base: 0 }, // level 2
+  { cap: 40, m: 2.5, base: 0 }, // level 3
+  { cap: 50, m: 3.0, base: 0 }, // level 4
+  { cap: 60, m: 3.5, base: 0 }, // level 5
+];
+
+// Gold + resource cost to upgrade hoard from level N to N+1
+export const HOARD_UPGS = [
+  { c: 40,  rs: { wood: 8,  stone: 8  } }, // → level 2
+  { c: 70,  rs: { wood: 12, stone: 12 } }, // → level 3
+  { c: 110, rs: { wood: 18, stone: 18 } }, // → level 4
+  { c: 160, rs: { wood: 25, stone: 25 } }, // → level 5
+];
 
 export const BOSS_LINES = [
   "You think walls can stop ME?!","I will FEAST on your towers!","Your defenses are PATHETIC!",

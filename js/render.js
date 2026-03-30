@@ -179,11 +179,12 @@ export function render() {
   // Stacks (rendered above towers)
   renderStacks();
 
-  // Monkeys
+  // Monkeys — hidden while boosting (monkey "disappears" into the target building)
   for (const tw of towers) {
     if (tw.type !== 'monkey' || !tw.monkeys) continue;
     for (const mk of tw.monkeys) {
-      if (cam.zoom >= 0.75 && mk.st !== 'boosting') {
+      if (mk.st === 'boosting') continue;
+      if (cam.zoom >= 0.75) {
         cx.font = Math.floor(CELL * 0.5) + 'px serif';
         cx.textAlign = 'center'; cx.textBaseline = 'middle';
         cx.fillText('🐵', mk.x, mk.y);
@@ -194,6 +195,14 @@ export function render() {
         cx.fillText(RTYPES[mk.carrying.type]?.icon || '?', mk.x, mk.y - CELL * 0.28);
       }
     }
+  }
+  // Monkey icon on boosted buildings
+  for (const tw of towers) {
+    if (!tw._monkeyBoosted) continue;
+    const tx = tw.x * CELL, ty = tw.y * CELL;
+    cx.font = Math.floor(CELL * 0.25) + 'px serif';
+    cx.textAlign = 'right'; cx.textBaseline = 'top';
+    cx.fillText('🐵', tx + CELL - 2, ty + 2);
   }
 
   // Enemies
