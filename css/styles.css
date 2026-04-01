@@ -133,6 +133,41 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .rddesc{font-size:11px;color:#cbd5e1;margin-top:2px}
 .rdtooltip{font-size:10px;color:#64748b;font-style:italic;margin-top:3px}
 #invBtn{top:160px;border-color:#d97706;box-shadow:0 0 10px rgba(217,119,6,0.4)}
+#craftP{position:absolute;inset:0;background:rgba(11,14,23,.98);z-index:75;display:none;flex-direction:column;overflow:hidden}
+#craftP.sh{display:flex}
+#craftH{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #14532d;background:rgba(34,197,94,.08);flex-shrink:0}
+#craftH h2{font-family:'MedievalSharp',cursive;color:#4ade80;font-size:18px}
+#craftClose{background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;padding:4px}
+#craftClose:hover{color:#e2e8f0}
+#craftC{overflow-y:auto;flex:1;padding:12px 16px;display:flex;flex-direction:column;gap:10px;scrollbar-width:thin;scrollbar-color:#22c55e transparent}
+#craftC::-webkit-scrollbar{width:6px}#craftC::-webkit-scrollbar-thumb{background:#22c55e;border-radius:3px}
+.craft-queue{background:rgba(34,197,94,.1);border:2px solid #22c55e;border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.craft-queue-title{font-size:11px;font-weight:700;color:#4ade80;text-transform:uppercase;letter-spacing:1px}
+.craft-queue-row{display:flex;align-items:center;gap:8px}
+.craft-queue-icon{font-size:24px;line-height:1}
+.craft-queue-info{flex:1;display:flex;flex-direction:column;gap:2px}
+.craft-queue-name{font-size:14px;font-weight:700;color:#e2e8f0}
+.craft-queue-prog{font-size:11px;color:#4ade80}
+.craft-cancel{padding:5px 10px;background:#7f1d1d;border:none;border-radius:5px;color:#fca5a5;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0}
+.craft-cancel:active{transform:scale(.93)}
+.craft-recipe{background:var(--card);border:2px solid #2a3550;border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;transition:border-color .1s}
+.craft-recipe:hover{border-color:#22c55e33}
+.craft-recipe-icon{font-size:28px;line-height:1;flex-shrink:0}
+.craft-recipe-info{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.craft-recipe-name{font-size:14px;font-weight:700;color:#e2e8f0}
+.craft-recipe-cost{font-size:11px;color:var(--gold)}
+.craft-recipe-desc{font-size:11px;color:#64748b}
+.craft-recipe-waves{font-size:10px;color:#94a3b8}
+.craft-btn{padding:6px 12px;background:linear-gradient(135deg,#15803d,#166534);border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap}
+.craft-btn:active{transform:scale(.93)}
+.craft-btn:disabled{opacity:.35;pointer-events:none}
+.craft-recipe.craft-recipe-selected{border-color:#a78bfa;background:rgba(167,139,250,.08)}
+.craft-btn.craft-btn-sel{background:#7c3aed;color:#fff;border-color:#7c3aed}
+#invActions{padding:8px 16px;border-top:1px solid #44260e;min-height:48px;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
+.inv-use-btn{padding:7px 16px;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;color:#fff}
+.inv-use-btn:active{transform:scale(.93)}
+.inv-use-aug{background:linear-gradient(135deg,#7c3aed,#6d28d9)}
+.inv-use-con{background:linear-gradient(135deg,#0891b2,#0e7490)}
 #invP{position:absolute;inset:0;background:rgba(11,14,23,.98);z-index:75;display:none;flex-direction:column;overflow:hidden}
 #invP.sh{display:flex}
 #invH{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #44260e;background:rgba(217,119,6,.1);flex-shrink:0}

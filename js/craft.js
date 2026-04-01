@@ -1,0 +1,167 @@
+'use strict';
+import { state } from './main.js';
+import { dropItem, _itemRegistry } from './resources.js';
+
+export const RECIPES = [
+  {
+    id: 'sharpened_flint', name: 'Sharpened Flint', icon: '🗿',
+    cost: { stone: 2 }, waves: 1, output: 'augment',
+    desc: '+15% damage to one tower',
+    apply: tw => { tw.dmg = Math.round(tw.dmg * 1.15); },
+  },
+  {
+    id: 'polished_stone', name: 'Polished Stone', icon: '⚪',
+    cost: { stone: 2 }, waves: 1, output: 'augment',
+    desc: '+10% range to one tower',
+    apply: tw => { tw.range = Math.round(tw.range * 1.1 * 10) / 10; },
+  },
+  {
+    id: 'taut_sinew', name: 'Taut Sinew', icon: '🧵',
+    cost: { wood: 2 }, waves: 1, output: 'augment',
+    desc: '-10% cooldown to one tower',
+    apply: tw => { tw.rate = Math.max(1, Math.round(tw.rate * 0.9)); },
+  },
+  {
+    id: 'stone_trap', name: 'Stone Trap', icon: '🪤',
+    cost: { stone: 3 }, waves: 1, output: 'consumable',
+    desc: 'Place on path: 30 dmg to first enemy that steps on it',
+    trapType: 'trap',
+  },
+  {
+    id: 'sticky_sap', name: 'Sticky Sap', icon: '🍯',
+    cost: { wood: 2, stone: 1 }, waves: 1, output: 'consumable',
+    desc: 'Place on path: 40% slow to all enemies crossing for 10 seconds',
+    trapType: 'sap',
+  },
+];
+
+// Register icons into the shared registry so resources.js can look them up
+for (const r of RECIPES) _itemRegistry[r.id] = { icon: r.icon, name: r.name };
+
+export function canAffordRecipe(recipe) {
+  const res = state.resources || {};
+  return Object.entries(recipe.cost).every(([r, n]) => (res[r] || 0) >= n);
+}
+
+// Check if a workbench's own inventory has enough resources for a recipe.
+export function workbenchHasResources(tw, recipeId) {
+  const recipe = RECIPES.find(r => r.id === recipeId);
+  if (!recipe) return false;
+  const inv = tw.inv || {};
+  return Object.entries(recipe.cost).every(([r, n]) => (inv[r] || 0) >= n);
+}
+
+// Select a recipe on a workbench (or clear with null). Does NOT consume resources.
+export function selectRecipe(tw, recipeId) {
+  tw.selectedRecipe = recipeId || null;
+}
+
+// Cancel crafting on a specific workbench tower — returns resources to tw.inv.
+export function cancelCraft(tw) {
+  if (!tw.craftQueue) return;
+  const recipe = RECIPES.find(r => r.id === tw.craftQueue.recipeId);
+  if (recipe) {
+    if (!tw.inv) tw.inv = {};
+    for (const [r, n] of Object.entries(recipe.cost)) {
+      tw.inv[r] = (tw.inv[r] || 0) + n;
+    }
+  }
+  tw.craftQueue = null;
+}
+
+// Called at wave-end. Auto-starts and ticks all workbench craft queues.
+// Returns array of { tw, recipe } completions.
+export function tickCraft() {
+  const results = [];
+  for (const tw of state.towers) {
+    if (tw.type !== 'workbench') continue;
+    // Auto-start if selected recipe and resources available
+    if (!tw.craftQueue && tw.selectedRecipe) {
+      const recipe = RECIPES.find(r => r.id === tw.selectedRecipe);
+      if (recipe && workbenchHasResources(tw, tw.selectedRecipe)) {
+        if (!tw.inv) tw.inv = {};
+        for (const [r, n] of Object.entries(recipe.cost)) {
+          tw.inv[r] = Math.max(0, (tw.inv[r] || 0) - n);
+        }
+        tw.craftQueue = { recipeId: tw.selectedRecipe, wavesLeft: recipe.waves, wavesTotal: recipe.waves };
+      }
+    }
+    if (!tw.craftQueue) continue;
+    tw.craftQueue.wavesLeft -= tw._monkeyBoosted ? 2 : 1;
+    if (tw.craftQueue.wavesLeft <= 0) {
+      const recipe = RECIPES.find(r => r.id === tw.craftQueue.recipeId);
+      tw.craftQueue = null;
+      if (recipe) {
+        dropItem(tw.x, tw.y, recipe.id);
+        results.push({ tw, recipe });
+      }
+    }
+  }
+  return results;
+}
+
+// Apply an augment item to a tower. Returns true on success.
+export function applyAugment(item, tower) {
+  const recipe = RECIPES.find(r => r.id === item.id);
+  if (!recipe?.apply) return false;
+  const slots = (tower.level || 0) >= 5 ? 2 : (tower.level || 0) >= 3 ? 1 : 0;
+  if (!tower.augments) tower.augments = [];
+  if (tower.augments.length >= slots) return false;
+  recipe.apply(tower);
+  tower.augments.push({ id: item.id, name: item.name, icon: item.icon });
+  return true;
+}
+
+// Place a consumable at grid position (gx, gy). Returns true on success.
+export function placeConsumable(item, gx, gy) {
+  const recipe = RECIPES.find(r => r.id === item.id);
+  if (!recipe || recipe.output !== 'consumable') return false;
+  if (!state.pathSet?.has(gx + ',' + gy)) return false;
+  const trap = { type: recipe.trapType, x: gx, y: gy };
+  if (recipe.trapType === 'trap') {
+    trap.dmg = 30;
+  } else if (recipe.trapType === 'barricade') {
+    trap.wave = state.wave;
+  } else if (recipe.trapType === 'sap') {
+    trap.expiry = state.ticks + 600;
+    trap.slow = 0.4;
+  }
+  if (!state.traps) state.traps = [];
+  state.traps.push(trap);
+  return true;
+}
+
+// Reset transient trap slows, apply sap slows, trigger stone traps. Call before updateEnemies.
+export function updateTraps() {
+  for (const e of state.enemies) e._trapSlow = 0;
+  if (!state.traps?.length) return;
+
+  const toRemove = [];
+  for (let ti = 0; ti < state.traps.length; ti++) {
+    const trap = state.traps[ti];
+    if (trap.type === 'sap') {
+      if (state.ticks >= trap.expiry) { toRemove.push(ti); continue; }
+      for (const e of state.enemies) {
+        if (e.dead) continue;
+        if (Math.abs(e.x - trap.x) < 0.75 && Math.abs(e.y - trap.y) < 0.75) {
+          e._trapSlow = Math.max(e._trapSlow, trap.slow);
+        }
+      }
+    } else if (trap.type === 'trap') {
+      for (const e of state.enemies) {
+        if (e.dead) continue;
+        if (Math.abs(e.x - trap.x) < 0.75 && Math.abs(e.y - trap.y) < 0.75) {
+          e.hp -= trap.dmg;
+          toRemove.push(ti);
+          break;
+        }
+      }
+    }
+  }
+  for (let i = toRemove.length - 1; i >= 0; i--) state.traps.splice(toRemove[i], 1);
+}
+
+// Remove barricades at wave end.
+export function cleanupBarricades() {
+  if (state.traps) state.traps = state.traps.filter(t => t.type !== 'barricade');
+}

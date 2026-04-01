@@ -8,6 +8,7 @@ import { SP, castSpell } from './spells.js';
 import { renderSk, showTowerSkill } from './skills.js';
 import { BESTIARY, getScribeLogs } from './bestiary.js';
 import { sfxPlace, iA } from './audio.js';
+import { RECIPES, cancelCraft, selectRecipe } from './craft.js';
 
 export function hudU() {
   const { lives, gold, enemies, spawnQueue, wave, phase, prepTicks } = state;
@@ -172,6 +173,16 @@ export function panelU() {
       const el = mkIB(s.icon, s.name, '💰' + cost, gold >= cost && phase === 'active', false, () => castSpell(k));
       addHover(el, k); pc.appendChild(el);
     }
+    // Consumables from inventory
+    const cons = state.inventory?.consumables || [];
+    cons.forEach((item, i) => {
+      const el = mkIB(item.icon, item.name, 'Place', true, state.sel?.type === 'consumable_pick' && state.sel?.invIndex === i, () => {
+        state.sel = { type: 'consumable_pick', item, invIndex: i };
+        showTip('Click a path tile to place ' + item.name);
+        panelU();
+      });
+      pc.appendChild(el);
+    });
   } else if (tab === 'skills') {
     renderSk();
   }
@@ -375,7 +386,20 @@ export function showTT(tw, px, py) {
   }
   else if (tw.type === 'robot') { s = 'Auto-casts spells!'; }
   else if (tw.type === 'lab') { s = 'Observation radius: ' + (tw.obsRange || 3) + ' · Gathers 🔮 Dust'; }
+  else if (tw.type === 'workbench') {
+    const qi = tw.craftQueue ? RECIPES.find(r => r.id === tw.craftQueue.recipeId)?.name || '?' : null;
+    const sel = tw.selectedRecipe ? RECIPES.find(r => r.id === tw.selectedRecipe)?.name || '?' : null;
+    s = (qi ? 'Crafting: ' + qi : sel ? 'Ready: ' + sel : 'Idle — select recipe');
+  }
   else { s = 'DMG:' + tw.dmg + ' RNG:' + tw.range?.toFixed(1) + ' CD:' + tw.rate; if (tw.slow > 0) s += ' Slow:' + Math.floor(tw.slow * 100) + '%'; if (tw.splash > 0) s += ' Spl:' + tw.splash.toFixed(1); if (tw.pierce) s += ' Prc:' + tw.pierce; if (tw.chain) s += ' Chn:' + tw.chain; if (tw._buffed) s += ' 🐚'; }
+  if (TD[tw.type]?.cat === 'tower') {
+    const slots = (tw.level || 0) >= 5 ? 2 : (tw.level || 0) >= 3 ? 1 : 0;
+    if (slots > 0) {
+      const augs = tw.augments || [];
+      const slotStr = Array.from({ length: slots }, (_, i) => augs[i] ? augs[i].icon : '○').join(' ');
+      s += '  🔧 ' + slotStr;
+    }
+  }
   document.getElementById('ttS').textContent = s;
 
   const a = document.getElementById('ttA'); a.innerHTML = '';
@@ -432,6 +456,7 @@ export function showTT(tw, px, py) {
   if (tw.type === 'stockpile') buildStockpileTT(tw, a);
   if (tw.type === 'lab') { addTTB(a, '🔬 Research', 'tts2', !!state.research, () => { hideTT(); state.ttTower = null; showResearch(); }); }
   if (tw.type === 'monkey') buildMonkeyTT(tw, a);
+  if (tw.type === 'workbench') { addTTB(a, '⚒️ Open', 'ttc', true, () => { hideTT(); state.ttTower = null; openCraftPanel(tw); }); }
   if (TD[tw.type]?.cat === 'tower' && TOWER_SKILLS[tw.type]) { addTTB(a, '⚡Skill', 'ttc', true, () => { showTowerSkill(tw); hideTT(); state.ttTower = null; }); }
   const sv = Math.floor(def.cost * 0.75 + (tw.level * def.cost * 0.4));
   addTTB(a, 'Sell +💰' + sv, 'ttl', true, () => {
@@ -591,68 +616,94 @@ const FILTER_LABEL = { null: 'All', wood: '🪵', stone: '🪨' };
 function buildMonkeyTT(tw, container) {
   if (!tw.monkeys) return;
   for (const mk of tw.monkeys) {
-    const row = document.createElement('div');
-    row.style.cssText = 'display:flex;gap:4px;align-items:center;margin:2px 0;flex-wrap:nowrap';
-    const nameEl = document.createElement('span');
-    nameEl.style.cssText = 'color:#fb923c;font-size:10px;min-width:44px;font-weight:700;flex-shrink:0';
-    nameEl.textContent = mk.name;
-    row.appendChild(nameEl);
-    container.appendChild(row);
+    const block = document.createElement('div');
+    block.style.cssText = 'display:flex;flex-direction:column;gap:3px;margin:4px 0;border-top:1px solid #334155;padding-top:4px';
 
-    // Role cycle button
-    addTTB(row, ROLE_LABEL[mk.role] ?? 'Idle 💤', 'tts2', true, () => {
+    const nameEl = document.createElement('span');
+    nameEl.style.cssText = 'color:#fb923c;font-size:10px;font-weight:700';
+    nameEl.textContent = mk.name;
+    block.appendChild(nameEl);
+
+    // Role cycle button — always on its own line
+    const roleRow = document.createElement('div');
+    roleRow.style.cssText = 'display:flex;gap:4px;align-items:center';
+    addTTB(roleRow, ROLE_LABEL[mk.role] ?? 'Idle 💤', 'tts2', true, () => {
       const idx = ROLE_CYCLE.indexOf(mk.role);
       mk.role = ROLE_CYCLE[(idx + 1) % ROLE_CYCLE.length];
       mk.cfg = { filter: null, dest: null, from: null, boost: null };
       mk.st = 'idle'; mk.carrying = null;
       refreshTT(tw);
     });
+    block.appendChild(roleRow);
 
     if (mk.role === 'gatherer') {
-      addTTB(row, 'Filter:' + FILTER_LABEL[mk.cfg.filter ?? null], 'tts2', true, () => {
+      const filterRow = document.createElement('div');
+      filterRow.style.cssText = 'display:flex;gap:4px;align-items:center';
+      addTTB(filterRow, 'Filter:' + FILTER_LABEL[mk.cfg.filter ?? null], 'tts2', true, () => {
         const fi = FILTER_CYCLE.indexOf(mk.cfg.filter ?? null);
         mk.cfg.filter = FILTER_CYCLE[(fi + 1) % FILTER_CYCLE.length] ?? null;
         refreshTT(tw);
       });
+      block.appendChild(filterRow);
+
+      const destRow = document.createElement('div');
+      destRow.style.cssText = 'display:flex;gap:4px;align-items:center';
       const destLbl = mk.cfg.dest ? `Dest:(${mk.cfg.dest.x},${mk.cfg.dest.y})` : 'Set Dest 📍';
-      addTTB(row, destLbl, 'tts2', true, () => {
+      addTTB(destRow, destLbl, 'tts2', true, () => {
         state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'dest' };
         hideTT(); state.ttTower = null; panelU();
       });
+      block.appendChild(destRow);
     }
 
     if (mk.role === 'courier') {
-      addTTB(row, 'Filter:' + FILTER_LABEL[mk.cfg.filter ?? null], 'tts2', true, () => {
+      const filterRow = document.createElement('div');
+      filterRow.style.cssText = 'display:flex;gap:4px;align-items:center';
+      addTTB(filterRow, 'Filter:' + FILTER_LABEL[mk.cfg.filter ?? null], 'tts2', true, () => {
         const fi = FILTER_CYCLE.indexOf(mk.cfg.filter ?? null);
         mk.cfg.filter = FILTER_CYCLE[(fi + 1) % FILTER_CYCLE.length] ?? null;
         refreshTT(tw);
       });
+      block.appendChild(filterRow);
+
+      const fromRow = document.createElement('div');
+      fromRow.style.cssText = 'display:flex;gap:4px;align-items:center';
       const fromLbl = mk.cfg.from ? `From:(${mk.cfg.from.x},${mk.cfg.from.y})` : 'Set From 📍';
-      addTTB(row, fromLbl, 'tts2', true, () => {
+      addTTB(fromRow, fromLbl, 'tts2', true, () => {
         state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'from' };
         hideTT(); state.ttTower = null; panelU();
       });
+      block.appendChild(fromRow);
+
+      const toRow = document.createElement('div');
+      toRow.style.cssText = 'display:flex;gap:4px;align-items:center';
       const toLbl = mk.cfg.dest ? `To:(${mk.cfg.dest.x},${mk.cfg.dest.y})` : 'Set To 📍';
-      addTTB(row, toLbl, 'tts2', true, () => {
+      addTTB(toRow, toLbl, 'tts2', true, () => {
         state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'dest' };
         hideTT(); state.ttTower = null; panelU();
       });
+      block.appendChild(toRow);
     }
 
     if (mk.role === 'booster') {
+      const bRow = document.createElement('div');
+      bRow.style.cssText = 'display:flex;gap:4px;align-items:center';
       const bLbl = mk.cfg.boost ? `Boost:(${mk.cfg.boost.x},${mk.cfg.boost.y})` : 'Set Target 📍';
-      addTTB(row, bLbl, 'tts2', true, () => {
+      addTTB(bRow, bLbl, 'tts2', true, () => {
         state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'boost' };
         hideTT(); state.ttTower = null; panelU();
       });
+      block.appendChild(bRow);
     }
 
     if (mk.trips > 0) {
       const tripEl = document.createElement('span');
-      tripEl.style.cssText = 'color:#64748b;font-size:9px;margin-left:2px;flex-shrink:0';
+      tripEl.style.cssText = 'color:#64748b;font-size:9px';
       tripEl.textContent = mk.trips + ' trip' + (mk.trips === 1 ? '' : 's');
-      row.appendChild(tripEl);
+      block.appendChild(tripEl);
     }
+
+    container.appendChild(block);
   }
 }
 
@@ -742,7 +793,8 @@ function syncPause() {
   const scribeOpen = document.getElementById('scribeP')?.style.display === 'flex';
   const welcomeOpen = !document.getElementById('welcome')?.classList.contains('hid');
   const invOpen = document.getElementById('invP')?.classList.contains('sh');
-  state.paused = !!(resOpen || beastOpen || scribeOpen || welcomeOpen || invOpen);
+  const craftOpen = document.getElementById('craftP')?.classList.contains('sh');
+  state.paused = !!(resOpen || beastOpen || scribeOpen || welcomeOpen || invOpen || craftOpen);
 }
 
 export function toggleBestiary() {
@@ -1382,6 +1434,47 @@ function _mkInvCell(item, selected) {
   return cell;
 }
 
+function _renderInvActions() {
+  const el = document.getElementById('invActions');
+  if (!el) return;
+  el.innerHTML = '';
+  if (!_invSel || _invSel.source !== 'inv') return;
+  const inv = state.inventory;
+  const item = inv[_invSel.section]?.[_invSel.index];
+  if (!item) return;
+  if (_invSel.section === 'augments') {
+    const btn = document.createElement('button');
+    btn.className = 'inv-use-btn inv-use-aug';
+    btn.textContent = '⚡ Apply to Tower';
+    btn.onclick = () => {
+      const i = _invSel.index;
+      const it = state.inventory.augments[i];
+      if (!it) return;
+      document.getElementById('invP')?.classList.remove('sh');
+      _invSel = null;
+      syncPause();
+      state.sel = { type: 'augment_pick', item: it, invIndex: i };
+      showTip('Click a tower to apply the augment');
+    };
+    el.appendChild(btn);
+  } else if (_invSel.section === 'consumables') {
+    const btn = document.createElement('button');
+    btn.className = 'inv-use-btn inv-use-con';
+    btn.textContent = '📍 Place on Path';
+    btn.onclick = () => {
+      const i = _invSel.index;
+      const it = state.inventory.consumables[i];
+      if (!it) return;
+      document.getElementById('invP')?.classList.remove('sh');
+      _invSel = null;
+      syncPause();
+      state.sel = { type: 'consumable_pick', item: it, index: i };
+      showTip('Click a path tile to place the consumable');
+    };
+    el.appendChild(btn);
+  }
+}
+
 function _invClickItem(section, index) {
   if (section !== 'artifacts') {
     // Non-artifact: just toggle select (no equipped slots to swap with)
@@ -1391,6 +1484,7 @@ function _invClickItem(section, index) {
       _invSel = { source: 'inv', section, index };
     }
     renderInventory();
+    _renderInvActions();
     return;
   }
   // Artifact clicked
@@ -1414,6 +1508,7 @@ function _invClickItem(section, index) {
     _invSel = { source: 'inv', section: 'artifacts', index };
   }
   renderInventory();
+  _renderInvActions();
 }
 
 function _invClickEquip(slotIndex) {
@@ -1473,4 +1568,110 @@ export function addToInventory(section, item) {
   const arr = inv[section];
   if (!arr) return;
   if (arr.length < INV_MAX) arr.push(item);
+}
+
+// ── Crafting Panel ─────────────────────────────────────────────────────────────
+
+let _craftTw = null; // currently open workbench tower
+
+export function openCraftPanel(tw) {
+  _craftTw = tw;
+  renderCraftPanel();
+  const p = document.getElementById('craftP');
+  if (p && !p.classList.contains('sh')) { p.classList.add('sh'); syncPause(); }
+}
+
+export function renderCraftPanel() {
+  const c = document.getElementById('craftC');
+  if (!c || !_craftTw) return;
+  const tw = _craftTw;
+  c.innerHTML = '';
+
+  // Workbench inventory
+  const invDiv = document.createElement('div');
+  invDiv.style.cssText = 'margin-bottom:10px;';
+  const inv = tw.inv || {};
+  const stockRow = document.createElement('div');
+  stockRow.style.cssText = 'font-size:12px;color:#94a3b8;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap';
+  Object.entries(RTYPES).filter(([k]) => k !== 'dust').forEach(([k, rt]) => {
+    const span = document.createElement('span');
+    span.dataset.wbRes = k;
+    span.dataset.twX = tw.x;
+    span.dataset.twY = tw.y;
+    span.style.cssText = 'cursor:pointer';
+    span.textContent = rt.icon + ' ' + (inv[k] || 0);
+    stockRow.appendChild(span);
+  });
+  invDiv.innerHTML = '<div class="craft-queue-title">Workbench Stock</div>';
+  invDiv.appendChild(stockRow);
+  c.appendChild(invDiv);
+
+  // Selected recipe
+  const selDiv = document.createElement('div');
+  selDiv.style.cssText = 'margin-bottom:10px;display:flex;align-items:center;gap:8px;';
+  const sel = tw.selectedRecipe ? RECIPES.find(r => r.id === tw.selectedRecipe) : null;
+  if (sel) {
+    selDiv.innerHTML = `<span style="font-size:12px;color:#a78bfa">Selected: ${sel.icon} ${sel.name}</span>`;
+    const clearBtn = document.createElement('button');
+    clearBtn.className = 'craft-cancel';
+    clearBtn.textContent = 'Clear';
+    clearBtn.onclick = () => { selectRecipe(tw, null); renderCraftPanel(); };
+    selDiv.appendChild(clearBtn);
+  } else {
+    selDiv.innerHTML = '<span style="font-size:12px;color:#475569">No recipe selected</span>';
+  }
+  c.appendChild(selDiv);
+
+  // Active craft queue
+  if (tw.craftQueue) {
+    const recipe = RECIPES.find(r => r.id === tw.craftQueue.recipeId);
+    const qDiv = document.createElement('div');
+    qDiv.className = 'craft-queue';
+    const wavesDone = tw.craftQueue.wavesTotal - tw.craftQueue.wavesLeft;
+    qDiv.innerHTML = `
+      <div class="craft-queue-title">Crafting…</div>
+      <div class="craft-queue-row">
+        <div class="craft-queue-icon">${recipe?.icon || '?'}</div>
+        <div class="craft-queue-info">
+          <div class="craft-queue-name">${recipe?.name || '?'}</div>
+          <div class="craft-queue-prog">${wavesDone} / ${tw.craftQueue.wavesTotal} waves</div>
+        </div>
+        <button class="craft-cancel" id="craftCancelBtn">Cancel</button>
+      </div>`;
+    c.appendChild(qDiv);
+    qDiv.querySelector('#craftCancelBtn').onclick = () => { cancelCraft(tw); renderCraftPanel(); };
+  }
+
+  // Recipe list
+  for (const recipe of RECIPES) {
+    const isSelected = tw.selectedRecipe === recipe.id;
+    const div = document.createElement('div');
+    div.className = 'craft-recipe' + (isSelected ? ' craft-recipe-selected' : '');
+    const costParts = Object.entries(recipe.cost).map(([r, n]) => {
+      const rt = RTYPES[r];
+      return `${rt ? rt.icon : r}×${n}`;
+    }).join('  ');
+    div.innerHTML = `
+      <div class="craft-recipe-icon">${recipe.icon}</div>
+      <div class="craft-recipe-info">
+        <div class="craft-recipe-name">${recipe.name}</div>
+        <div class="craft-recipe-cost">${costParts}</div>
+        <div class="craft-recipe-desc">${recipe.desc}</div>
+        <div class="craft-recipe-waves">${recipe.waves} wave${recipe.waves > 1 ? 's' : ''} to craft</div>
+      </div>
+      <button class="craft-btn${isSelected ? ' craft-btn-sel' : ''}">${isSelected ? 'Selected ✓' : 'Select'}</button>`;
+    div.querySelector('.craft-btn').onclick = () => {
+      selectRecipe(tw, isSelected ? null : recipe.id);
+      renderCraftPanel();
+    };
+    c.appendChild(div);
+  }
+}
+
+export function initCraftUI() {
+  document.getElementById('craftClose')?.addEventListener('click', () => {
+    document.getElementById('craftP')?.classList.remove('sh');
+    _craftTw = null;
+    syncPause();
+  });
 }

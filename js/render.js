@@ -97,16 +97,16 @@ export function render() {
   if (ttTower?.type === 'monkey' && ttTower.monkeys) {
     for (const mk of ttTower.monkeys) {
       if (mk.role === 'courier' && mk.cfg.from) {
-        cx.strokeStyle = 'rgba(59,130,246,.9)'; cx.lineWidth = 2;
-        cx.strokeRect(mk.cfg.from.x * CELL + 2, mk.cfg.from.y * CELL + 2, CELL - 4, CELL - 4);
+        cx.strokeStyle = 'rgba(59,130,246,1)'; cx.lineWidth = 4;
+        cx.strokeRect(mk.cfg.from.x * CELL + 1, mk.cfg.from.y * CELL + 1, CELL - 2, CELL - 2);
       }
       if ((mk.role === 'gatherer' || mk.role === 'courier') && mk.cfg.dest) {
-        cx.strokeStyle = 'rgba(244,63,94,.9)'; cx.lineWidth = 2;
-        cx.strokeRect(mk.cfg.dest.x * CELL + 2, mk.cfg.dest.y * CELL + 2, CELL - 4, CELL - 4);
+        cx.strokeStyle = 'rgba(244,63,94,1)'; cx.lineWidth = 4;
+        cx.strokeRect(mk.cfg.dest.x * CELL + 1, mk.cfg.dest.y * CELL + 1, CELL - 2, CELL - 2);
       }
       if (mk.role === 'booster' && mk.cfg.boost) {
-        cx.strokeStyle = 'rgba(244,63,94,.9)'; cx.lineWidth = 2;
-        cx.strokeRect(mk.cfg.boost.x * CELL + 2, mk.cfg.boost.y * CELL + 2, CELL - 4, CELL - 4);
+        cx.strokeStyle = 'rgba(244,63,94,1)'; cx.lineWidth = 4;
+        cx.strokeRect(mk.cfg.boost.x * CELL + 1, mk.cfg.boost.y * CELL + 1, CELL - 2, CELL - 2);
       }
     }
   }
@@ -122,6 +122,17 @@ export function render() {
     cx.beginPath(); cx.arc(vx, vy, CELL * 3, 0, Math.PI * 2); cx.fill();
     cx.font = Math.floor(CELL * 0.9) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
     cx.fillText('🌋', vx, vy);
+  }
+
+  // Traps
+  if (state.traps?.length) {
+    cx.font = Math.floor(CELL * 0.45) + 'px serif';
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    for (const trap of state.traps) {
+      const px = trap.x * CELL + CELL / 2, py = trap.y * CELL + CELL / 2;
+      if (trap.type === 'trap') cx.fillText('🪤', px, py);
+      else if (trap.type === 'sap') cx.fillText('🍯', px, py);
+    }
   }
 
   // Towers
@@ -158,6 +169,7 @@ export function render() {
       cx.fillText(isH ? '🏺' : (def?.icon || '?'), tx + CELL / 2, ty + CELL / 2);
     }
     if (tw.level > 0) { cx.font = 'bold ' + Math.floor(CELL * 0.16) + 'px Anybody,sans-serif'; cx.fillStyle = '#fbbf24'; cx.fillText('★'.repeat(Math.min(tw.level, 5)), tx + CELL / 2, ty + CELL - 2); }
+
 
   });
 
@@ -246,8 +258,29 @@ export function render() {
   // Particles
   particles.forEach(p => { cx.globalAlpha = Math.max(0, p.life / 20); cx.fillStyle = p.clr; cx.beginPath(); cx.arc(p.x, p.y, p.sz, 0, Math.PI * 2); cx.fill(); }); cx.globalAlpha = 1;
 
+  // Consumable placement preview
+  if (sel?.type === 'consumable_pick' && gCell) {
+    const gx = gCell.x * CELL, gy = gCell.y * CELL, gpx = gx + CELL / 2, gpy = gy + CELL / 2;
+    const onPath = state.pathSet?.has(gCell.x + ',' + gCell.y);
+    cx.globalAlpha = onPath ? 0.6 : 0.2;
+    cx.fillStyle = onPath ? '#ffffff11' : '#ff000022'; cx.fillRect(gx, gy, CELL, CELL);
+    cx.font = Math.floor(CELL * 0.45) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.fillText(sel.item?.icon || '?', gpx, gpy);
+    cx.globalAlpha = 1;
+  }
+
+  // Augment placement preview
+  if (sel?.type === 'augment_pick' && gCell) {
+    const tw2 = towers.find(t => t.x === gCell.x && t.y === gCell.y);
+    if (tw2) {
+      const gx = gCell.x * CELL, gy = gCell.y * CELL;
+      cx.strokeStyle = '#a855f7'; cx.lineWidth = 2;
+      cx.strokeRect(gx + 2, gy + 2, CELL - 4, CELL - 4);
+    }
+  }
+
   // Ghost placement preview
-  if (sel && sel.type !== 'spell' && gCell) {
+  if (sel && sel.type !== 'spell' && sel.type !== 'consumable_pick' && sel.type !== 'augment_pick' && gCell) {
     const gx = gCell.x * CELL, gy = gCell.y * CELL, gpx = gx + CELL / 2, gpy = gy + CELL / 2;
     const ok = canPlace(gCell.x, gCell.y);
     // Range preview

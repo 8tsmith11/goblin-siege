@@ -134,11 +134,8 @@
       "tooltip": "Unlocks the Robot support, which automatically casts spells during waves.",
       "x": 1560,
       "y": 480
-    }
-  },
-  "variable": [
-    {
-      "id": "animal_husb",
+    },
+    "animal_husb": {
       "name": "Animal Husbandry",
       "icon": "🐵",
       "cost": {
@@ -155,8 +152,7 @@
       "x": 1080,
       "y": 840
     },
-    {
-      "id": "stockpile_iface",
+    "stockpile_iface": {
       "name": "Resource Interface",
       "icon": "📬",
       "cost": {
@@ -173,8 +169,7 @@
       "x": 1200,
       "y": 960
     },
-    {
-      "id": "monkey_training",
+    "monkey_training": {
       "name": "Monkey Training",
       "icon": "🐒",
       "cost": {
@@ -190,7 +185,9 @@
       "tooltip": "Each existing and future Monkey Hut gains +1 monkey capacity.",
       "x": 1200,
       "y": 840
-    },
+    }
+  },
+  "variable": [
     {
       "id": "beekeeping",
       "name": "Apiculture",

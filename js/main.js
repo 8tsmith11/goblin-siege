@@ -37,6 +37,7 @@ bus.on('enemyDeath', e => {
   }
 });
 import { buildResearchGraph, tickResearch } from './research.js';
+import { tickCraft, updateTraps, cleanupBarricades } from './craft.js';
 import { TOWER_SKILLS, HOARD_LEVELS } from './data.js';
 import { updateEnemies, genWave } from './enemies.js';
 import { updateTowers } from './towers.js';
@@ -45,7 +46,7 @@ import { updateMonkeys } from './monkeys.js';
 import { render, invalidateBg } from './render.js';
 import { triggerEvent } from './events.js';
 import { sfxBoss, sfxWave, sfxKill, sfxHit } from './audio.js';
-import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, initInventoryUI } from './ui.js';
+import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, initInventoryUI, initCraftUI } from './ui.js';
 import { initInput, updateCameraKeys } from './input.js';
 import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
 import { placeNodes, updateNodes } from './resources.js';
@@ -58,7 +59,7 @@ export const PAD = 6; // forest padding tiles around the buildable grid
 // ─── Protected state internals ───────────────────────────────────────────────
 // _gg/_ll: actual gold / lives stored in module scope.
 // Writes are gated by _φ; any external assignment to state.gold etc. is dropped.
-let _gg = 200, _ll = 20, _φ = false;
+let _gg = 100, _ll = 20, _φ = false;
 let _ηG = (_gg * 0x9E3779B9) >>> 16; // integrity markers — updated alongside every write
 let _ηL = (_ll * 0xC2B2AE35) >>> 16;
 function _wG(v) { _gg = v | 0; _ηG = (_gg * 0x9E3779B9) >>> 16; }
@@ -73,8 +74,9 @@ export const state = {
   spawnQueue: [], spawnTimer: 0,
   nodes: [], resources: {},
   research: null, researchUnlocks: {},
+  traps: [],
   inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null] },
-  unlockedTowers: new Set(['squirrel', 'lion', 'penguin', 'lab']),
+  unlockedTowers: new Set(['squirrel', 'lion', 'penguin', 'lab', 'workbench']),
   sel: null, tab: 'towers',
   bSen: new Set(['sleepy_door']),
   volcanoActive: null, freezeActive: 0,
@@ -184,6 +186,7 @@ function update() {
     }
   }
 
+  updateTraps();
   updateEnemies();
 
   // Volcano
@@ -251,6 +254,10 @@ function update() {
     const _done = tickResearch();
     if (_done) showBanner('🔬 ' + _done.name + ' complete!');
     refreshResearch();
+    // Craft tick
+    cleanupBarricades();
+    const _craftDone = tickCraft();
+    for (const { recipe } of _craftDone) showBanner('⚒️ ' + recipe.name + ' crafted!');
     // Transition seamlessly into the prep phase without a blocking modal.
     state.phase = 'prep'; state.prepTicks = 1800; sfxWave(); _φ = false;
     autoSave();
@@ -271,7 +278,7 @@ function update() {
 
 /* ═══ Game flow ═══ */
 export function startGame() {
-  _ΨΔ(() => { _wG(200); _wL(20); });
+  _ΨΔ(() => { _wG(100); _wL(20); });
   if (!state.research) state.research = buildResearchGraph();
   state.started = true; state.phase = 'prep'; state.prepTicks = 1800;
   invalidateBg(); initSz(); hideOv(); hudU(); panelU();
@@ -295,13 +302,14 @@ export function startPrep() {
 }
 
 export function resetGame() {
-  _ΨΔ(() => { _wG(200); _wL(20); });
+  _ΨΔ(() => { _wG(100); _wL(20); });
   Object.assign(state, {
     wave: 0, phase: 'idle', ticks: 0, prepTicks: 0,
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
     gameOver: false, started: false, pathReady: false, paused: false, sel: null, ttTower: null,
-    nodes: [], resources: {}, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin','lab']), bSen: new Set(['sleepy_door']), age: 'stone',
+    nodes: [], resources: {}, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin','lab','workbench']), bSen: new Set(['sleepy_door']), age: 'stone',
+    traps: [],
     inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null] },
     cam: { panX: 0, panY: 0, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
     _Σ: 0, _Ω: 0,
@@ -340,7 +348,7 @@ document.getElementById('rstBtn').addEventListener('click', () => {
 });
 document.getElementById('goBtn').addEventListener('click', () => { if (state.phase === 'prep') startWave(); });
 initTabs(); initInput(); measure();
-initSaveUI(); initBestiaryUI(); initResearchUI(); initInventoryUI();
+initSaveUI(); initBestiaryUI(); initResearchUI(); initInventoryUI(); initCraftUI();
 const _sv = hasSave() && loadGame();
 initSz(); panelU(); hudU(); loop();
 showWelcome(VERSION, _sv ? startPrep : startGame);

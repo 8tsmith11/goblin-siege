@@ -63,6 +63,8 @@ function _build() {
     _res: state.research ? JSON.parse(JSON.stringify(state.research)) : null,
     _rUnlocks: { ...(state.researchUnlocks || {}) },
     _unlocked: Array.from(state.unlockedTowers || []),
+    _traps: (state.traps || []).filter(t => t.type !== 'sap'),
+    _inv: state.inventory ? JSON.parse(JSON.stringify(state.inventory)) : null,
   };
 }
 
@@ -105,6 +107,8 @@ function _apply(d) {
   state.enemies = []; state.projectiles = []; state.particles = []; state.beams = [];
   state.spawnQueue = []; state.spawnTimer = 0; state.freezeActive = 0;
   state.volcanoActive = d._va || null;
+  state.traps = d._traps || [];
+  state.inventory = d._inv || { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null] };
   state.sel = null; state.ttTower = null; state.gameOver = false;
   state.started = true; state.wave = d._w; state.phase = 'idle';
   state.ticks = 0; state.prepTicks = 0;

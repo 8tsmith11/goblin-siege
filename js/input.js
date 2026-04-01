@@ -4,9 +4,10 @@ import { iA, sfxPlace, sfxLizard, speak } from './audio.js';
 import { TD } from './data.js';
 import { spawnBees } from './support.js';
 import { canPlace } from './render.js';
-import { showTT, hideTT, showTip, showBanner, panelU, hudU, mkGain } from './ui.js';
+import { showTT, hideTT, showTip, showBanner, panelU, hudU, mkGain, addToInventory } from './ui.js';
 import { clickNode, RTYPES } from './resources.js';
 import { initMonkeys } from './monkeys.js';
+import { applyAugment, placeConsumable, RECIPES } from './craft.js';
 
 function cell(e) {
   const r = state.cv.getBoundingClientRect();
@@ -44,10 +45,20 @@ function handleStackInteraction(c, e) {
     if (closestIndex !== -1) {
       const stack = glCell.stacks[closestIndex];
       stack.count--;
-      state.resources[stack.type] = (state.resources[stack.type] || 0) + 1;
-      const rt = RTYPES[stack.type];
-      mkGain(c.x * CELL + slots[closestIndex].dx * CELL, c.y * CELL + slots[closestIndex].dy * CELL, rt.icon, 1, rt.clr);
-      hudU();
+      if (RTYPES[stack.type]) {
+        state.resources[stack.type] = (state.resources[stack.type] || 0) + 1;
+        const rt = RTYPES[stack.type];
+        mkGain(c.x * CELL + slots[closestIndex].dx * CELL, c.y * CELL + slots[closestIndex].dy * CELL, rt.icon, 1, rt.clr);
+        hudU();
+      } else {
+        const recipe = RECIPES.find(r => r.id === stack.type);
+        if (recipe) {
+          if (!state.inventory) state.inventory = { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null] };
+          const section = recipe.output === 'augment' ? 'augments' : 'consumables';
+          addToInventory(section, { id: recipe.id, name: recipe.name, icon: recipe.icon, desc: recipe.desc, output: recipe.output });
+          mkGain(c.x * CELL + slots[closestIndex].dx * CELL, c.y * CELL + slots[closestIndex].dy * CELL, recipe.icon, 1, '#a78bfa');
+        }
+      }
       if (stack.count <= 0) glCell.stacks[closestIndex] = null;
       return true;
     }
@@ -105,6 +116,7 @@ function tryPlaceTower(c, ex) {
     if (tw.type === 'beehive') { const d = TD.beehive; tw.beeCount = d.beeCount; tw.beeDmg = d.beeDmg; tw.beeRange = d.beeRange; tw.beeRate = d.beeRate; }
     if (tw.type === 'hoard') { tw.stored = 0; }
     if (tw.type === 'stockpile') { tw.slots = [null, null, null, null]; tw.mode = 'storage'; }
+    if (tw.type === 'workbench') { tw.craftQueue = null; tw.selectedRecipe = null; tw.inv = {}; }
     if (tw.type === 'lab') { tw.obsRange = TD.lab.obsRange; }
     if (tw.type === 'monkey') {
       tw.range = TD.monkey.range;
@@ -137,12 +149,51 @@ function handleTap(e) {
   if (c.x < 0 || c.x >= state.COLS || c.y < 0 || c.y >= state.ROWS) return;
   const ex = state.towers.find(t => t.x === c.x && t.y === c.y);
 
+  // Augment-pick mode: click a tower to apply the augment
+  if (state.sel?.type === 'augment_pick') {
+    if (ex) {
+      if (applyAugment(state.sel.item, ex)) {
+        if (state.sel.invIndex !== undefined) state.inventory.augments.splice(state.sel.invIndex, 1);
+        showTip('Augment applied!');
+      } else {
+        const slots = (ex.level || 0) >= 5 ? 2 : (ex.level || 0) >= 3 ? 1 : 0;
+        if (slots === 0) showTip('Reach level 3 to unlock augment slots.');
+        else showTip('Augment slots full.');
+      }
+    } else {
+      showTip('No tower there — click a tower to apply.');
+    }
+    state.sel = null;
+    return;
+  }
+
+  // Consumable-pick mode: click a path tile to place
+  if (state.sel?.type === 'consumable_pick') {
+    if (placeConsumable(state.sel.item, c.x, c.y)) {
+      if (state.sel.invIndex !== undefined) state.inventory.consumables.splice(state.sel.invIndex, 1);
+      showTip('Placed!');
+      state.sel = null;
+      panelU();
+    } else {
+      showTip('Must place on a path tile!');
+    }
+    return;
+  }
+
   // Tile-pick mode: record clicked tile for monkey role config
   if (state.sel?.type === 'tile_pick') {
     const { monkey, hut, field } = state.sel;
     if (hut && Math.hypot(c.x - hut.x, c.y - hut.y) > (hut.range || 4)) {
       showTip('Out of range!');
       return;
+    }
+    if (field === 'boost') {
+      const alreadyBoosted = state.towers.some(h =>
+        h.type === 'monkey' && h.monkeys?.some(m =>
+          m !== monkey && m.role === 'booster' && m.cfg.boost?.x === c.x && m.cfg.boost?.y === c.y
+        )
+      );
+      if (alreadyBoosted) { showTip('Already being boosted by another monkey!'); return; }
     }
     monkey.cfg[field] = { x: c.x, y: c.y };
     monkey.st = 'idle';
@@ -187,6 +238,7 @@ export function initInput() {
     const nav = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'];
     if (nav.includes(e.key)) e.preventDefault();
     if (e.key === 'Escape' && state.sel?.type === 'tile_pick') { state.sel = null; panelU(); return; }
+    if (e.key === 'Escape' && (state.sel?.type === 'augment_pick' || state.sel?.type === 'consumable_pick')) { state.sel = null; return; }
     keysDown.add(e.key);
   });
   document.addEventListener('keyup', e => keysDown.delete(e.key));

@@ -4,6 +4,9 @@ import { sfxMine } from './audio.js';
 import { mkGain, hudU } from './ui.js';
 import { HOARD_LEVELS } from './data.js';
 
+// ─── Crafted item icon registry (populated by craft.js at module init) ────────
+export const _itemRegistry = {}; // maps itemId -> { icon, name }
+
 // ─── Resource type definitions ─────────────────────────────────────────────
 // Each entry is one collectable resource that exists in the player's inventory.
 // Add new resources here — the HUD and save system pick them up automatically.
@@ -137,6 +140,15 @@ export function dropItem(cx, cy, type) {
     mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, '🏺', 1, '#10b981');
     return true;
   }
+  if (tw?.type === 'workbench' && RTYPES[type]) {
+    // Accept RTYPE resources into the workbench inventory
+    if (!tw.inv) tw.inv = {};
+    tw.inv[type] = (tw.inv[type] || 0) + 1;
+    const rt = RTYPES[type];
+    mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr);
+    return true;
+  }
+  // Non-RTYPE items (crafted items) on workbench tiles fall through to ground stacks below
   // Default: place as ground stack
   if (!cell.stacks) cell.stacks = [null, null, null, null];
   let existingIndex = cell.stacks.findIndex(s => s && s.type === type && s.count < 64);
@@ -175,7 +187,7 @@ export function renderStacks() {
       for (let i = 0; i < 4; i++) {
         const stack = cell.stacks[i];
         if (!stack) continue;
-        const icon = RTYPES[stack.type]?.icon || '❓';
+        const icon = RTYPES[stack.type]?.icon ?? _itemRegistry[stack.type]?.icon ?? '❓';
         const basex = c * CELL + slots[i].dx * CELL;
         const basey = r * CELL + slots[i].dy * CELL;
         

@@ -13,6 +13,7 @@ export const TD = {
   clown:    { name:'Magnificent Clown',  icon:'🤡', clr:'#f472b6', cost:100, cat:'support', reverseRange:3, reverseDur:80, reverseCD:200, desc:'Reverses nearby enemy movement direction' },
   monkey:   { name:'Monkey Hut',         icon:'🛖', clr:'#fb923c', cost:70, resCost:{ stone:8, wood:8 }, cat:'support', capacity:1, range:4, desc:'Houses Resourceful Monkeys that gather, courier, or boost nearby buildings' },
   stockpile:{ name:'Stockpile',          icon:'📦', clr:'#d97706', cost:50, resCost:{ wood:6 }, cat:'support', desc:'Interface between ground items and your inventory. Monkeys deposit/withdraw here.' },
+  workbench:{ name:'Workbench',          icon:'🛠️', clr:'#a16207', cost:80, resCost:{ wood:10, stone:5 }, cat:'support', desc:'Crafts augments and consumables over waves' },
   robot:    { name:'AI Agent',           icon:'🤖', clr:'#38bdf8', cost:110, cat:'support', autoSpell:true, reqAge: 'iron', desc:'Automatically casts spells during waves' },
 };
 
@@ -55,15 +56,15 @@ export const TOWER_SKILLS = {
 };
 
 export const ETYPES = {
-  normal:  { hpM:1,   spdM:1,   sz:.30, rew:4,  clr:'#22c55e', em:'👺', drops: [{ type: 'wood', chance: 0.15 }] },
-  fast:    { hpM:.4,  spdM:1.6, sz:.24, rew:3,  clr:'#4ade80', em:'👺', drops: [{ type: 'wood', chance: 0.2 }] },
-  tank:    { hpM:2.5, spdM:.6,  sz:.45, rew:8,  clr:'#a855f7', em:'👹', drops: [{ type: 'stone', chance: 0.3 }] },
-  berserker:{ hpM:1.8,spdM:1.2, sz:.38, rew:7,  clr:'#ef4444', em:'😤', drops: [{ type: 'wood', chance: 0.25 }] },
-  shaman:  { hpM:1.2, spdM:.9,  sz:.33, rew:6,  clr:'#f97316', em:'🧙', drops: [] },
-  stealth: { hpM:.6,  spdM:1.4, sz:.22, rew:5,  clr:'#64748b', em:'👤', drops: [{ type: 'wood', chance: 0.2 }] },
-  healer:  { hpM:.8,  spdM:.8,  sz:.30, rew:6,  clr:'#22d3ee', em:'💚', drops: [{ type: 'wood', chance: 0.15 }] },
+  normal:  { hpM:1,   spdM:1,   sz:.30, rew:1,  clr:'#22c55e', em:'👺', drops: [{ type: 'wood', chance: 0.07 }] },
+  fast:    { hpM:.4,  spdM:1.6, sz:.24, rew:1,  clr:'#4ade80', em:'👺', drops: [{ type: 'wood', chance: 0.09 }] },
+  tank:    { hpM:2.5, spdM:.6,  sz:.45, rew:3,  clr:'#a855f7', em:'👹', drops: [{ type: 'stone', chance: 0.14 }] },
+  berserker:{ hpM:1.8,spdM:1.2, sz:.38, rew:2,  clr:'#ef4444', em:'😤', drops: [{ type: 'wood', chance: 0.11 }] },
+  shaman:  { hpM:1.2, spdM:.9,  sz:.33, rew:2,  clr:'#f97316', em:'🧙', drops: [] },
+  stealth: { hpM:.6,  spdM:1.4, sz:.22, rew:1,  clr:'#64748b', em:'👤', drops: [{ type: 'wood', chance: 0.09 }] },
+  healer:  { hpM:.8,  spdM:.8,  sz:.30, rew:2,  clr:'#22d3ee', em:'💚', drops: [{ type: 'wood', chance: 0.07 }] },
   swarm:   { hpM:.18, spdM:1.7, sz:.18, rew:1,  clr:'#a3e635', em:'🐜', drops: [] },
-  shield:  { hpM:2,   spdM:.7,  sz:.40, rew:9,  clr:'#3b82f6', em:'🛡️', drops: [{ type: 'stone', chance: 0.35 }] },
+  shield:  { hpM:2,   spdM:.7,  sz:.40, rew:4,  clr:'#3b82f6', em:'🛡️', drops: [{ type: 'stone', chance: 0.16 }] },
 };
 
 // Per-level stats for the Hoard Pile (tw.level 0 = Level 1, etc.)
