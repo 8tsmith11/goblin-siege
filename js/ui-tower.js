@@ -1,0 +1,475 @@
+'use strict';
+import { state, _ΨΔ } from './main.js';
+import { TD, TOWER_SKILLS, HOARD_LEVELS, HOARD_UPGS } from './data.js';
+import { spawnBees } from './support.js';
+import { showTowerSkill } from './skills.js';
+import { sfxPlace } from './audio.js';
+import { RECIPES } from './craft.js';
+import { dropItem, RTYPES, getItemDef, _itemRegistry } from './resources.js';
+import { hudU, panelU, hideTT, hideTdesc, showOv, hideOv } from './ui.js';
+import { addToInventory } from './ui-inventory.js';
+import { showResearch } from './ui-research.js';
+import { openCraftPanel } from './ui-craft.js';
+
+let _ttPx = 0, _ttPy = 0;
+function refreshTT(tw) { hudU(); panelU(); showTT(tw, _ttPx, _ttPy); }
+
+function buildStockpileTT(tw, a) {
+  if (!tw.slots) tw.slots = [null, null, null, null];
+  const ifaceUnlocked = !!state.researchUnlocks?.stockpile_interface;
+  const isInterface = tw.mode === 'interface';
+  const cap = 64 << (tw.level || 0);
+
+  if (!isInterface) {
+    const slotWrap = document.createElement('div');
+    slotWrap.style.cssText = 'width:100%;display:flex;flex-direction:column;gap:3px';
+    for (let i = 0; i < 4; i++) {
+      const slot = tw.slots[i];
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:5px;background:#0d1525;border-radius:4px;padding:3px 6px;min-height:24px';
+      if (slot) {
+        const def = getItemDef(slot.type);
+        const isCrafted = !RTYPES[slot.type];
+        const lbl = document.createElement('span');
+        lbl.style.cssText = 'flex:1;font-size:11px;color:#e2e8f0';
+        lbl.textContent = def.icon + ' ' + slot.count + ' / ' + cap;
+        row.appendChild(lbl);
+        const _withdraw = (amount) => {
+          const s = tw.slots[i]; if (!s) return;
+          if (isCrafted) {
+            const section = _itemRegistry[s.type]?.output === 'consumable' ? 'consumables' : 'augments';
+            for (let n = 0; n < amount; n++) addToInventory(section, { id: s.type, name: def.name, icon: def.icon });
+          } else {
+            state.resources[s.type] = (state.resources[s.type] || 0) + amount;
+          }
+          s.count -= amount;
+          if (s.count <= 0) tw.slots[i] = null;
+          refreshTT(tw);
+        };
+        const take1Btn = document.createElement('button');
+        take1Btn.className = 'ttb tts2';
+        take1Btn.style.cssText = 'min-width:28px;padding:2px 4px;font-size:9px;flex-shrink:0';
+        take1Btn.textContent = '+1';
+        take1Btn.onclick = e => { e.stopPropagation(); _withdraw(1); };
+        row.appendChild(take1Btn);
+        const takeAllBtn = document.createElement('button');
+        takeAllBtn.className = 'ttb tts2';
+        takeAllBtn.style.cssText = 'min-width:36px;padding:2px 4px;font-size:9px;flex-shrink:0';
+        takeAllBtn.textContent = 'All';
+        takeAllBtn.onclick = e => { e.stopPropagation(); _withdraw(tw.slots[i]?.count ?? 0); };
+        row.appendChild(takeAllBtn);
+      } else {
+        const lbl = document.createElement('span');
+        lbl.style.cssText = 'flex:1;font-size:10px;color:#374151;font-style:italic';
+        lbl.textContent = 'Empty';
+        row.appendChild(lbl);
+      }
+      slotWrap.appendChild(row);
+    }
+    a.appendChild(slotWrap);
+
+    const res = state.resources || {};
+    const depKeys = Object.keys(RTYPES).filter(k => k !== 'dust' && (res[k] || 0) > 0);
+    if (depKeys.length > 0) {
+      const depRow = document.createElement('div');
+      depRow.style.cssText = 'width:100%;display:flex;flex-wrap:wrap;gap:3px;margin-top:2px';
+      for (const k of depKeys) {
+        const rt = RTYPES[k];
+        const hasRoom = tw.slots.some(s => !s) || tw.slots.some(s => s?.type === k && s.count < cap);
+        const btn = document.createElement('button');
+        btn.className = 'ttb tts2' + (hasRoom ? '' : ' off2');
+        btn.style.cssText = 'font-size:9px;padding:2px 5px';
+        btn.textContent = (rt?.icon || k) + ' +1';
+        btn.onclick = e => {
+          e.stopPropagation();
+          if ((state.resources[k] || 0) <= 0) return;
+          const cap2 = 64 << (tw.level || 0);
+          for (let si = 0; si < tw.slots.length; si++) {
+            const s = tw.slots[si];
+            if (s && s.type === k && s.count < cap2) { s.count++; state.resources[k]--; refreshTT(tw); return; }
+          }
+          for (let si = 0; si < tw.slots.length; si++) {
+            if (!tw.slots[si]) { tw.slots[si] = { type: k, count: 1 }; state.resources[k]--; refreshTT(tw); return; }
+          }
+        };
+        depRow.appendChild(btn);
+      }
+      a.appendChild(depRow);
+    }
+
+    if (tw.level < 3) {
+      const uc = 30 + tw.level * 40;
+      addTTB(a, '⬆ Capacity 💰' + uc, 'ttu', state.gold >= uc, () => {
+        _ΨΔ(() => { if (state.gold < uc) return; state.gold -= uc; tw.level++; });
+        refreshTT(tw);
+      });
+    }
+  }
+
+  if (ifaceUnlocked) {
+    if (!isInterface) {
+      addTTB(a, '→ Interface Mode', 'tts2', true, () => {
+        const hasItems = tw.slots?.some(s => s && s.count > 0);
+        if (hasItems) {
+          showOv('Switch to Interface Mode?', 'Stored items will be destroyed. Continue?', 'Switch', false, () => {
+            tw.mode = 'interface'; tw.slots = [null, null, null, null];
+            hideOv(); refreshTT(tw);
+          }, () => hideOv());
+        } else {
+          tw.mode = 'interface'; refreshTT(tw);
+        }
+      });
+    } else {
+      addTTB(a, '→ Storage Mode', 'tts2', true, () => {
+        tw.mode = 'storage'; tw.slots = [null, null, null, null];
+        refreshTT(tw);
+      });
+    }
+  }
+}
+
+export function showTT(tw, px, py) {
+  _ttPx = px; _ttPy = py;
+  hideTdesc();
+  state.ttTower = tw;
+  const el = document.getElementById('tt');
+  const isH = tw.type === 'hoard', def = TD[tw.type];
+  document.getElementById('ttT').textContent = (isH ? 'Hoard Pile' : def?.name || tw.type) + (tw.level > 0 ? ' ★' + tw.level : '');
+  let s = '';
+  if (isH) {
+    const hl = HOARD_LEVELS[tw.level || 0] ?? HOARD_LEVELS[0];
+    const stored = tw.stored || 0;
+    const income = hl.base + Math.floor(stored * hl.m);
+    const decay = Math.max(1, Math.floor(stored * (tw._monkeyBoosted ? 0.05 : 0.1)));
+    s = `${stored}/${hl.cap} · +${income}💰/wave · -${decay}⬇${tw._monkeyBoosted ? ' 🐵' : ''}`;
+  }
+  else if (tw.type === 'clam') { s = 'Buff radius: ' + ((tw.level + 1) * 1.5).toFixed(1) + ' · +50%DMG -15%CD'; }
+  else if (tw.type === 'beehive') { s = 'Bees: ' + (tw.beeCount || 3) + ' · Bee DMG: ' + (tw.beeDmg || 4); }
+  else if (tw.type === 'clown') { s = 'Reverse rng:' + (tw.reverseRange || 3) + ' dur:' + (tw.reverseDur || 80); }
+  else if (tw.type === 'monkey') { const mc = tw.monkeys?.length ?? 0; s = mc + ' Monke' + (mc === 1 ? 'y' : 'ys') + ' · Range:' + (tw.range || 4); }
+  else if (tw.type === 'stockpile') {
+    const ifaceUnlocked = !!state.researchUnlocks?.stockpile_interface;
+    const cap = 64 << (tw.level || 0);
+    if (ifaceUnlocked) {
+      s = tw.mode === 'interface' ? 'Interface · Items → Inventory' : 'Storage · ' + cap + '/slot · 4 slots';
+    } else {
+      s = 'Resource storage · ' + cap + '/slot · 4 slots';
+    }
+  }
+  else if (tw.type === 'robot') { s = 'Auto-casts spells!'; }
+  else if (tw.type === 'lab') { s = 'Observation radius: ' + (tw.obsRange || 3) + ' · Gathers 🔮 Dust'; }
+  else if (tw.type === 'workbench') {
+    const qi = tw.craftQueue ? RECIPES.find(r => r.id === tw.craftQueue.recipeId)?.name || '?' : null;
+    const sel = tw.selectedRecipe ? RECIPES.find(r => r.id === tw.selectedRecipe)?.name || '?' : null;
+    s = (qi ? 'Crafting: ' + qi : sel ? 'Ready: ' + sel : 'Idle — select recipe');
+  }
+  else { s = 'DMG:' + tw.dmg + ' RNG:' + tw.range?.toFixed(1) + ' CD:' + tw.rate; if (tw.slow > 0) s += ' Slow:' + Math.floor(tw.slow * 100) + '%'; if (tw.splash > 0) s += ' Spl:' + tw.splash.toFixed(1); if (tw.pierce) s += ' Prc:' + tw.pierce; if (tw.chain) s += ' Chn:' + tw.chain; if (tw._buffed) s += ' 🐚'; }
+  if (TD[tw.type]?.cat === 'tower') {
+    const slots = (tw.level || 0) >= 5 ? 2 : (tw.level || 0) >= 3 ? 1 : 0;
+    if (slots > 0) {
+      const augs = tw.augments || [];
+      const slotStr = Array.from({ length: slots }, (_, i) => augs[i] ? augs[i].icon : '○').join(' ');
+      s += '  🔧 ' + slotStr;
+    }
+  }
+  document.getElementById('ttS').textContent = s;
+
+  const a = document.getElementById('ttA'); a.innerHTML = '';
+  const sell = () => { hideTT(); state.ttTower = null; hudU(); panelU(); };
+  {
+    const upgs = TOWER_UPGS[tw.type];
+    if (upgs && tw.level < upgs.length) {
+      const upg = upgs[tw.level];
+      addTTB(a, upg.name + '  💰' + upg.cost, 'ttu', state.gold >= upg.cost, () => { _ΨΔ(() => doUpg(tw)); refreshTT(tw); });
+    }
+  }
+  if (isH) {
+    const hl = HOARD_LEVELS[tw.level || 0] ?? HOARD_LEVELS[0];
+    const cap = hl.cap;
+    const stored = tw.stored || 0;
+    const space = cap - stored;
+    for (const [rk, rt] of Object.entries(RTYPES)) {
+      if (rk === 'dust') continue;
+      const have = state.resources[rk] || 0;
+      if (have <= 0) continue;
+      const depOne = space > 0;
+      const depAll = space > 0;
+      const allAmt = Math.min(have, space);
+      addTTB(a, rt.icon + '+1', 'tts2', depOne, () => {
+        _ΨΔ(() => { state.resources[rk]--; tw.stored = (tw.stored || 0) + 1; });
+        refreshTT(tw);
+      });
+      if (allAmt > 1) addTTB(a, rt.icon + 'All(' + allAmt + ')', 'tts2', depAll, () => {
+        _ΨΔ(() => { state.resources[rk] -= allAmt; tw.stored = (tw.stored || 0) + allAmt; });
+        refreshTT(tw);
+      });
+    }
+    if (tw.level < HOARD_UPGS.length) {
+      const upg = HOARD_UPGS[tw.level];
+      let afford = state.gold >= upg.c;
+      let costStr = '💰' + upg.c;
+      for (const [r, n] of Object.entries(upg.rs)) {
+        if ((state.resources[r] || 0) < n) afford = false;
+        costStr += ' ' + (RTYPES[r]?.icon || r) + n;
+      }
+      const nextHl = HOARD_LEVELS[tw.level + 1];
+      addTTB(a, `⬆ ${costStr} → cap${nextHl.cap} ${nextHl.m.toFixed(1)}x`, 'ttu', afford, () => {
+        _ΨΔ(() => {
+          state.gold -= upg.c;
+          for (const [r, n] of Object.entries(upg.rs)) state.resources[r] -= n;
+          tw.level++;
+        });
+        refreshTT(tw);
+      });
+    }
+  }
+  if (tw.type === 'stockpile') buildStockpileTT(tw, a);
+  if (tw.type === 'lab') { addTTB(a, '🔬 Research', 'tts2', !!state.research, () => { hideTT(); state.ttTower = null; showResearch(); }); }
+  if (tw.type === 'monkey') buildMonkeyTT(tw, a);
+  if (tw.type === 'workbench') { addTTB(a, '⚒️ Open', 'ttc', true, () => { hideTT(); state.ttTower = null; openCraftPanel(tw); }); }
+  if (TD[tw.type]?.cat === 'tower' && TOWER_SKILLS[tw.type]) { addTTB(a, '⚡Skill', 'ttc', true, () => { showTowerSkill(tw); hideTT(); state.ttTower = null; }); }
+  const sv = Math.floor(def.cost * 0.75 + (tw.level * def.cost * 0.4));
+  addTTB(a, 'Sell +💰' + sv, 'ttl', true, () => {
+    const hasStored = tw.type === 'stockpile' && tw.mode !== 'interface' && tw.slots?.some(s => s);
+    const sellMsg = hasStored
+      ? 'Selling this stockpile will destroy all stored items. You will receive 💰' + sv + '.'
+      : 'Are you sure you want to sell this tower? You will receive 💰' + sv + '.';
+    showOv('Sell ' + def.name + '?', sellMsg, 'Sell', false, () => {
+      _ΨΔ(() => doSell(tw, sv));
+      sell();
+      hideOv();
+    }, () => hideOv());
+  });
+
+  const { W } = state;
+  el.style.display = 'block';
+  let tx = px - el.offsetWidth / 2, ty = py - el.offsetHeight - 10;
+  if (ty < 2) ty = py + state.CELL * state.cam.zoom + 4;
+  if (tx < 2) tx = 2;
+  if (tx + el.offsetWidth > W) tx = W - el.offsetWidth - 2;
+  el.style.left = tx + 'px'; el.style.top = ty + 'px';
+}
+
+function addTTB(parent, txt, cls, ok, fn) {
+  const b = document.createElement('button');
+  b.className = 'ttb ' + cls + (ok ? '' : ' off2');
+  b.textContent = txt; b.onclick = e => { e.stopPropagation(); fn(); };
+  parent.appendChild(b);
+}
+
+const TOWER_UPGS = {
+  squirrel: [
+    { name:'+6 DMG',               cost: 30,  apply: tw => { tw.dmg += 6; } },
+    { name:'+1.0 Range',            cost: 55,  apply: tw => { tw.range += 1.0; } },
+    { name:'-14 Cooldown',          cost: 85,  apply: tw => { tw.rate = Math.max(5, tw.rate - 14); } },
+    { name:'+10 DMG',               cost: 130, apply: tw => { tw.dmg += 10; } },
+    { name:'+1.4 Range  −12 CD',    cost: 200, apply: tw => { tw.range += 1.4; tw.rate = Math.max(5, tw.rate - 12); } },
+  ],
+  lion: [
+    { name:'+10 DMG',               cost: 45,  apply: tw => { tw.dmg += 10; } },
+    { name:'-6 Cooldown',           cost: 75,  apply: tw => { tw.rate = Math.max(5, tw.rate - 6); } },
+    { name:'+0.6 Range',            cost: 115, apply: tw => { tw.range += 0.6; } },
+    { name:'+20 DMG',               cost: 170, apply: tw => { tw.dmg += 20; } },
+    { name:'+15 DMG  −6 CD',        cost: 260, apply: tw => { tw.dmg += 15; tw.rate = Math.max(5, tw.rate - 6); } },
+  ],
+  penguin: [
+    { name:'+20% Slow',             cost: 40,  apply: tw => { tw.slow = Math.min(0.95, tw.slow + 0.20); } },
+    { name:'+4 DMG',                cost: 65,  apply: tw => { tw.dmg += 4; } },
+    { name:'+0.8 Range',            cost: 100, apply: tw => { tw.range += 0.8; } },
+    { name:'-10 Cooldown  +15% Slow',cost:150, apply: tw => { tw.rate = Math.max(5, tw.rate - 10); tw.slow = Math.min(0.95, tw.slow + 0.15); } },
+    { name:'+6 DMG  +10% Slow',     cost: 230, apply: tw => { tw.dmg += 6; tw.slow = Math.min(0.95, tw.slow + 0.10); } },
+  ],
+  fish: [
+    { name:'+8 DMG',                cost: 55,  apply: tw => { tw.dmg += 8; } },
+    { name:'+0.6 Splash',           cost: 85,  apply: tw => { tw.splash += 0.6; } },
+    { name:'-15 Cooldown',          cost: 130, apply: tw => { tw.rate = Math.max(5, tw.rate - 15); } },
+    { name:'+12 DMG',               cost: 190, apply: tw => { tw.dmg += 12; } },
+    { name:'+0.8 Splash',           cost: 280, apply: tw => { tw.splash += 0.8; } },
+  ],
+  seahorse: [
+    { name:'+3 Pierce',             cost: 50,  apply: tw => { tw.pierce += 3; } },
+    { name:'+6 DMG',                cost: 80,  apply: tw => { tw.dmg += 6; } },
+    { name:'+1.0 Range',            cost: 125, apply: tw => { tw.range += 1.0; } },
+    { name:'+4 Pierce  −10 CD',     cost: 180, apply: tw => { tw.pierce += 4; tw.rate = Math.max(5, tw.rate - 10); } },
+    { name:'+10 DMG',               cost: 270, apply: tw => { tw.dmg += 10; } },
+  ],
+  lizard: [
+    { name:'+20 DMG',               cost: 70,  apply: tw => { tw.dmg += 20; } },
+    { name:'+0.6 Splash',           cost: 110, apply: tw => { tw.splash += 0.6; } },
+    { name:'-18 Cooldown',          cost: 160, apply: tw => { tw.rate = Math.max(5, tw.rate - 18); } },
+    { name:'+30 DMG',               cost: 240, apply: tw => { tw.dmg += 30; } },
+    { name:'+0.5 Range  +0.6 Splash',cost:360, apply: tw => { tw.range += 0.5; tw.splash += 0.6; } },
+  ],
+  heron: [
+    { name:'+2 Chain',              cost: 55,  apply: tw => { tw.chain += 2; } },
+    { name:'+8 DMG',                cost: 90,  apply: tw => { tw.dmg += 8; } },
+    { name:'+0.8 Range',            cost: 135, apply: tw => { tw.range += 0.8; } },
+    { name:'+2 Chain',              cost: 200, apply: tw => { tw.chain += 2; } },
+    { name:'+12 DMG  −12 CD',       cost: 300, apply: tw => { tw.dmg += 12; tw.rate = Math.max(5, tw.rate - 12); } },
+  ],
+  clam: [
+    { name:'+1.5 Buff Range',       cost: 65,  apply: tw => { tw.buffRange += 1.5; } },
+    { name:'+25% DMG Bonus',        cost: 110, apply: tw => { tw.buffDmg = +((tw.buffDmg + 0.25).toFixed(2)); } },
+    { name:'+1.5 Buff Range',       cost: 165, apply: tw => { tw.buffRange += 1.5; } },
+    { name:'−10% Cooldown Bonus',   cost: 240, apply: tw => { tw.buffRate = Math.max(0.5, +(tw.buffRate - 0.10).toFixed(2)); } },
+    { name:'+2 Range  +25% DMG',    cost: 350, apply: tw => { tw.buffRange += 2; tw.buffDmg = +((tw.buffDmg + 0.25).toFixed(2)); } },
+  ],
+  beehive: [
+    { name:'+3 Bees',               cost: 70,  apply: tw => { tw.beeCount += 3; spawnBees(tw); } },
+    { name:'+5 Bee DMG',            cost: 110, apply: tw => { tw.beeDmg += 5; } },
+    { name:'+3 Bees',               cost: 165, apply: tw => { tw.beeCount += 3; spawnBees(tw); } },
+    { name:'+8 Bee DMG',            cost: 240, apply: tw => { tw.beeDmg += 8; } },
+    { name:'+4 Bees  Faster Sting', cost: 350, apply: tw => { tw.beeCount += 4; tw.beeRate = Math.max(5, tw.beeRate - 8); spawnBees(tw); } },
+  ],
+  clown: [
+    { name:'+1.5 Reverse Range',    cost: 75,  apply: tw => { tw.reverseRange += 1.5; } },
+    { name:'+50 Reverse Duration',  cost: 115, apply: tw => { tw.reverseDur += 50; } },
+    { name:'+1.5 Reverse Range',    cost: 170, apply: tw => { tw.reverseRange += 1.5; } },
+    { name:'−60 Recharge',          cost: 245, apply: tw => { tw.reverseCD = Math.max(40, tw.reverseCD - 60); } },
+    { name:'+2 Range  +80 Duration',cost: 360, apply: tw => { tw.reverseRange += 2; tw.reverseDur += 80; } },
+  ],
+  monkey: [
+    { name:'+1 Range',              cost: 80,  apply: tw => { tw.range += 1; } },
+    { name:'+1 Range',              cost: 130, apply: tw => { tw.range += 1; } },
+    { name:'+2 Range',              cost: 195, apply: tw => { tw.range += 2; } },
+    { name:'+2 Range',              cost: 280, apply: tw => { tw.range += 2; } },
+    { name:'+3 Range',              cost: 400, apply: tw => { tw.range += 3; } },
+  ],
+};
+
+function doUpg(tw) {
+  const upgs = TOWER_UPGS[tw.type];
+  if (!upgs || tw.level >= upgs.length) return;
+  const upg = upgs[tw.level];
+  if (state.gold < upg.cost) return;
+  state.gold -= upg.cost;
+  upg.apply(tw);
+  tw.level++;
+  sfxPlace();
+}
+
+function doSell(tw, val) {
+  state.gold += val;
+  state.grid[tw.y][tw.x].type = 'empty';
+  state.grid[tw.y][tw.x].content = null;
+  state.towers = state.towers.filter(x => x !== tw);
+  state.bees = state.bees.filter(b => b.hive !== tw);
+  _cleanupMonkeysForSoldTile(tw.x, tw.y);
+}
+
+function _cleanupMonkeysForSoldTile(sx, sy) {
+  for (const hut of state.towers) {
+    if (hut.type !== 'monkey' || !hut.monkeys) continue;
+    for (const mk of hut.monkeys) {
+      if (!mk.carrying) continue;
+      const dest = mk.role === 'gatherer' ? mk.cfg.dest
+                 : mk.role === 'courier'  ? (mk.st === 'carrying' ? mk.cfg.dest : mk.cfg.from)
+                 : null;
+      if (dest?.x === sx && dest?.y === sy) {
+        dropItem(sx, sy, mk.carrying.type);
+        mk.carrying = null;
+        mk.st = 'idle';
+      }
+    }
+  }
+}
+
+export function refreshActiveTT() { if (state.ttTower) refreshTT(state.ttTower); }
+
+const ROLE_CYCLE = [null, 'gatherer', 'courier', 'booster'];
+const ROLE_LABEL = { null: 'Idle 💤', gatherer: 'Gather 🌿', courier: 'Courier 🚚', booster: 'Boost 💪' };
+const FILTER_CYCLE = [null, 'wood', 'stone'];
+const FILTER_LABEL = { null: 'All', wood: '🪵', stone: '🪨' };
+
+function buildMonkeyTT(tw, container) {
+  if (!tw.monkeys) return;
+  for (const mk of tw.monkeys) {
+    const block = document.createElement('div');
+    block.style.cssText = 'display:flex;flex-direction:column;gap:3px;margin:4px 0;border-top:1px solid #334155;padding-top:4px';
+
+    const nameEl = document.createElement('span');
+    nameEl.style.cssText = 'color:#fb923c;font-size:10px;font-weight:700';
+    nameEl.textContent = mk.name;
+    block.appendChild(nameEl);
+
+    const roleRow = document.createElement('div');
+    roleRow.style.cssText = 'display:flex;gap:4px;align-items:center';
+    addTTB(roleRow, ROLE_LABEL[mk.role] ?? 'Idle 💤', 'tts2', true, () => {
+      const idx = ROLE_CYCLE.indexOf(mk.role);
+      mk.role = ROLE_CYCLE[(idx + 1) % ROLE_CYCLE.length];
+      mk.cfg = { filter: null, dest: null, from: null, boost: null };
+      mk.st = 'idle'; mk.carrying = null;
+      refreshTT(tw);
+    });
+    block.appendChild(roleRow);
+
+    if (mk.role === 'gatherer') {
+      const filterRow = document.createElement('div');
+      filterRow.style.cssText = 'display:flex;gap:4px;align-items:center';
+      addTTB(filterRow, 'Filter:' + FILTER_LABEL[mk.cfg.filter ?? null], 'tts2', true, () => {
+        const fi = FILTER_CYCLE.indexOf(mk.cfg.filter ?? null);
+        mk.cfg.filter = FILTER_CYCLE[(fi + 1) % FILTER_CYCLE.length] ?? null;
+        refreshTT(tw);
+      });
+      block.appendChild(filterRow);
+
+      const destRow = document.createElement('div');
+      destRow.style.cssText = 'display:flex;gap:4px;align-items:center';
+      const destLbl = mk.cfg.dest ? `Dest:(${mk.cfg.dest.x},${mk.cfg.dest.y})` : 'Set Dest 📍';
+      addTTB(destRow, destLbl, 'tts2', true, () => {
+        state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'dest' };
+        hideTT(); state.ttTower = null; panelU();
+      });
+      block.appendChild(destRow);
+    }
+
+    if (mk.role === 'courier') {
+      const filterRow = document.createElement('div');
+      filterRow.style.cssText = 'display:flex;gap:4px;align-items:center';
+      addTTB(filterRow, 'Filter:' + FILTER_LABEL[mk.cfg.filter ?? null], 'tts2', true, () => {
+        const fi = FILTER_CYCLE.indexOf(mk.cfg.filter ?? null);
+        mk.cfg.filter = FILTER_CYCLE[(fi + 1) % FILTER_CYCLE.length] ?? null;
+        refreshTT(tw);
+      });
+      block.appendChild(filterRow);
+
+      const fromRow = document.createElement('div');
+      fromRow.style.cssText = 'display:flex;gap:4px;align-items:center';
+      const fromLbl = mk.cfg.from ? `From:(${mk.cfg.from.x},${mk.cfg.from.y})` : 'Set From 📍';
+      addTTB(fromRow, fromLbl, 'tts2', true, () => {
+        state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'from' };
+        hideTT(); state.ttTower = null; panelU();
+      });
+      block.appendChild(fromRow);
+
+      const toRow = document.createElement('div');
+      toRow.style.cssText = 'display:flex;gap:4px;align-items:center';
+      const toLbl = mk.cfg.dest ? `To:(${mk.cfg.dest.x},${mk.cfg.dest.y})` : 'Set To 📍';
+      addTTB(toRow, toLbl, 'tts2', true, () => {
+        state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'dest' };
+        hideTT(); state.ttTower = null; panelU();
+      });
+      block.appendChild(toRow);
+    }
+
+    if (mk.role === 'booster') {
+      const bRow = document.createElement('div');
+      bRow.style.cssText = 'display:flex;gap:4px;align-items:center';
+      const bLbl = mk.cfg.boost ? `Boost:(${mk.cfg.boost.x},${mk.cfg.boost.y})` : 'Set Target 📍';
+      addTTB(bRow, bLbl, 'tts2', true, () => {
+        state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'boost' };
+        hideTT(); state.ttTower = null; panelU();
+      });
+      block.appendChild(bRow);
+    }
+
+    if (mk.trips > 0) {
+      const tripEl = document.createElement('span');
+      tripEl.style.cssText = 'color:#64748b;font-size:9px';
+      tripEl.textContent = mk.trips + ' trip' + (mk.trips === 1 ? '' : 's');
+      block.appendChild(tripEl);
+    }
+
+    container.appendChild(block);
+  }
+}
