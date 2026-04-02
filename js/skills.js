@@ -34,7 +34,8 @@ export function showTowerSkill(tw) {
         if ((state.resources?.dust || 0) < (sk.cost.dust || 0) || state.gold < (sk.cost.gold || 0)) return;
         if (sk.cost.dust) state.resources.dust = (state.resources.dust || 0) - sk.cost.dust;
         if (sk.cost.gold) state.gold -= sk.cost.gold;
-        sk.owned = true; sk.apply(tw);
+        sk.owned = true;
+        for (const t of state.towers) { if (t.type === tw.type) sk.apply(t); }
       });
       showTowerSkill(tw);
     };

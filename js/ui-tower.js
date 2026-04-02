@@ -226,7 +226,38 @@ export function showTT(tw, px, py) {
   if (tw.type === 'stockpile') buildStockpileTT(tw, a);
   if (tw.type === 'lab') { addTTB(a, '🔬 Research', 'tts2', !!state.research, () => { hideTT(); state.ttTower = null; showResearch(); }); }
   if (tw.type === 'monkey') buildMonkeyTT(tw, a);
-  if (tw.type === 'workbench') { addTTB(a, '⚒️ Open', 'ttc', true, () => { hideTT(); state.ttTower = null; openCraftPanel(tw); }); }
+  if (tw.type === 'workbench') {
+    const inv = tw.inv || {};
+    const stockRow = document.createElement('div');
+    stockRow.style.cssText = 'width:100%;display:flex;gap:4px;flex-wrap:wrap;margin-bottom:2px';
+    for (const k of ['wood', 'stone']) {
+      const rt = RTYPES[k];
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;align-items:center;gap:3px;background:#0d1525;border-radius:4px;padding:2px 6px;font-size:10px;color:#94a3b8';
+      const lbl = document.createElement('span');
+      lbl.textContent = rt.icon + ' ' + (inv[k] || 0);
+      wrap.appendChild(lbl);
+      const have = state.resources[k] || 0;
+      if (have > 0) {
+        const btn = document.createElement('button');
+        btn.className = 'ttb tts2';
+        btn.style.cssText = 'font-size:9px;padding:1px 4px';
+        btn.textContent = '+1';
+        btn.onclick = e => {
+          e.stopPropagation();
+          if ((state.resources[k] || 0) <= 0) return;
+          state.resources[k]--;
+          if (!tw.inv) tw.inv = {};
+          tw.inv[k] = (tw.inv[k] || 0) + 1;
+          refreshTT(tw);
+        };
+        wrap.appendChild(btn);
+      }
+      stockRow.appendChild(wrap);
+    }
+    a.appendChild(stockRow);
+    addTTB(a, '⚒️ Open', 'ttc', true, () => { hideTT(); state.ttTower = null; openCraftPanel(tw); });
+  }
   if (TD[tw.type]?.cat === 'tower' && TOWER_SKILLS[tw.type]) { addTTB(a, '⚡Skill', 'ttc', true, () => { showTowerSkill(tw); hideTT(); state.ttTower = null; }); }
   const sv = Math.floor(def.cost * 0.75 + (tw.level * def.cost * 0.4));
   addTTB(a, 'Sell +💰' + sv, 'ttl', true, () => {
@@ -387,87 +418,75 @@ function buildMonkeyTT(tw, container) {
     const block = document.createElement('div');
     block.style.cssText = 'display:flex;flex-direction:column;gap:3px;margin:4px 0;border-top:1px solid #334155;padding-top:4px';
 
+    // Row 1: name + role cycle + trip count
+    const row1 = document.createElement('div');
+    row1.style.cssText = 'display:flex;gap:4px;align-items:center';
     const nameEl = document.createElement('span');
-    nameEl.style.cssText = 'color:#fb923c;font-size:10px;font-weight:700';
+    nameEl.style.cssText = 'color:#fb923c;font-size:10px;font-weight:700;flex-shrink:0';
     nameEl.textContent = mk.name;
-    block.appendChild(nameEl);
-
-    const roleRow = document.createElement('div');
-    roleRow.style.cssText = 'display:flex;gap:4px;align-items:center';
-    addTTB(roleRow, ROLE_LABEL[mk.role] ?? 'Idle 💤', 'tts2', true, () => {
+    row1.appendChild(nameEl);
+    addTTB(row1, ROLE_LABEL[mk.role] ?? 'Idle 💤', 'tts2', true, () => {
       const idx = ROLE_CYCLE.indexOf(mk.role);
       mk.role = ROLE_CYCLE[(idx + 1) % ROLE_CYCLE.length];
       mk.cfg = { filter: null, dest: null, from: null, boost: null };
       mk.st = 'idle'; mk.carrying = null;
       refreshTT(tw);
     });
-    block.appendChild(roleRow);
+    if (mk.trips > 0) {
+      const tripEl = document.createElement('span');
+      tripEl.style.cssText = 'color:#64748b;font-size:9px;margin-left:2px';
+      tripEl.textContent = mk.trips + ' trip' + (mk.trips === 1 ? '' : 's');
+      row1.appendChild(tripEl);
+    }
+    block.appendChild(row1);
 
+    // Row 2: role-specific controls all on one row
     if (mk.role === 'gatherer') {
-      const filterRow = document.createElement('div');
-      filterRow.style.cssText = 'display:flex;gap:4px;align-items:center';
-      addTTB(filterRow, 'Filter:' + FILTER_LABEL[mk.cfg.filter ?? null], 'tts2', true, () => {
+      const row2 = document.createElement('div');
+      row2.style.cssText = 'display:flex;gap:4px;align-items:center;flex-wrap:wrap';
+      addTTB(row2, 'Filter:' + FILTER_LABEL[mk.cfg.filter ?? null], 'tts2', true, () => {
         const fi = FILTER_CYCLE.indexOf(mk.cfg.filter ?? null);
         mk.cfg.filter = FILTER_CYCLE[(fi + 1) % FILTER_CYCLE.length] ?? null;
         refreshTT(tw);
       });
-      block.appendChild(filterRow);
-
-      const destRow = document.createElement('div');
-      destRow.style.cssText = 'display:flex;gap:4px;align-items:center';
       const destLbl = mk.cfg.dest ? `Dest:(${mk.cfg.dest.x},${mk.cfg.dest.y})` : 'Set Dest 📍';
-      addTTB(destRow, destLbl, 'tts2', true, () => {
+      addTTB(row2, destLbl, 'tts2', true, () => {
         state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'dest' };
         hideTT(); state.ttTower = null; panelU();
       });
-      block.appendChild(destRow);
+      block.appendChild(row2);
     }
 
     if (mk.role === 'courier') {
-      const filterRow = document.createElement('div');
-      filterRow.style.cssText = 'display:flex;gap:4px;align-items:center';
-      addTTB(filterRow, 'Filter:' + FILTER_LABEL[mk.cfg.filter ?? null], 'tts2', true, () => {
+      const row2 = document.createElement('div');
+      row2.style.cssText = 'display:flex;gap:4px;align-items:center;flex-wrap:wrap';
+      addTTB(row2, 'Filter:' + FILTER_LABEL[mk.cfg.filter ?? null], 'tts2', true, () => {
         const fi = FILTER_CYCLE.indexOf(mk.cfg.filter ?? null);
         mk.cfg.filter = FILTER_CYCLE[(fi + 1) % FILTER_CYCLE.length] ?? null;
         refreshTT(tw);
       });
-      block.appendChild(filterRow);
-
-      const fromRow = document.createElement('div');
-      fromRow.style.cssText = 'display:flex;gap:4px;align-items:center';
       const fromLbl = mk.cfg.from ? `From:(${mk.cfg.from.x},${mk.cfg.from.y})` : 'Set From 📍';
-      addTTB(fromRow, fromLbl, 'tts2', true, () => {
+      addTTB(row2, fromLbl, 'tts2', true, () => {
         state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'from' };
         hideTT(); state.ttTower = null; panelU();
       });
-      block.appendChild(fromRow);
-
-      const toRow = document.createElement('div');
-      toRow.style.cssText = 'display:flex;gap:4px;align-items:center';
       const toLbl = mk.cfg.dest ? `To:(${mk.cfg.dest.x},${mk.cfg.dest.y})` : 'Set To 📍';
-      addTTB(toRow, toLbl, 'tts2', true, () => {
+      addTTB(row2, toLbl, 'tts2', true, () => {
         state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'dest' };
         hideTT(); state.ttTower = null; panelU();
       });
-      block.appendChild(toRow);
+      block.appendChild(row2);
     }
 
     if (mk.role === 'booster') {
-      const bRow = document.createElement('div');
-      bRow.style.cssText = 'display:flex;gap:4px;align-items:center';
+      const row2 = document.createElement('div');
+      row2.style.cssText = 'display:flex;gap:4px;align-items:center';
       const bLbl = mk.cfg.boost ? `Boost:(${mk.cfg.boost.x},${mk.cfg.boost.y})` : 'Set Target 📍';
-      addTTB(bRow, bLbl, 'tts2', true, () => {
+      addTTB(row2, bLbl, 'tts2', true, () => {
         state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'boost' };
         hideTT(); state.ttTower = null; panelU();
       });
-      block.appendChild(bRow);
-    }
-
-    if (mk.trips > 0) {
-      const tripEl = document.createElement('span');
-      tripEl.style.cssText = 'color:#64748b;font-size:9px';
-      tripEl.textContent = mk.trips + ' trip' + (mk.trips === 1 ? '' : 's');
-      block.appendChild(tripEl);
+      block.appendChild(row2);
     }
 
     container.appendChild(block);
