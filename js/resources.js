@@ -1,7 +1,7 @@
 'use strict';
 import { state } from './main.js';
 import { sfxMine } from './audio.js';
-import { mkGain, hudU } from './ui.js';
+import { mkGain, hudU, addToInventory } from './ui.js';
 import { HOARD_LEVELS } from './data.js';
 
 // ─── Crafted item icon registry (populated by craft.js at module init) ────────
@@ -15,6 +15,11 @@ export const RTYPES = {
   wood: { icon: '🪵', name: 'Wood', clr: '#92400e' },
   dust: { icon: '🔮', name: 'Dust', clr: '#a855f7' }
 };
+
+// Returns { icon, name } for any item type — RTYPE or crafted item.
+export function getItemDef(type) {
+  return RTYPES[type] ?? _itemRegistry[type] ?? { icon: '❓', name: type };
+}
 
 // ─── Resource node type definitions ───────────────────────────────────────
 // Each entry is a clickable world node that drops a resource.
@@ -114,21 +119,31 @@ export function dropItem(cx, cy, type) {
   // Tower-aware routing: deliver directly to tower if applicable
   const tw = cell.content;
   if (tw?.type === 'stockpile') {
+    const isCrafted = !RTYPES[type];
     if (tw.mode === 'interface') {
-      state.resources[type] = (state.resources[type] || 0) + 1;
-      const rt = RTYPES[type]; if (rt) mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr);
+      if (isCrafted) {
+        // Crafted items go to player inventory
+        const def = getItemDef(type);
+        const section = _itemRegistry[type]?.output === 'consumable' ? 'consumables' : 'augments';
+        addToInventory(section, { id: type, name: def.name, icon: def.icon });
+        mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, def.icon, 1, '#6ee7b7');
+      } else {
+        state.resources[type] = (state.resources[type] || 0) + 1;
+        const rt = RTYPES[type]; if (rt) mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr);
+      }
       return true;
     }
-    // Storage mode — deposit into slots (dust not accepted)
+    // Storage mode — deposit into slots
     if (type === 'dust') return false;
     if (!tw.slots) tw.slots = [null, null, null, null];
     const cap = 64 << (tw.level || 0);
+    const def = getItemDef(type);
     for (let i = 0; i < tw.slots.length; i++) {
       const s = tw.slots[i];
-      if (s && s.type === type && s.count < cap) { s.count++; const rt = RTYPES[type]; if (rt) mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr); return true; }
+      if (s && s.type === type && s.count < cap) { s.count++; mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, def.icon, 1, '#94a3b8'); return true; }
     }
     for (let i = 0; i < tw.slots.length; i++) {
-      if (!tw.slots[i]) { tw.slots[i] = { type, count: 1 }; const rt = RTYPES[type]; if (rt) mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr); return true; }
+      if (!tw.slots[i]) { tw.slots[i] = { type, count: 1 }; mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, def.icon, 1, '#94a3b8'); return true; }
     }
     return false; // all slots full
   }

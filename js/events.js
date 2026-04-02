@@ -1,5 +1,6 @@
 'use strict';
 import { state, fIncome, _ΨΔ } from './main.js';
+import { addFeed } from './feed.js';
 import { mkE } from './enemies.js';
 import { ETYPES, HOARD_LEVELS } from './data.js';
 import { sfxEvent } from './audio.js';
@@ -24,4 +25,5 @@ export function triggerEvent() {
   el.style.borderColor = ev.good ? '#22c55e' : '#ef4444';
   el.classList.add('sh');
   setTimeout(() => el.classList.remove('sh'), 3000);
+  addFeed(ev.good ? 'event_good' : 'event_bad', ev.name + ' — ' + ev.desc);
 }

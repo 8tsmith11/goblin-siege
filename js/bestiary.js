@@ -107,6 +107,26 @@ export const BESTIARY = {
   }
 };
 
+// Returns the scribe's entry for a specific wave number, or null if none.
+// Used by the feed log to post entries as they unlock.
+export function getScribeEntry(wave, state) {
+  const hasLab = state.towers?.some(t => t.type === 'lab') || state.bSen?.has('lab');
+  const entries = {
+    1:  () => 'I should start writing again. One more time.',
+    3:  () => hasLab ? 'They built a lab.' : 'No lab. Interesting.',
+    5:  () => 'The first boss. They survived. They always survive the first one.',
+    8:  () => "One walked backward. In Version 412 the backward walker stopped and faced the camera. That hasn\u2019t happened yet.",
+    10: () => "They\u2019re building faster now. It\u2019s beautiful in a way. The way an avalanche is beautiful.",
+    12: () => 'The ground shook. It always shakes at this point.',
+    15: () => "The fog came. You can\u2019t fight fog.",
+    18: () => 'They translated the first sounds. Give it time.',
+    20: () => `The Ledger appeared. The number was ${state._kills || 0}. I wrote it down.`,
+    22: () => "New material on the surface. They can\u2019t use it yet. They will.",
+    25: () => "The age is ending. Whatever comes next will be louder. It\u2019s always louder.",
+  };
+  return entries[wave]?.() ?? null;
+}
+
 export function getScribeLogs(state) {
   const w = state.wave || 0;
   let logs = [];

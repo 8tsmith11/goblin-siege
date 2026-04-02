@@ -35,8 +35,8 @@ export const RECIPES = [
   },
 ];
 
-// Register icons into the shared registry so resources.js can look them up
-for (const r of RECIPES) _itemRegistry[r.id] = { icon: r.icon, name: r.name };
+// Register items into the shared registry so resources.js can look them up
+for (const r of RECIPES) _itemRegistry[r.id] = { icon: r.icon, name: r.name, output: r.output };
 
 export function canAffordRecipe(recipe) {
   const res = state.resources || {};

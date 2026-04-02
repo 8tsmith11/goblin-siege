@@ -1,7 +1,7 @@
 'use strict';
 import { state, PAD } from './main.js';
 import { TD } from './data.js';
-import { renderNodes, renderStacks, RTYPES } from './resources.js';
+import { renderNodes, renderStacks, RTYPES, getItemDef } from './resources.js';
 
 const _imgPath = new Image(); _imgPath.src = 'assets/tiles/path.png';
 const _imgGrassL = new Image(); _imgGrassL.src = 'assets/tiles/lightgrass.png';
@@ -204,7 +204,7 @@ export function render() {
       if (mk.carrying) {
         cx.font = Math.floor(CELL * 0.45) + 'px serif';
         cx.textAlign = 'center'; cx.textBaseline = 'bottom';
-        cx.fillText(RTYPES[mk.carrying.type]?.icon || '?', mk.x, mk.y - CELL * 0.28);
+        cx.fillText(getItemDef(mk.carrying.type).icon, mk.x, mk.y - CELL * 0.28);
       }
     }
   }

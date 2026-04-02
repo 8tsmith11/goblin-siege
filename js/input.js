@@ -153,7 +153,13 @@ function handleTap(e) {
   if (state.sel?.type === 'augment_pick') {
     if (ex) {
       if (applyAugment(state.sel.item, ex)) {
-        if (state.sel.invIndex !== undefined) state.inventory.augments.splice(state.sel.invIndex, 1);
+        if (state.sel.invIndex !== undefined) {
+          const entry = state.inventory.augments[state.sel.invIndex];
+          if (entry) {
+            if ((entry.count || 1) > 1) entry.count--;
+            else state.inventory.augments.splice(state.sel.invIndex, 1);
+          }
+        }
         showTip('Augment applied!');
       } else {
         const slots = (ex.level || 0) >= 5 ? 2 : (ex.level || 0) >= 3 ? 1 : 0;
@@ -170,7 +176,14 @@ function handleTap(e) {
   // Consumable-pick mode: click a path tile to place
   if (state.sel?.type === 'consumable_pick') {
     if (placeConsumable(state.sel.item, c.x, c.y)) {
-      if (state.sel.invIndex !== undefined) state.inventory.consumables.splice(state.sel.invIndex, 1);
+      const ci = state.sel.index ?? state.sel.invIndex;
+      if (ci !== undefined) {
+        const entry = state.inventory.consumables[ci];
+        if (entry) {
+          if ((entry.count || 1) > 1) entry.count--;
+          else state.inventory.consumables.splice(ci, 1);
+        }
+      }
       showTip('Placed!');
       state.sel = null;
       panelU();

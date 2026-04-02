@@ -1,6 +1,6 @@
 'use strict';
 import { state, startGame, startWave, startPrep, resetGame, _ΨΔ } from './main.js';
-import { RTYPES, dropItem } from './resources.js';
+import { RTYPES, dropItem, getItemDef, _itemRegistry } from './resources.js';
 import { TD, TOWER_SKILLS, HOARD_LEVELS, HOARD_UPGS } from './data.js';
 import { spawnBees } from './support.js';
 import { canAfford, spendResources, layoutNodes, UNLOCK_DESC, checkGamePrereq, applyUnlock, refreshStatuses, RESEARCH_JSON } from './research.js';
@@ -9,6 +9,7 @@ import { renderSk, showTowerSkill } from './skills.js';
 import { BESTIARY, getScribeLogs } from './bestiary.js';
 import { sfxPlace, iA } from './audio.js';
 import { RECIPES, cancelCraft, selectRecipe } from './craft.js';
+import { addFeed } from './feed.js';
 
 export function hudU() {
   const { lives, gold, enemies, spawnQueue, wave, phase, prepTicks } = state;
@@ -25,9 +26,21 @@ export function hudU() {
 const goBtn = document.getElementById('goBtn');
   if (goBtn) goBtn.style.display = phase === 'prep' ? '' : 'none';
   const hRes = document.getElementById('hRes');
-  if (hRes) hRes.innerHTML = Object.entries(RTYPES).map(([k, r]) =>
-    `<div class="hi" data-res="${k}">${r.icon}<span class="v" style="color:${r.clr}">${state.resources[k] || 0}</span></div>`
-  ).join('');
+  if (hRes) {
+    const rtKeys = Object.keys(RTYPES);
+    if (hRes.children.length !== rtKeys.length) {
+      // First render or RTYPES changed — build from scratch
+      hRes.innerHTML = Object.entries(RTYPES).map(([k, r]) =>
+        `<div class="hi" data-res="${k}">${r.icon}<span class="v" style="color:${r.clr}">${state.resources[k] || 0}</span></div>`
+      ).join('');
+    } else {
+      // Update counts in-place so event listeners on child elements survive across frames
+      for (const el of hRes.children) {
+        const k = el.dataset.res;
+        if (k) el.querySelector('.v').textContent = state.resources[k] || 0;
+      }
+    }
+  }
 }
 
 export function showOv(t, d, b, go, fn, cancelFn) {
@@ -60,6 +73,7 @@ export function showBL(t) {
   const b = document.getElementById('bL'); b.textContent = '\"' + t + '\"'; b.classList.add('sh');
   import('./audio.js').then(m => m.speak(t));
   setTimeout(() => b.classList.remove('sh'), 3000);
+  addFeed('boss_quote', '\u201c' + t + '\u201d');
 }
 
 let tipTmr = 0;
@@ -176,8 +190,9 @@ export function panelU() {
     // Consumables from inventory
     const cons = state.inventory?.consumables || [];
     cons.forEach((item, i) => {
-      const el = mkIB(item.icon, item.name, 'Place', true, state.sel?.type === 'consumable_pick' && state.sel?.invIndex === i, () => {
-        state.sel = { type: 'consumable_pick', item, invIndex: i };
+      const countLbl = (item.count && item.count > 1) ? 'x' + item.count : 'Place';
+      const el = mkIB(item.icon, item.name, countLbl, true, state.sel?.type === 'consumable_pick' && state.sel?.index === i, () => {
+        state.sel = { type: 'consumable_pick', item: { ...item }, index: i };
         showTip('Click a path tile to place ' + item.name);
         panelU();
       });
@@ -253,35 +268,35 @@ function buildStockpileTT(tw, a) {
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;align-items:center;gap:5px;background:#0d1525;border-radius:4px;padding:3px 6px;min-height:24px';
       if (slot) {
-        const rt = RTYPES[slot.type];
+        const def = getItemDef(slot.type);
+        const isCrafted = !RTYPES[slot.type];
         const lbl = document.createElement('span');
         lbl.style.cssText = 'flex:1;font-size:11px;color:#e2e8f0';
-        lbl.textContent = (rt?.icon || slot.type) + ' ' + slot.count + ' / ' + cap;
+        lbl.textContent = def.icon + ' ' + slot.count + ' / ' + cap;
         row.appendChild(lbl);
+        const _withdraw = (amount) => {
+          const s = tw.slots[i]; if (!s) return;
+          if (isCrafted) {
+            const section = _itemRegistry[s.type]?.output === 'consumable' ? 'consumables' : 'augments';
+            for (let n = 0; n < amount; n++) addToInventory(section, { id: s.type, name: def.name, icon: def.icon });
+          } else {
+            state.resources[s.type] = (state.resources[s.type] || 0) + amount;
+          }
+          s.count -= amount;
+          if (s.count <= 0) tw.slots[i] = null;
+          refreshTT(tw);
+        };
         const take1Btn = document.createElement('button');
         take1Btn.className = 'ttb tts2';
         take1Btn.style.cssText = 'min-width:28px;padding:2px 4px;font-size:9px;flex-shrink:0';
         take1Btn.textContent = '+1';
-        take1Btn.onclick = e => {
-          e.stopPropagation();
-          const s = tw.slots[i]; if (!s) return;
-          state.resources[s.type] = (state.resources[s.type] || 0) + 1;
-          s.count--;
-          if (s.count <= 0) tw.slots[i] = null;
-          refreshTT(tw);
-        };
+        take1Btn.onclick = e => { e.stopPropagation(); _withdraw(1); };
         row.appendChild(take1Btn);
         const takeAllBtn = document.createElement('button');
         takeAllBtn.className = 'ttb tts2';
         takeAllBtn.style.cssText = 'min-width:36px;padding:2px 4px;font-size:9px;flex-shrink:0';
         takeAllBtn.textContent = 'All';
-        takeAllBtn.onclick = e => {
-          e.stopPropagation();
-          const s = tw.slots[i]; if (!s) return;
-          state.resources[s.type] = (state.resources[s.type] || 0) + s.count;
-          tw.slots[i] = null;
-          refreshTT(tw);
-        };
+        takeAllBtn.onclick = e => { e.stopPropagation(); _withdraw(tw.slots[i]?.count ?? 0); };
         row.appendChild(takeAllBtn);
       } else {
         const lbl = document.createElement('span');
@@ -1430,7 +1445,8 @@ function renderInventory() {
 function _mkInvCell(item, selected) {
   const cell = document.createElement('div');
   cell.className = 'inv-cell' + (selected ? ' sel' : '');
-  cell.innerHTML = '<div class="inv-ic">' + item.icon + '</div><div class="inv-nm">' + item.name + '</div>';
+  const countBadge = (item.count && item.count > 1) ? '<div class="inv-cnt">x' + item.count + '</div>' : '';
+  cell.innerHTML = '<div class="inv-ic">' + item.icon + '</div><div class="inv-nm">' + item.name + '</div>' + countBadge;
   return cell;
 }
 
@@ -1468,7 +1484,8 @@ function _renderInvActions() {
       document.getElementById('invP')?.classList.remove('sh');
       _invSel = null;
       syncPause();
-      state.sel = { type: 'consumable_pick', item: it, index: i };
+      // Pass a copy so the index is valid at placement time
+      state.sel = { type: 'consumable_pick', item: { ...it }, index: i };
       showTip('Click a path tile to place the consumable');
     };
     el.appendChild(btn);
@@ -1567,7 +1584,14 @@ export function addToInventory(section, item) {
   if (!inv) return;
   const arr = inv[section];
   if (!arr) return;
-  if (arr.length < INV_MAX) arr.push(item);
+  // Stack augments and consumables by id
+  if ((section === 'augments' || section === 'consumables') && item.id) {
+    const existing = arr.find(e => e.id === item.id);
+    if (existing) { existing.count = (existing.count || 1) + 1; return; }
+    if (arr.length < INV_MAX) arr.push({ ...item, count: 1 });
+  } else {
+    if (arr.length < INV_MAX) arr.push(item);
+  }
 }
 
 // ── Crafting Panel ─────────────────────────────────────────────────────────────
@@ -1591,18 +1615,36 @@ export function renderCraftPanel() {
   const invDiv = document.createElement('div');
   invDiv.style.cssText = 'margin-bottom:10px;';
   const inv = tw.inv || {};
-  const stockRow = document.createElement('div');
-  stockRow.style.cssText = 'font-size:12px;color:#94a3b8;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap';
-  Object.entries(RTYPES).filter(([k]) => k !== 'dust').forEach(([k, rt]) => {
-    const span = document.createElement('span');
-    span.dataset.wbRes = k;
-    span.dataset.twX = tw.x;
-    span.dataset.twY = tw.y;
-    span.style.cssText = 'cursor:pointer';
-    span.textContent = rt.icon + ' ' + (inv[k] || 0);
-    stockRow.appendChild(span);
-  });
   invDiv.innerHTML = '<div class="craft-queue-title">Workbench Stock</div>';
+  const stockRow = document.createElement('div');
+  stockRow.style.cssText = 'font-size:12px;color:#94a3b8;margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center';
+  Object.entries(RTYPES).filter(([k]) => k !== 'dust').forEach(([k, rt]) => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;align-items:center;gap:3px;background:#0d1525;border-radius:4px;padding:2px 5px';
+    const lbl = document.createElement('span');
+    lbl.dataset.wbRes = k;
+    lbl.dataset.twX = tw.x;
+    lbl.dataset.twY = tw.y;
+    lbl.textContent = rt.icon + ' ' + (inv[k] || 0);
+    wrap.appendChild(lbl);
+    const have = state.resources[k] || 0;
+    if (have > 0) {
+      const depBtn = document.createElement('button');
+      depBtn.className = 'craft-dep-btn';
+      depBtn.title = 'Deposit from inventory (' + have + ' available)';
+      depBtn.textContent = '+1';
+      depBtn.onclick = () => {
+        if ((state.resources[k] || 0) <= 0) return;
+        state.resources[k]--;
+        if (!tw.inv) tw.inv = {};
+        tw.inv[k] = (tw.inv[k] || 0) + 1;
+        hudU();
+        renderCraftPanel();
+      };
+      wrap.appendChild(depBtn);
+    }
+    stockRow.appendChild(wrap);
+  });
   invDiv.appendChild(stockRow);
   c.appendChild(invDiv);
 

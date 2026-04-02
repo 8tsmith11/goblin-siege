@@ -3,6 +3,7 @@ import { state, _ΨΔ, clampCam, startPrep } from './main.js';
 import { TOWER_SKILLS } from './data.js';
 import { spawnBees } from './support.js';
 import { hudU, panelU, showBanner, showOv, hideOv, hideTT } from './ui.js';
+import { getFeedLog, restoreFeed } from './feed.js';
 import { reinitMonkeys } from './monkeys.js';
 
 // ─── Encode / decode ──────────────────────────────────────────────────────────
@@ -65,6 +66,7 @@ function _build() {
     _unlocked: Array.from(state.unlockedTowers || []),
     _traps: (state.traps || []).filter(t => t.type !== 'sap'),
     _inv: state.inventory ? JSON.parse(JSON.stringify(state.inventory)) : null,
+    _fl: getFeedLog(),
   };
 }
 
@@ -112,9 +114,9 @@ function _apply(d) {
   state.sel = null; state.ttTower = null; state.gameOver = false;
   state.started = true; state.wave = d._w; state.phase = 'idle';
   state.ticks = 0; state.prepTicks = 0;
-
   _ΨΔ(() => { state.gold = d._r; state.lives = d._h; });
   clampCam(); hideTT(); hudU(); panelU();
+  restoreFeed(d._fl);
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────

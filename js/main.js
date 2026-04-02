@@ -38,6 +38,8 @@ bus.on('enemyDeath', e => {
 });
 import { buildResearchGraph, tickResearch } from './research.js';
 import { tickCraft, updateTraps, cleanupBarricades } from './craft.js';
+import { addFeed, clearFeed } from './feed.js';
+import { getScribeEntry } from './bestiary.js';
 import { TOWER_SKILLS, HOARD_LEVELS } from './data.js';
 import { updateEnemies, genWave } from './enemies.js';
 import { updateTowers } from './towers.js';
@@ -108,7 +110,7 @@ export function measure() {
   const bp = document.getElementById('bp');
   if (!gc || !cv || !hud || !bp) return false;
   const oldW = state.W, oldH = state.H, oldCELL = state.CELL;
-  state.W = cv.width = gc.clientWidth;
+  state.W = cv.width = gc.clientWidth - (document.getElementById('feed')?.offsetWidth || 0);
   state.H = cv.height = gc.clientHeight - (hud.offsetHeight || 0) - (bp.offsetHeight || 0);
   state.COLS = WORLD_COLS;
   state.ROWS = WORLD_ROWS;
@@ -252,7 +254,7 @@ function update() {
     if (inc > 0) mkF(state.W / 2, state.H / 2, '+' + inc + ' 🏺', '#10b981');
     // Research tick
     const _done = tickResearch();
-    if (_done) showBanner('🔬 ' + _done.name + ' complete!');
+    if (_done) { showBanner('🔬 ' + _done.name + ' complete!'); addFeed('research', _done.name + ' complete.'); }
     refreshResearch();
     // Craft tick
     cleanupBarricades();
@@ -261,6 +263,8 @@ function update() {
     // Transition seamlessly into the prep phase without a blocking modal.
     state.phase = 'prep'; state.prepTicks = 1800; sfxWave(); _φ = false;
     autoSave();
+    const _scribe = getScribeEntry(state.wave, state);
+    if (_scribe) addFeed('scribe', _scribe);
     if (Math.random() < 0.4 && state.wave > 1) setTimeout(() => triggerEvent(), 500);
     showBanner('✅ Wave ' + state.wave + ' Complete!');
     hudU(); panelU();
@@ -282,6 +286,7 @@ export function startGame() {
   if (!state.research) state.research = buildResearchGraph();
   state.started = true; state.phase = 'prep'; state.prepTicks = 1800;
   invalidateBg(); initSz(); hideOv(); hudU(); panelU();
+  addFeed('system', 'The siege begins.');
 }
 
 export function startWave() {
@@ -291,6 +296,7 @@ export function startWave() {
   hideOv();
   const boss = state.wave % 5 === 0 && state.wave > 0;
   showBanner(boss ? '👑 BOSS W' + state.wave : '⚔️ Wave ' + state.wave);
+  addFeed(boss ? 'boss' : 'wave', boss ? 'Boss Wave ' + state.wave + '!' : 'Wave ' + state.wave + ' begins.');
   if (boss) sfxBoss();
   hudU(); panelU();
 }
@@ -317,6 +323,7 @@ export function resetGame() {
 
   for (const tree of Object.values(TOWER_SKILLS)) for (const s of Object.values(tree)) s.owned = false;
   state.pathSet.clear(); state.grid = [];
+  clearFeed();
   initSz();
   clearSave(); hideTT(); startGame();
 }
