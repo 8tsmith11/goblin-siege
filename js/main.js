@@ -53,7 +53,7 @@ import { initInput, updateCameraKeys } from './input.js';
 import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
 import { placeNodes, updateNodes } from './resources.js';
 
-export const VERSION = 'v1.1';
+export const VERSION = 'v1.3';
 export const WORLD_COLS = 20;
 export const WORLD_ROWS = 12;
 export const PAD = 6; // forest padding tiles around the buildable grid
