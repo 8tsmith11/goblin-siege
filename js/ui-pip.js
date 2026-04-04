@@ -231,7 +231,7 @@ function renderPip() {
       _ΨΔ(() => { state.gold -= bp.cost; });
       state.pip.bBought[bp.id] = true;
       state.unlockedTowers.add(bp.unlocks);
-      addToInventory('blueprints', { id: bp.id, icon: '🟦', name: bp.name });
+      addToInventory('blueprints', { id: bp.id, icon: '🟦', bpOverlay: bp.icon, name: bp.name });
       renderPip(); hudU(); panelU();
       showBanner('📋 ' + bp.name + ' acquired!');
     }, bought || alreadyOwned ? 'Owned' : 'Sold'));

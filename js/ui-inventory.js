@@ -110,7 +110,10 @@ function _mkInvCell(item, selected) {
   const rarityBadge = item.rarity
     ? '<div class="inv-rarity" style="color:' + (RARITY_COLORS[item.rarity] || '#94a3b8') + '">●</div>'
     : '';
-  cell.innerHTML = '<div class="inv-ic">' + item.icon + '</div><div class="inv-nm">' + item.name + '</div>' + countBadge + rarityBadge;
+  const iconHtml = item.bpOverlay
+    ? '<div class="inv-ic pip-bp-ic"><span class="pip-bp-base">' + item.icon + '</span><span class="pip-bp-overlay">' + item.bpOverlay + '</span></div>'
+    : '<div class="inv-ic">' + item.icon + '</div>';
+  cell.innerHTML = iconHtml + '<div class="inv-nm">' + item.name + '</div>' + countBadge + rarityBadge;
   return cell;
 }
 
