@@ -157,7 +157,7 @@ function renderPip() {
   const portrait = document.createElement('div');
   portrait.className = 'pip-portrait';
   const img = document.createElement('img');
-  img.src = 'assets/pip/portrait.png';
+  img.src = 'assets/tiles/pip.png';
   img.alt = 'Pip';
   img.onerror = () => { portrait.style.display = 'none'; };
   portrait.appendChild(img);
