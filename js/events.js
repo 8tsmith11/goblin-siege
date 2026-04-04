@@ -15,15 +15,19 @@ export const EVENTS = [
   },
   {
     name: '🪨 Scattered Stones!',
-    desc: '5 stone appear on the ground',
+    desc: '5 stone appear on the path',
     good: true,
     fn: () => {
+      const pathCells = state.path.slice();
+      for (let i = pathCells.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pathCells[i], pathCells[j]] = [pathCells[j], pathCells[i]];
+      }
       let placed = 0;
-      for (let attempt = 0; attempt < 40 && placed < 5; attempt++) {
-        const x = Math.floor(Math.random() * state.COLS);
-        const y = Math.floor(Math.random() * state.ROWS);
+      for (const { x, y } of pathCells) {
+        if (placed >= 5) break;
         const cell = getCell(x, y);
-        if (!cell || cell.type !== 'empty') continue;
+        if (!cell) continue;
         if (!cell.stacks) cell.stacks = [null, null, null, null];
         const ei = cell.stacks.findIndex(s => !s);
         if (ei === -1) continue;
