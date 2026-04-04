@@ -1,7 +1,7 @@
 'use strict';
-import { state } from './main.js';
+import { state, getCell } from './main.js';
 import { TD } from './data.js';
-import { dropItem, RTYPES } from './resources.js';
+import { dropItem, canTileAccept, RTYPES } from './resources.js';
 import { mkGain } from './ui.js';
 
 export const MONKEY_NAMES = ['Bongo','Mango','Zazu','Kiki','Popo','Tiko','Wren','Nala',
@@ -54,7 +54,8 @@ export function reinitMonkeys(towers) {
 
 function moveTo(mk, tx, ty) {
   const dx = tx - mk.x, dy = ty - mk.y, d = Math.hypot(dx, dy);
-  const spd = MONKEY_SPEED * state.CELL;
+  const weatherMult = state.weather?.id === 'rain' ? 0.8 : 1;
+  const spd = MONKEY_SPEED * state.CELL * weatherMult;
   if (d <= spd) { mk.x = tx; mk.y = ty; return true; }
   mk.x += (dx / d) * spd;
   mk.y += (dy / d) * spd;
@@ -69,7 +70,7 @@ function cellCenter(gx, gy) {
 
 // Take 1 item from ground stacks at (gx, gy), respecting filter. Returns { type } or null.
 function takeFromCell(gx, gy, filter) {
-  const cell = state.grid[gy]?.[gx];
+  const cell = getCell(gx, gy);
   if (!cell?.stacks) return null;
   for (let i = 0; i < 4; i++) {
     const s = cell.stacks[i];
@@ -85,7 +86,7 @@ function takeFromCell(gx, gy, filter) {
 
 // Take 1 item from a stockpile's slots, respecting filter. Returns { type } or null.
 function takeFromStockpileSlots(gx, gy, filter) {
-  const sp = state.grid[gy]?.[gx]?.content;
+  const sp = getCell(gx, gy)?.content;
   if (!sp?.slots) return null;
   for (let i = 0; i < sp.slots.length; i++) {
     const s = sp.slots[i];
@@ -101,29 +102,8 @@ function takeFromStockpileSlots(gx, gy, filter) {
 
 // Check if the tower at (gx, gy) is a stockpile in storage mode
 function isStorageStockpile(gx, gy) {
-  const tw = state.grid[gy]?.[gx]?.content;
+  const tw = getCell(gx, gy)?.content;
   return tw?.type === 'stockpile' && tw?.mode !== 'interface';
-}
-
-// Check if a tile can accept an item of the given type
-function destCanAccept(gx, gy, type) {
-  const cell = state.grid[gy]?.[gx];
-  if (!cell) return false;
-  const tw = cell.content;
-  if (tw?.type === 'stockpile') {
-    if (tw.mode === 'interface') return true;
-    if (!tw.slots) return true;
-    const cap = 64 << (tw.level || 0);
-    return tw.slots.some(s => !s) || tw.slots.some(s => s && (!type || s.type === type) && s.count < cap);
-  }
-  if (tw?.type === 'hoard') {
-    if (type === 'dust') return false;
-    const caps = [20, 30, 40, 50, 60];
-    return (tw.stored || 0) < (caps[tw.level || 0] ?? 20);
-  }
-  const stacks = cell.stacks;
-  if (!stacks) return true;
-  return stacks.some(s => !s) || stacks.some(s => s && (!type || s.type === type) && s.count < 64);
 }
 
 // Find nearest cell with a matching stack within range tiles of (ox, oy)
@@ -137,7 +117,7 @@ function findNearestStack(ox, oy, range, filter, exclude) {
       if (gx < 0 || gx >= COLS || gy < 0 || gy >= ROWS) continue;
       if (exclude && gx === exclude.x && gy === exclude.y) continue;
       if (Math.hypot(dx, dy) > range) continue;
-      const cell = grid[gy]?.[gx];
+      const cell = getCell(gx, gy);
       if (!cell?.stacks) continue;
       const hasMatch = cell.stacks.some(s => s && (!filter || s.type === filter));
       if (!hasMatch) continue;
@@ -171,7 +151,14 @@ function tickGatherer(mk, tw) {
 
   if (mk.st === 'idle') {
     // Orbit if dest is full or can't accept the item type
-    if (!destCanAccept(cfg.dest.x, cfg.dest.y, cfg.filter)) { tickIdle(mk, tw); return; }
+    if (!canTileAccept(cfg.dest.x, cfg.dest.y, cfg.filter)) { tickIdle(mk, tw); return; }
+    // Already carrying — dest has space now, go deliver
+    if (mk.carrying) {
+      const c = cellCenter(cfg.dest.x, cfg.dest.y);
+      mk.targetX = c.x; mk.targetY = c.y;
+      mk.st = 'carrying';
+      return;
+    }
     // Scan for nearest item in range, skip destination tile to avoid pickup loop
     const target = findNearestStack(tw.x, tw.y, tw.range, cfg.filter, cfg.dest);
     if (target) {
@@ -198,8 +185,7 @@ function tickGatherer(mk, tw) {
   } else if (mk.st === 'carrying') {
     if (moveTo(mk, mk.targetX, mk.targetY)) {
       const dropped = dropItem(cfg.dest.x, cfg.dest.y, mk.carrying.type);
-      mk.carrying = null;
-      if (dropped) mk.trips++;
+      if (dropped) { mk.carrying = null; mk.trips++; }
       mk.st = 'idle';
     }
   }
@@ -267,10 +253,15 @@ function tickCourier(mk, tw) {
     }
   } else if (mk.st === 'carrying') {
     if (moveTo(mk, mk.targetX, mk.targetY)) {
-      dropItem(cfg.dest.x, cfg.dest.y, mk.carrying.type);
-      mk.carrying = null;
-      mk.trips++;
-      mk.st = 'idle';
+      if (mk.waitCd > 0) { mk.waitCd--; return; }
+      const dropped = dropItem(cfg.dest.x, cfg.dest.y, mk.carrying.type);
+      if (dropped) {
+        mk.carrying = null;
+        mk.trips++;
+        mk.st = 'idle';
+      } else {
+        mk.waitCd = 60; // dest full — retry in ~1s
+      }
     }
   }
 }
@@ -281,7 +272,7 @@ function tickBooster(mk, tw) {
   if (!cfg.boost || !inRange(tw, cfg.boost.x, cfg.boost.y)) { tickIdle(mk, tw); return; }
 
   // Check if target tower still exists
-  const targetCell = state.grid[cfg.boost.y]?.[cfg.boost.x];
+  const targetCell = getCell(cfg.boost.x, cfg.boost.y);
   if (!targetCell?.content || targetCell.content.type === 'monkey') {
     mk.st = 'idle';
     cfg.boost = null;

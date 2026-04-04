@@ -28,7 +28,7 @@ bus.on('enemyDeath', e => {
   if (lab && state.resources) {
     const dist = Math.hypot(e.x - lab.x, e.y - lab.y);
     if (dist <= lab.obsRange) {
-      let dustYield = e.boss ? 10 : 1 + Math.floor(rew / 3);
+      let dustYield = e.boss ? 5 : Math.floor(rew / 4);
       if (dustYield > 0) {
         state.resources.dust = (state.resources.dust || 0) + dustYield;
         mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '🔮', dustYield, '#a855f7');
@@ -52,11 +52,21 @@ import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, 
 import { initInput, updateCameraKeys } from './input.js';
 import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
 import { placeNodes, updateNodes } from './resources.js';
+import { placeNpcs, initNpcUI, updateNpcBubble } from './npc.js';
+import { initWeather, tickWeather, updateWeather } from './weather.js';
 
-export const VERSION = 'v1.3';
+export const VERSION = 'v1.4';
 export const WORLD_COLS = 20;
 export const WORLD_ROWS = 12;
-export const PAD = 6; // forest padding tiles around the buildable grid
+export const PAD = 6; // forest border width in tiles
+
+// Unified grid accessors — inner game coords (0-based) map to the full grid via PAD offset.
+// Use these everywhere instead of state.grid[y + PAD][x + PAD].
+export function getCell(x, y) { return state.grid[y + PAD]?.[x + PAD] ?? null; }
+export function setCell(x, y, updates) {
+  const cell = state.grid[y + PAD]?.[x + PAD];
+  if (cell) Object.assign(cell, updates);
+}
 
 // ─── Protected state internals ───────────────────────────────────────────────
 // _gg/_ll: actual gold / lives stored in module scope.
@@ -75,6 +85,8 @@ export const state = {
   enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
   spawnQueue: [], spawnTimer: 0,
   nodes: [], resources: {},
+  npcs: [], firedTriggerLines: new Set(),
+  weather: { id: 'clear', wavesLeft: 1 },
   research: null, researchUnlocks: {},
   traps: [],
   inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null] },
@@ -145,6 +157,7 @@ export function initSz() {
     buildPath();
     state.pathReady = true;
     placeNodes();
+    placeNpcs();
   }
   clampCam();
 }
@@ -174,6 +187,7 @@ function update() {
   }
 
   updateNodes();
+  updateWeather();
   if (state.freezeActive > 0) state.freezeActive--;
 
   // Spawn
@@ -260,7 +274,11 @@ function update() {
     cleanupBarricades();
     const _craftDone = tickCraft();
     for (const { recipe } of _craftDone) showBanner('⚒️ ' + recipe.name + ' crafted!');
+    // Clear wildfire-disabled towers whose disable wave just ended
+    state.towers.forEach(tw => { if (tw.disabled && tw.disabledWave === state.wave) tw.disabled = false; });
+    tickWeather();
     // Transition seamlessly into the prep phase without a blocking modal.
+    bus.emit('trigger', { type: 'wave_prep', wave: state.wave + 1 });
     state.phase = 'prep'; state.prepTicks = 1800; sfxWave(); _φ = false;
     autoSave();
     const _scribe = getScribeEntry(state.wave, state);
@@ -286,7 +304,10 @@ export function startGame() {
   if (!state.research) state.research = buildResearchGraph();
   state.started = true; state.phase = 'prep'; state.prepTicks = 1800;
   invalidateBg(); initSz(); hideOv(); hudU(); panelU();
+  initWeather();
   addFeed('system', 'The siege begins.');
+  bus.emit('trigger', { type: 'game_start' });
+  bus.emit('trigger', { type: 'wave_prep', wave: 1 });
 }
 
 export function startWave() {
@@ -314,7 +335,7 @@ export function resetGame() {
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
     gameOver: false, started: false, pathReady: false, paused: false, sel: null, ttTower: null,
-    nodes: [], resources: {}, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin','lab','workbench']), bSen: new Set(['sleepy_door']), age: 'stone',
+    nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin','lab','workbench']), bSen: new Set(['sleepy_door']), age: 'stone',
     traps: [],
     inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null] },
     cam: { panX: 0, panY: 0, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
@@ -340,7 +361,7 @@ function loop() {
     cam.panY = cam.focalY - cam.focalSy / cam.zoom;
     clampCam();
   }
-  update(); render();
+  update(); render(); updateNpcBubble();
   if (state.ticks - lastP > 10) { panelU(); lastP = state.ticks; }
   requestAnimationFrame(loop);
 }
@@ -355,7 +376,7 @@ document.getElementById('rstBtn').addEventListener('click', () => {
 });
 document.getElementById('goBtn').addEventListener('click', () => { if (state.phase === 'prep') startWave(); });
 initTabs(); initInput(); measure();
-initSaveUI(); initBestiaryUI(); initResearchUI(); initInventoryUI(); initCraftUI();
+initSaveUI(); initBestiaryUI(); initResearchUI(); initInventoryUI(); initCraftUI(); initNpcUI();
 const _sv = hasSave() && loadGame();
 initSz(); panelU(); hudU(); loop();
 showWelcome(VERSION, _sv ? startPrep : startGame);

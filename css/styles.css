@@ -71,6 +71,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 @keyframes fu{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-20px) scale(.8)}}
 .fltG{position:absolute;font-size:16px;font-weight:800;pointer-events:none;z-index:25;animation:fuG 1.9s ease-out forwards;text-shadow:0 1px 3px #000;white-space:nowrap}
 @keyframes fuG{0%{opacity:1;transform:translateY(0) scale(1.1)}100%{opacity:0;transform:translateY(-38px) scale(.85)}}
+#npcBubble{position:absolute;background:#101e18;border:1.5px solid #4ade80;border-radius:10px;padding:9px 13px;max-width:210px;font-size:12px;color:#d1fae5;pointer-events:none;z-index:35;line-height:1.55;box-shadow:0 2px 14px rgba(0,0,0,.75);opacity:0;transition:opacity .5s;white-space:normal}
+#npcBubble.sh{opacity:1}
+#npcBubble::after{content:'';position:absolute;right:-9px;top:50%;transform:translateY(-50%);border:5px solid transparent;border-left-color:#4ade80}
 #hRes{display:flex;align-items:center;gap:6px;flex-shrink:0}
 #skP{position:absolute;inset:0;background:rgba(11,14,23,.96);z-index:55;display:none;flex-direction:column;align-items:center;padding:8px;overflow-y:auto}
 #skP.sh{display:flex}

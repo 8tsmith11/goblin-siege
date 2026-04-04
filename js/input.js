@@ -1,7 +1,7 @@
 'use strict';
-import { state, _ΨΔ, clampCam, minZoom } from './main.js';
+import { state, _ΨΔ, clampCam, minZoom, getCell } from './main.js';
 import { iA, sfxPlace, sfxLizard, speak } from './audio.js';
-import { TD } from './data.js';
+import { TD, TOWER_SKILLS } from './data.js';
 import { spawnBees } from './support.js';
 import { canPlace } from './render.js';
 import { showTT, hideTT, showTip, showBanner, panelU, hudU, mkGain, addToInventory } from './ui.js';
@@ -20,7 +20,7 @@ function cell(e) {
 }
 
 function handleStackInteraction(c, e) {
-  const glCell = state.grid[c.y]?.[c.x];
+  const glCell = getCell(c.x, c.y);
   if (glCell && glCell.stacks) {
     const slots = [
       {dx: 0.25, dy: 0.25}, {dx: 0.75, dy: 0.75}, {dx: 0.75, dy: 0.25}, {dx: 0.25, dy: 0.75}
@@ -128,9 +128,11 @@ function tryPlaceTower(c, ex) {
         mk.y = hcy + Math.sin(mk.patrolAngle) * state.CELL * 0.6;
       });
     }
+    // Apply any already-owned skills for this tower type
+    const _tree = TOWER_SKILLS[tw.type];
+    if (_tree) { for (const sk of Object.values(_tree)) { if (sk.owned) sk.apply(tw); } }
     state.towers.push(tw);
-    state.grid[c.y][c.x].type = 'tower';
-    state.grid[c.y][c.x].content = tw;
+    const tc = getCell(c.x, c.y); tc.type = 'tower'; tc.content = tw;
     state.bSen.add(tw.type);
   });
   sfxPlace();
@@ -146,7 +148,9 @@ function tryPlaceTower(c, ex) {
 function handleTap(e) {
   iA();
   const c = cell(e);
-  if (c.x < 0 || c.x >= state.COLS || c.y < 0 || c.y >= state.ROWS) return;
+  const tappedCell = getCell(c.x, c.y);
+  if (!tappedCell) return; // truly off-grid
+  if (tappedCell.type === 'forest') return; // forest tile — no interaction yet
   const ex = state.towers.find(t => t.x === c.x && t.y === c.y);
 
   // Augment-pick mode: click a tower to apply the augment

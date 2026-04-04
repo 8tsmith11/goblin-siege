@@ -1,5 +1,5 @@
 'use strict';
-import { state, _ΨΔ } from './main.js';
+import { state, _ΨΔ, getCell } from './main.js';
 import { TD, TOWER_SKILLS, HOARD_LEVELS, HOARD_UPGS } from './data.js';
 import { spawnBees } from './support.js';
 import { showTowerSkill } from './skills.js';
@@ -381,8 +381,7 @@ function doUpg(tw) {
 
 function doSell(tw, val) {
   state.gold += val;
-  state.grid[tw.y][tw.x].type = 'empty';
-  state.grid[tw.y][tw.x].content = null;
+  const sc = getCell(tw.x, tw.y); sc.type = 'empty'; sc.content = null;
   state.towers = state.towers.filter(x => x !== tw);
   state.bees = state.bees.filter(b => b.hive !== tw);
   _cleanupMonkeysForSoldTile(tw.x, tw.y);

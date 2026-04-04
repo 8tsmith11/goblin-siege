@@ -18,11 +18,11 @@ export function showTowerSkill(tw) {
   h.textContent = TD[tw.type].icon + ' ' + TD[tw.type].name + ' Skills'; c.appendChild(h);
   const note = document.createElement('div');
   note.style.cssText = 'color:#64748b;font-size:9px;margin-bottom:6px';
-  note.textContent = 'A & B are mutually exclusive. C requires either A or B.'; c.appendChild(note);
+  note.textContent = 'A & B are mutually exclusive. Pick C or D (both require A or B).'; c.appendChild(note);
   const row = document.createElement('div'); row.className = 'skr';
   for (const [k, sk] of Object.entries(tree)) {
     const isBlocked = sk.excludes && tree[sk.excludes]?.owned;
-    const needsReq = sk.req === 'any' && !Object.entries(tree).some(([k2, s2]) => k2 !== 'C' && s2.owned);
+    const needsReq = sk.req === 'any' && !Object.entries(tree).some(([k2, s2]) => k2 !== 'C' && k2 !== 'D' && s2.owned);
     const affordable = !isBlocked && !needsReq &&
       (state.resources?.dust || 0) >= (sk.cost.dust || 0) && state.gold >= (sk.cost.gold || 0);
     const b = document.createElement('div');

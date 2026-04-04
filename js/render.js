@@ -1,72 +1,89 @@
 'use strict';
-import { state, PAD } from './main.js';
+import { state, PAD, WORLD_COLS, WORLD_ROWS, getCell } from './main.js';
 import { TD } from './data.js';
 import { renderNodes, renderStacks, RTYPES, getItemDef } from './resources.js';
+
+// ─── Rain drops (screen-space, persist across frames) ────────────────────────
+const _rain = [];
+function _ensureRain(W, H) {
+  if (_rain.length) return;
+  for (let i = 0; i < 140; i++) _rain.push({ x: Math.random() * W, y: Math.random() * H, spd: 4 + Math.random() * 3 });
+}
 
 const _imgPath = new Image(); _imgPath.src = 'assets/tiles/path.png';
 const _imgGrassL = new Image(); _imgGrassL.src = 'assets/tiles/lightgrass.png';
 const _imgGrassD = new Image(); _imgGrassD.src = 'assets/tiles/darkgrass.png';
 const _imgCastle = new Image(); _imgCastle.src = 'assets/tiles/castle.png';
 const _imgHoard = new Image(); _imgHoard.src = 'assets/tiles/hoardpile.png';
+const _imgForest = new Image(); _imgForest.src = 'assets/tiles/forest.png';
+const _imgElder = new Image(); _imgElder.src = 'assets/tiles/elder.png';
 
 export function canPlace(cx2, cy2) {
   const { COLS, ROWS, pathSet, grid } = state;
   if (cx2 < 0 || cx2 >= COLS || cy2 < 0 || cy2 >= ROWS) return false;
-  if (!grid[cy2] || !grid[cy2][cx2]) return false;
+  const cell = getCell(cx2, cy2);
+  if (!cell) return false;
   if (pathSet.has(cx2 + ',' + cy2)) return false;
-  if (grid[cy2][cx2].type !== 'empty' && grid[cy2][cx2].type !== 'node') return false;
-  if (grid[cy2][cx2].type === 'water') return false;
+  if (cell.type !== 'empty') return false;
   return true;
 }
 
 let bgCache = null;
 
 function updateBgCache() {
-  const { CELL, COLS, ROWS, path, grid } = state;
+  const { CELL, path, grid } = state;
+  const TCOLS = WORLD_COLS + 2 * PAD, TROWS = WORLD_ROWS + 2 * PAD;
   if (!grid || !grid.length) return;
   if (!bgCache) bgCache = document.createElement('canvas');
-  bgCache.width = (COLS + 2 * PAD) * CELL;
-  bgCache.height = (ROWS + 2 * PAD) * CELL;
+  bgCache.width = TCOLS * CELL;
+  bgCache.height = TROWS * CELL;
   const bcx = bgCache.getContext('2d');
 
   const grassReady = _imgGrassL.complete && _imgGrassL.naturalWidth && _imgGrassD.complete && _imgGrassD.naturalWidth;
+  const forestReady = _imgForest.complete && _imgForest.naturalWidth;
 
-  // Fill entire canvas (including forest padding) with dark grass
-  for (let r = 0; r < ROWS + 2 * PAD; r++) for (let c = 0; c < COLS + 2 * PAD; c++) {
-    if (grassReady) bcx.drawImage(_imgGrassD, c * CELL, r * CELL, CELL, CELL);
-    else { bcx.fillStyle = '#131929'; bcx.fillRect(c * CELL, r * CELL, CELL, CELL); }
-  }
-
-  // Draw buildable grid cells at offset (PAD, PAD) inside the bgCache
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-    const bx = (c + PAD) * CELL, by = (r + PAD) * CELL;
-    const isWater = grid[r][c].type === 'water';
-    if (isWater) {
-       bcx.fillStyle = '#162d66'; bcx.fillRect(bx, by, CELL, CELL);
-       bcx.strokeStyle = 'rgba(255,255,255,0.1)'; bcx.lineWidth = 1;
-       bcx.beginPath(); bcx.moveTo(bx + 2, by + CELL / 2); bcx.bezierCurveTo(bx+CELL/4, by+CELL/4, bx+3*CELL/4, by+3*CELL/4, bx+CELL-2, by+CELL/2); bcx.stroke();
-    } else if (grassReady) {
-      bcx.drawImage((r + c) % 2 === 0 ? _imgGrassD : _imgGrassL, bx, by, CELL, CELL);
-    } else {
-      bcx.fillStyle = (r + c) % 2 === 0 ? '#131929' : '#151b2b';
-      bcx.fillRect(bx, by, CELL, CELL);
+  // Draw every cell in the full grid — forest cells get the forest tile, others get grass/water.
+  for (let r = 0; r < TROWS; r++) {
+    for (let c = 0; c < TCOLS; c++) {
+      const bx = c * CELL, by = r * CELL;
+      const cellType = grid[r]?.[c]?.type;
+      if (cellType === 'forest') {
+        if (forestReady) {
+          const ptrn = bcx.createPattern(_imgForest, 'repeat');
+          bcx.fillStyle = ptrn;
+          bcx.fillRect(bx, by, CELL, CELL);
+        } else {
+          bcx.fillStyle = '#0a1d1d';
+          bcx.fillRect(bx, by, CELL, CELL);
+        }
+      } else if (cellType === 'water') {
+        bcx.fillStyle = '#162d66'; bcx.fillRect(bx, by, CELL, CELL);
+        bcx.strokeStyle = 'rgba(255,255,255,0.1)'; bcx.lineWidth = 1;
+        bcx.beginPath(); bcx.moveTo(bx + 2, by + CELL / 2); bcx.bezierCurveTo(bx+CELL/4, by+CELL/4, bx+3*CELL/4, by+3*CELL/4, bx+CELL-2, by+CELL/2); bcx.stroke();
+      } else {
+        if (grassReady) {
+          bcx.drawImage((r + c) % 2 === 0 ? _imgGrassD : _imgGrassL, bx, by, CELL, CELL);
+        } else {
+          bcx.fillStyle = (r + c) % 2 === 0 ? '#131929' : '#151b2b';
+          bcx.fillRect(bx, by, CELL, CELL);
+        }
+      }
     }
   }
 
-  // Path (offset by PAD)
+  // Path (inner coords shifted by PAD → full-grid pixel coords)
   path.forEach(p => {
     const bx = (p.x + PAD) * CELL, by = (p.y + PAD) * CELL;
     if (_imgPath.complete && _imgPath.naturalWidth) bcx.drawImage(_imgPath, bx, by, CELL, CELL);
     else { bcx.fillStyle = '#3a2518'; bcx.fillRect(bx, by, CELL, CELL); }
   });
 
-  // Visual Path Extension — stretch to the edges of the forest
+  // Visual Path Extension — stretch right through forest to canvas edge
   if (path.length > 0) {
-    const start = path[0], end = path[path.length - 1];
+    const end = path[path.length - 1];
     bcx.fillStyle = '#3a2518';
-    // Extend Right through forest to right edge
-    for (let x = end.x + 1; x < COLS + PAD; x++) {
-      const bx = (x + PAD) * CELL, by = (end.y + PAD) * CELL;
+    for (let x = end.x + PAD + 1; x < TCOLS; x++) {
+      const bx = x * CELL, by = (end.y + PAD) * CELL;
       if (_imgPath.complete && _imgPath.naturalWidth) bcx.drawImage(_imgPath, bx, by, CELL, CELL);
       else bcx.fillRect(bx, by, CELL, CELL);
     }
@@ -301,6 +318,39 @@ export function render() {
     cx.fillText(icon, gpx, gpy); cx.globalAlpha = 1;
   }
 
+  // NPCs (drawn in world space — may be outside inner grid, e.g. forest border)
+  if (state.npcs?.length) {
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    for (const npc of state.npcs) {
+      if (npc.img === 'elder' && _imgElder.complete && _imgElder.naturalWidth) {
+        cx.drawImage(_imgElder, npc.x * CELL, npc.y * CELL, CELL, CELL);
+      } else {
+        cx.font = Math.floor(CELL * 0.7) + 'px serif';
+        cx.fillText(npc.icon, npc.x * CELL + CELL / 2, npc.y * CELL + CELL / 2);
+      }
+    }
+  }
+
   cx.restore();
   if (freezeActive > 0) { cx.fillStyle = 'rgba(56,189,248,' + (0.06 + 0.03 * Math.sin(ticks * 0.2)) + ')'; cx.fillRect(0, 0, W, H); }
+
+  // Rain overlay — screen space, drawn after camera restore
+  if (state.weather?.id === 'rain') {
+    _ensureRain(W, H);
+    cx.save();
+    cx.strokeStyle = 'rgba(147,210,255,0.3)';
+    cx.lineWidth = 1;
+    cx.beginPath();
+    for (const d of _rain) {
+      d.y += d.spd; d.x += d.spd * 0.22;
+      if (d.y > H) { d.y = -10; d.x = Math.random() * W; }
+      if (d.x > W) d.x -= W;
+      cx.moveTo(d.x, d.y); cx.lineTo(d.x + 2, d.y + 9);
+    }
+    cx.stroke();
+    // Dim overlay
+    cx.fillStyle = 'rgba(10,20,50,0.10)';
+    cx.fillRect(0, 0, W, H);
+    cx.restore();
+  }
 }

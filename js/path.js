@@ -1,23 +1,23 @@
 'use strict';
-import { state } from './main.js';
+import { state, PAD } from './main.js';
 import { createGrid } from './grid.js';
 
 function genLakes(cols, rows) {
   let x = Math.floor(Math.random() * cols);
   let y = Math.floor(Math.random() * rows);
-  state.grid[y][x].type = 'water';
+  state.grid[y + PAD][x + PAD].type = 'water';
 
   let q = [{ x: x, y: y }];
   let count = 1;
-  let limit = 16 + Math.floor(Math.random() * 10); 
+  let limit = 16 + Math.floor(Math.random() * 10);
   while (q.length > 0 && limit > 0) {
     const curr = q.shift();
     limit--;
     [[-1,0],[1,0],[0,-1],[0,1]].sort(() => Math.random() - .5).forEach(([dx, dy]) => {
       const nx = curr.x + dx, ny = curr.y + dy;
-      if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && state.grid[ny][nx].type === 'empty') {
+      if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && state.grid[ny + PAD][nx + PAD].type === 'empty') {
         if (count < 10 || Math.random() < 0.35) {
-          state.grid[ny][nx].type = 'water';
+          state.grid[ny + PAD][nx + PAD].type = 'water';
           q.push({ x: nx, y: ny });
           count++;
         }
@@ -28,7 +28,15 @@ function genLakes(cols, rows) {
 
 export function buildPath() {
   const { COLS, ROWS } = state;
-  state.grid = createGrid(COLS, ROWS);
+  // Create the full grid (inner buildable area + PAD-wide forest border on all sides).
+  state.grid = createGrid(COLS + 2 * PAD, ROWS + 2 * PAD);
+  for (let r = 0; r < ROWS + 2 * PAD; r++) {
+    for (let c = 0; c < COLS + 2 * PAD; c++) {
+      if (r < PAD || r >= ROWS + PAD || c < PAD || c >= COLS + PAD) {
+        state.grid[r][c].type = 'forest';
+      }
+    }
+  }
   genLakes(COLS, ROWS);
   state.path = []; state.pathSet.clear();
   const vis = new Set();
@@ -66,5 +74,5 @@ export function buildPath() {
   for (let i = 1; i < state.path.length; i++) { if (state.path[i].x !== state.path[i-1].x || state.path[i].y !== state.path[i-1].y) cl.push(state.path[i]); }
   state.path = cl.filter(p => p.x >= 0 && p.x < COLS && p.y >= 0 && p.y < ROWS);
   state.pathSet.clear();
-  state.path.forEach(p => { state.pathSet.add(p.x + ',' + p.y); state.grid[p.y][p.x].type = 'path'; });
+  state.path.forEach(p => { state.pathSet.add(p.x + ',' + p.y); state.grid[p.y + PAD][p.x + PAD].type = 'path'; });
 }

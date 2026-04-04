@@ -40,13 +40,14 @@ export function updateClam() {
 }
 
 export function updateClown() {
-  const { towers, enemies, CELL, particles, grid } = state;
+  const { towers, CELL, particles, grid } = state;
   towers.filter(tw => tw.type === 'clown').forEach(cl => {
     if (cl.cd > 0) { cl.cd--; return; }
     const inR = getEnemiesInRadius(grid, cl.x, cl.y, cl.reverseRange).filter(e => !e.reversed && !e.boss);
     if (!inR.length) return;
-    const dur = cl.reverseDur;
-    inR.forEach(e => { e.reversed = true; e.reverseTimer = dur; });
+    // Single target — furthest along the path
+    const tgt = inR.reduce((a, b) => a.pi > b.pi ? a : b);
+    tgt.reversed = true; tgt.reverseTimer = cl.reverseDur;
     cl.cd = cl.reverseCD; sfxClown();
     spawnParticles(particles, getCenter(cl.x, CELL), getCenter(cl.y, CELL), 8, { spreadX: 4, spreadY: 4, life: 20, clr: '#f472b6', sz: 3 });
     mkF(getCenter(cl.x, CELL), getCenter(cl.y, CELL), '🤡 REVERSE!', '#f472b6');

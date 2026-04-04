@@ -1,24 +1,75 @@
 'use strict';
-import { state, fIncome, _ΨΔ } from './main.js';
+import { state, _ΨΔ, getCell } from './main.js';
 import { addFeed } from './feed.js';
 import { mkE } from './enemies.js';
-import { ETYPES, HOARD_LEVELS } from './data.js';
+import { ETYPES, TD } from './data.js';
 import { sfxEvent } from './audio.js';
 
 export const EVENTS = [
-  { name:'💰 Gold Rush!',      desc:'+50 gold',                  good:true,  fn:()=>{ state.gold += 50; } },
-  { name:'❤️ Reinforcements!', desc:'+3 lives',                  good:true,  fn:()=>{ state.lives += 3; } },
-  { name:'⚡ Power Surge!',    desc:'All towers +5 DMG this wave',good:true,  fn:()=>{ state.towers.forEach(t=>{ if(t.dmg) t.dmg += 5; }); } },
-  { name:'🏺 Hoard Bonus!',    desc:'+50% hoard income this wave', good:true,  fn:()=>{ let b=0; state.towers.forEach(tw=>{ if(tw.type==='hoard'){ const hl=HOARD_LEVELS[tw.level||0]??HOARD_LEVELS[0]; b+=Math.floor((hl.base+Math.floor((tw.stored||0)*hl.m))*0.5); } }); _ΨΔ(()=>{ state.gold+=b; }); } },
-  { name:'🐝 Bee Frenzy!',     desc:'All bees fire 2x fast',      good:true,  fn:()=>{ state.bees.forEach(b=>{ b.rate = Math.max(5, Math.floor(b.rate * 0.5)); }); } },
-  { name:'💀 Goblin Ambush!',  desc:'5 fast goblins spawn!',      good:false, fn:()=>{ for(let i=0;i<5;i++){ const e=mkE(ETYPES.fast, 20+state.wave*18, 0.6+state.wave*0.035); e.x=state.path[0].x; e.y=state.path[0].y; state.enemies.push(e); } } },
-  { name:'🌑 Darkness!',       desc:'All stealth for 3 sec',      good:false, fn:()=>{ state.enemies.forEach(e=>{ e.stealth=true; e.stealthTimer=180; }); } },
-  { name:'💸 Tax Collector!',  desc:'-30 gold',                   good:false, fn:()=>{ state.gold = Math.max(0, state.gold - 30); } },
-  { name:'🔥 Wildfire!',       desc:'Random tower disabled 1 wave',good:false, fn:()=>{ const t=state.towers.filter(t=>t.type!=='factory'); if(t.length){ const r=t[Math.floor(Math.random()*t.length)]; r.disabled=true; r.disabledWave=state.wave; } } },
+  // ── Good ──────────────────────────────────────────────────────────────────
+  {
+    name: '💰 Gold Rush!',
+    desc: '+50 gold',
+    good: true,
+    fn: () => { state.gold += 50; },
+  },
+  {
+    name: '🪨 Scattered Stones!',
+    desc: '5 stone appear on the ground',
+    good: true,
+    fn: () => {
+      let placed = 0;
+      for (let attempt = 0; attempt < 40 && placed < 5; attempt++) {
+        const x = Math.floor(Math.random() * state.COLS);
+        const y = Math.floor(Math.random() * state.ROWS);
+        const cell = getCell(x, y);
+        if (!cell || cell.type !== 'empty') continue;
+        if (!cell.stacks) cell.stacks = [null, null, null, null];
+        const ei = cell.stacks.findIndex(s => !s);
+        if (ei === -1) continue;
+        cell.stacks[ei] = { type: 'stone', count: 1 };
+        placed++;
+      }
+    },
+  },
+  // ── Bad ───────────────────────────────────────────────────────────────────
+  {
+    name: '💸 Tax Collector!',
+    desc: '−10% gold',
+    good: false,
+    fn: () => { state.gold = Math.max(0, Math.floor(state.gold * 0.9)); },
+  },
+  {
+    name: '🔥 Wildfire!',
+    desc: 'A random tower is disabled for the next wave',
+    good: false,
+    guard: () => state.towers.length > 2,
+    fn: () => {
+      const eligible = state.towers.filter(t => TD[t.type]?.cat === 'tower');
+      if (!eligible.length) return;
+      const r = eligible[Math.floor(Math.random() * eligible.length)];
+      r.disabled = true;
+      r.disabledWave = state.wave + 1;
+    },
+  },
+  {
+    name: '💀 Goblin Ambush!',
+    desc: '5 fast goblins spawn!',
+    good: false,
+    fn: () => {
+      for (let i = 0; i < 5; i++) {
+        const e = mkE(ETYPES.fast, 20 + state.wave * 18, 0.6 + state.wave * 0.035);
+        e.x = state.path[0].x; e.y = state.path[0].y;
+        state.enemies.push(e);
+      }
+    },
+  },
 ];
 
 export function triggerEvent() {
-  const ev = EVENTS[Math.floor(Math.random() * EVENTS.length)];
+  const available = EVENTS.filter(ev => !ev.guard || ev.guard());
+  if (!available.length) return;
+  const ev = available[Math.floor(Math.random() * available.length)];
   _ΨΔ(() => ev.fn()); sfxEvent();
   const el = document.getElementById('evBanner');
   el.innerHTML = (ev.good ? '🎉' : '⚠️') + ' <b>' + ev.name + '</b><br>' + ev.desc;

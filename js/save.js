@@ -1,5 +1,5 @@
 'use strict';
-import { state, _ΨΔ, clampCam, startPrep } from './main.js';
+import { state, _ΨΔ, clampCam, startPrep, getCell } from './main.js';
 import { TOWER_SKILLS } from './data.js';
 import { spawnBees } from './support.js';
 import { hudU, panelU, showBanner, showOv, hideOv, hideTT } from './ui.js';
@@ -67,6 +67,9 @@ function _build() {
     _traps: (state.traps || []).filter(t => t.type !== 'sap'),
     _inv: state.inventory ? JSON.parse(JSON.stringify(state.inventory)) : null,
     _fl: getFeedLog(),
+    _npcs: state.npcs || [],
+    _ftl: Array.from(state.firedTriggerLines || []),
+    _wx: state.weather || { id: 'clear', wavesLeft: 0 },
   };
 }
 
@@ -84,6 +87,18 @@ function _unpack(stored) {
   try { return JSON.parse(raw); } catch (_e) { return null; }
 }
 
+// Re-point every grid cell's content reference to the live object in towers/nodes.
+function _reconnectGrid(grid, towers, nodes) {
+  for (const tw of towers) {
+    const cell = getCell(tw.x, tw.y);
+    if (cell) cell.content = tw;
+  }
+  for (const nd of nodes) {
+    const cell = getCell(nd.x, nd.y);
+    if (cell) cell.content = nd;
+  }
+}
+
 function _apply(d) {
   for (const tree of Object.values(TOWER_SKILLS)) for (const s of Object.values(tree)) s.owned = false;
   for (const [tp, sks] of Object.entries(d.ts || {})) {
@@ -98,6 +113,12 @@ function _apply(d) {
   state.towers = d._t.map(t => ({ ...t, cd: 0, _buffed: false, _rateBuff: 1 }));
   reinitMonkeys(state.towers);
   state.nodes = (d._no || []).map(n => ({ ...n, wobbleTick: 0, cd: 0 }));
+  // Reconnect grid cell.content for all content-bearing objects (towers + nodes).
+  // JSON deserialisation produces fresh objects for both state.towers/state.nodes
+  // and the embedded grid cells — they are distinct in memory, so mutations to one
+  // (e.g. dropItem updating tw.stored, or income decay on state.towers) would
+  // silently diverge.  This single pass re-unifies them.
+  _reconnectGrid(state.grid, state.towers, state.nodes);
   state.resources = { ...(d._rs || {}) };
   state.research = d._res || null;
   state.researchUnlocks = { ...(d._rUnlocks || {}) };
@@ -111,6 +132,9 @@ function _apply(d) {
   state.volcanoActive = d._va || null;
   state.traps = d._traps || [];
   state.inventory = d._inv || { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null] };
+  state.npcs = d._npcs || [];
+  state.firedTriggerLines = new Set(d._ftl || []);
+  state.weather = d._wx || { id: 'clear', wavesLeft: 0 };
   state.sel = null; state.ttTower = null; state.gameOver = false;
   state.started = true; state.wave = d._w; state.phase = 'idle';
   state.ticks = 0; state.prepTicks = 0;

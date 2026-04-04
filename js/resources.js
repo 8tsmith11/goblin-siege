@@ -1,5 +1,5 @@
 'use strict';
-import { state } from './main.js';
+import { state, PAD, getCell } from './main.js';
 import { sfxMine } from './audio.js';
 import { mkGain, hudU, addToInventory } from './ui.js';
 import { HOARD_LEVELS } from './data.js';
@@ -43,7 +43,7 @@ export function placeNodes() {
     for (let y = 0; y < ROWS; y++) {
       for (let x = 0; x < COLS; x++) {
         const k = x + ',' + y;
-        if (!pathSet.has(k) && !used.has(k) && grid[y]?.[x]?.type === 'empty') grass.push({ x, y });
+        if (!pathSet.has(k) && !used.has(k) && getCell(x, y)?.type === 'empty') grass.push({ x, y });
       }
     }
     // Fisher-Yates shuffle for random selection
@@ -56,8 +56,8 @@ export function placeNodes() {
       used.add(gNode.x + ',' + gNode.y);
       const nd = { type, x: gNode.x, y: gNode.y, wobbleTick: 0, cd: 0 };
       nodes.push(nd);
-      grid[gNode.y][gNode.x].type = 'node';
-      grid[gNode.y][gNode.x].content = nd;
+      const nc = getCell(gNode.x, gNode.y);
+      nc.type = 'node'; nc.content = nd;
     }
   }
   state.nodes = nodes;
@@ -97,7 +97,7 @@ export function renderNodes() {
   const fs = Math.round(CELL * 0.55);
   cx.font = fs + 'px serif';
   for (const n of nodes) {
-    if (grid[n.y]?.[n.x]?.type === 'tower') continue; // hidden under a tower
+    if (getCell(n.x, n.y)?.type === 'tower') continue; // hidden under a tower
     const wx = n.x * CELL + CELL / 2, wy = n.y * CELL + CELL / 2;
     const icon = RTYPES[NTYPES[n.type].resource].icon;
     if (n.wobbleTick > 0) {
@@ -112,10 +112,34 @@ export function renderNodes() {
   }
 }
 
+// ─── Unified tile accept check ────────────────────────────────────────────────
+// Returns true if the tile at (gx, gy) can accept one item of the given type.
+// Used by both dropItem and the monkey system to stay in sync.
+export function canTileAccept(gx, gy, type) {
+  const cell = getCell(gx, gy);
+  if (!cell || cell.type === 'forest') return false;
+  const tw = cell.content;
+  if (tw?.type === 'stockpile') {
+    if (tw.mode === 'interface') return true;
+    if (!tw.slots) return true;
+    const cap = 64 << (tw.level || 0);
+    return tw.slots.some(s => !s) || tw.slots.some(s => s && (!type || s.type === type) && s.count < cap);
+  }
+  if (tw?.type === 'hoard') {
+    if (!RTYPES[type] || type === 'dust') return false;
+    const cap = (HOARD_LEVELS[tw.level || 0] ?? HOARD_LEVELS[0]).cap;
+    return (tw.stored || 0) < cap;
+  }
+  if (tw?.type === 'workbench') return !!RTYPES[type];
+  const stacks = cell.stacks;
+  if (!stacks) return true;
+  return stacks.some(s => !s) || stacks.some(s => s && (!type || s.type === type) && s.count < 64);
+}
+
 // ─── Ground Loot Drop ─────────────────────────────────────────────────────
 export function dropItem(cx, cy, type) {
-  const cell = state.grid[cy]?.[cx];
-  if (!cell) return false;
+  const cell = getCell(cx, cy);
+  if (!cell || cell.type === 'forest') return false;
   // Tower-aware routing: deliver directly to tower if applicable
   const tw = cell.content;
   if (tw?.type === 'stockpile') {
@@ -148,7 +172,7 @@ export function dropItem(cx, cy, type) {
     return false; // all slots full
   }
   if (tw?.type === 'hoard') {
-    if (type === 'dust') return false;
+    if (!RTYPES[type] || type === 'dust') return false;
     const cap = (HOARD_LEVELS[tw.level || 0] ?? HOARD_LEVELS[0]).cap;
     if ((tw.stored || 0) >= cap) return false;
     tw.stored = (tw.stored || 0) + 1;
@@ -196,7 +220,7 @@ export function renderStacks() {
 
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      const cell = grid[r]?.[c];
+      const cell = getCell(c, r);
       if (!cell?.stacks) continue;
       
       for (let i = 0; i < 4; i++) {

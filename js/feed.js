@@ -16,6 +16,7 @@ export const FEED_TYPES = {
   craft:      { icon: '⚒️',  color: '#6ee7b7' },
   scribe:     { icon: '📓',  color: '#c084fc' },
   system:     { icon: '🏰',  color: '#64748b' },
+  weather:    { icon: '🌤️', color: '#7dd3fc' },
 };
 
 let _log = [];

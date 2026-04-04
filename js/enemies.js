@@ -21,7 +21,7 @@ export function genWave(w) {
     state.bSen.add('boss');
     q.push({
       tp: 'boss', hp: Math.floor(bHP * 8 + w * 80), mhp: Math.floor(bHP * 8 + w * 80),
-      spd: bSpd * 0.35, sz: 0.65, rew: 40, clr: '#ef4444', em: '👑', drops: [{ type: 'stone', chance: 0.7 }, { type: 'wood', chance: 0.7 }],
+      spd: bSpd * 0.35, sz: 0.65, rew: 40, clr: '#ef4444', em: '👑', drops: [{ type: 'stone', chance: 0.7 }, { type: 'wood', chance: 0.85 }],
       pi: 0, x: 0, y: 0, slow: 0, _trapSlow: 0, st: 0, dead: false, spdBuff: 0, frozen: 0,
       stealth: false, stealthTimer: 0, healCD: 0, boss: true,
       line: BOSS_LINES[Math.floor(w / 5) % BOSS_LINES.length],
