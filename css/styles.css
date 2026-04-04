@@ -207,3 +207,38 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .inv-cell .inv-cnt{position:absolute;bottom:3px;right:4px;font-size:8px;font-weight:700;color:#fbbf24;background:rgba(0,0,0,.7);border-radius:3px;padding:0 2px;line-height:1.4}
 .inv-equipped-label{font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
 .inv-empty-msg{font-size:12px;color:#374151;font-style:italic;padding:8px 0}
+.inv-rarity{position:absolute;top:3px;right:4px;font-size:9px;line-height:1}
+#pipBtn{top:210px;border-color:#eab308;box-shadow:0 0 10px rgba(234,179,8,0.4)}
+#pipP{position:absolute;inset:0;background:rgba(11,14,23,.98);z-index:75;display:none;flex-direction:column;overflow:hidden}
+#pipP.sh{display:flex}
+#pipH{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #713f12;background:rgba(234,179,8,.08);flex-shrink:0}
+#pipH h2{font-family:'MedievalSharp',cursive;color:#fde047;font-size:18px}
+#pipClose{background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;padding:4px}
+#pipClose:hover{color:#e2e8f0}
+#pipC{overflow-y:auto;flex:1;padding:12px 16px;display:flex;flex-direction:column;gap:14px;scrollbar-width:thin;scrollbar-color:#eab308 transparent}
+#pipC::-webkit-scrollbar{width:6px}#pipC::-webkit-scrollbar-thumb{background:#eab308;border-radius:3px}
+.pip-portrait{width:100%;display:flex;justify-content:center;flex-shrink:0}
+.pip-portrait img{width:140px;height:140px;object-fit:cover;border-radius:10px;border:2px solid #713f12;background:#1a1a2e}
+.pip-section{display:flex;flex-direction:column;gap:6px}
+.pip-section-title{font-family:'MedievalSharp',cursive;font-size:16px;color:#fde047;border-bottom:1px solid #713f12;padding-bottom:4px;margin-bottom:2px}
+.pip-note{font-size:10px;color:#78716c;font-style:italic}
+.pip-empty{font-size:12px;color:#374151;font-style:italic;padding:4px 0}
+.pip-sell-grid{display:flex;flex-direction:column;gap:6px}
+.pip-sell-row{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid #2a3550;border-radius:6px;padding:8px 10px;gap:8px}
+.pip-sell-label{font-size:13px;color:#e2e8f0;flex:1}
+.pip-sell-btn{padding:5px 10px;background:linear-gradient(135deg,#16a34a,#15803d);border:none;border-radius:5px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}
+.pip-sell-btn:active{transform:scale(.93)}
+.pip-sell-btn:disabled{opacity:.35;pointer-events:none}
+.pip-row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid #2a3550;border-radius:8px;padding:9px 10px;transition:border-color .1s}
+.pip-row:hover:not(.pip-row-sold){border-color:#eab30844}
+.pip-row-sold{opacity:.55}
+.pip-row-left{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.pip-row-ic{font-size:26px;line-height:1;flex-shrink:0}
+.pip-row-info{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pip-row-nm{font-size:13px;font-weight:700;color:#e2e8f0}
+.pip-row-desc{font-size:11px;color:#64748b;line-height:1.3}
+.pip-row-qty{font-size:10px;color:#a78bfa}
+.pip-rarity{font-size:10px;font-weight:700;text-transform:capitalize}
+.pip-buy-btn{padding:6px 12px;background:linear-gradient(135deg,#b45309,#92400e);border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap}
+.pip-buy-btn:active{transform:scale(.93)}
+.pip-buy-btn:disabled{opacity:.35;pointer-events:none;background:#374151}

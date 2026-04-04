@@ -1,6 +1,7 @@
 'use strict';
 import { state } from './main.js';
 import { showTip, syncPause } from './ui.js';
+import { RARITY_COLORS } from './artifacts.js';
 
 const INV_MAX = 512;
 let _invSel = null; // { source: 'inv'|'equip', section: string, index: number }
@@ -106,7 +107,10 @@ function _mkInvCell(item, selected) {
   const cell = document.createElement('div');
   cell.className = 'inv-cell' + (selected ? ' sel' : '');
   const countBadge = (item.count && item.count > 1) ? '<div class="inv-cnt">x' + item.count + '</div>' : '';
-  cell.innerHTML = '<div class="inv-ic">' + item.icon + '</div><div class="inv-nm">' + item.name + '</div>' + countBadge;
+  const rarityBadge = item.rarity
+    ? '<div class="inv-rarity" style="color:' + (RARITY_COLORS[item.rarity] || '#94a3b8') + '">●</div>'
+    : '';
+  cell.innerHTML = '<div class="inv-ic">' + item.icon + '</div><div class="inv-nm">' + item.name + '</div>' + countBadge + rarityBadge;
   return cell;
 }
 

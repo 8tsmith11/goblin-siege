@@ -70,6 +70,7 @@ function _build() {
     _npcs: state.npcs || [],
     _ftl: Array.from(state.firedTriggerLines || []),
     _wx: state.weather || { id: 'clear', wavesLeft: 0 },
+    _pip: state.pip || null,
   };
 }
 
@@ -135,6 +136,7 @@ function _apply(d) {
   state.npcs = d._npcs || [];
   state.firedTriggerLines = new Set(d._ftl || []);
   state.weather = d._wx || { id: 'clear', wavesLeft: 0 };
+  state.pip = d._pip || null;
   state.sel = null; state.ttTower = null; state.gameOver = false;
   state.started = true; state.wave = d._w; state.phase = 'idle';
   state.ticks = 0; state.prepTicks = 0;

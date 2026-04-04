@@ -18,8 +18,9 @@ bus.on('enemyDeath', e => {
   if (e.drops) {
     const cx = Math.max(0, Math.min(state.COLS - 1, Math.round(e.x)));
     const cy = Math.max(0, Math.min(state.ROWS - 1, Math.round(e.y)));
+    const luckMult = state.inventory?.equipped?.some(a => a?.id === 'lucky_paw') ? 1.1 : 1;
     for (const drop of e.drops) {
-      if (Math.random() < drop.chance) dropItem(cx, cy, drop.type);
+      if (Math.random() < drop.chance * luckMult) dropItem(cx, cy, drop.type);
     }
   }
   
@@ -54,6 +55,7 @@ import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from '
 import { placeNodes, updateNodes } from './resources.js';
 import { placeNpcs, initNpcUI, updateNpcBubble } from './npc.js';
 import { initWeather, tickWeather, updateWeather } from './weather.js';
+import { refreshPipStock, syncPipBtn, initPipUI } from './ui-pip.js';
 
 export const VERSION = 'v1.4';
 export const WORLD_COLS = 20;
@@ -87,6 +89,7 @@ export const state = {
   nodes: [], resources: {},
   npcs: [], firedTriggerLines: new Set(),
   weather: { id: 'clear', wavesLeft: 1 },
+  pip: null,
   research: null, researchUnlocks: {},
   traps: [],
   inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null] },
@@ -172,6 +175,7 @@ export function fIncome() {
   return t;
 }
 state.fIncome = fIncome;
+state.syncPipBtn = syncPipBtn;
 
 /* ═══ Update ═══ */
 function update() {
@@ -277,6 +281,7 @@ function update() {
     // Clear wildfire-disabled towers whose disable wave just ended
     state.towers.forEach(tw => { if (tw.disabled && tw.disabledWave === state.wave) tw.disabled = false; });
     tickWeather();
+    refreshPipStock();
     // Transition seamlessly into the prep phase without a blocking modal.
     bus.emit('trigger', { type: 'wave_prep', wave: state.wave + 1 });
     state.phase = 'prep'; state.prepTicks = 1800; sfxWave(); _φ = false;
@@ -335,7 +340,7 @@ export function resetGame() {
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
     gameOver: false, started: false, pathReady: false, paused: false, sel: null, ttTower: null,
-    nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin','lab','workbench']), bSen: new Set(['sleepy_door']), age: 'stone',
+    nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, pip: null, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin','lab','workbench']), bSen: new Set(['sleepy_door']), age: 'stone',
     traps: [],
     inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null] },
     cam: { panX: 0, panY: 0, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
@@ -376,7 +381,7 @@ document.getElementById('rstBtn').addEventListener('click', () => {
 });
 document.getElementById('goBtn').addEventListener('click', () => { if (state.phase === 'prep') startWave(); });
 initTabs(); initInput(); measure();
-initSaveUI(); initBestiaryUI(); initResearchUI(); initInventoryUI(); initCraftUI(); initNpcUI();
+initSaveUI(); initBestiaryUI(); initResearchUI(); initInventoryUI(); initCraftUI(); initNpcUI(); initPipUI();
 const _sv = hasSave() && loadGame();
 initSz(); panelU(); hudU(); loop();
 showWelcome(VERSION, _sv ? startPrep : startGame);
