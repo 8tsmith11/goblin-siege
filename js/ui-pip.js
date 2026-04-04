@@ -10,7 +10,7 @@ const PIP_CONSUMABLES = [
 ];
 
 const PIP_BLUEPRINTS = [
-  { id: 'bp_clam', icon: '🦪', name: 'Clam Blueprint', desc: 'Unlocks the Clam support building.', cost: 80, unlocks: 'clam' },
+  { id: 'bp_clam', icon: '🐚', name: 'Clam Blueprint', desc: 'Unlocks the Clam support building.', cost: 80, unlocks: 'clam', blueprint: true },
 ];
 
 const SELL_ITEMS = [
@@ -72,7 +72,12 @@ function _mkBuyRow(item, canBuy, onBuy, soldText) {
 
   const ic = document.createElement('span');
   ic.className = 'pip-row-ic';
-  ic.textContent = item.icon;
+  if (item.blueprint) {
+    ic.className += ' pip-bp-ic';
+    ic.innerHTML = '<span class="pip-bp-base">🟦</span><span class="pip-bp-overlay">' + item.icon + '</span>';
+  } else {
+    ic.textContent = item.icon;
+  }
   left.appendChild(ic);
 
   const info = document.createElement('div');
@@ -119,6 +124,28 @@ function _mkBuyRow(item, canBuy, onBuy, soldText) {
   return row;
 }
 
+// ─── Live update ─────────────────────────────────────────────────────────────
+
+function _updateTicker(el) {
+  el.innerHTML = SELL_ITEMS.map(it =>
+    '<span class="pip-tick-item">' + it.icon + ' <b>' + (state.resources[it.type] || 0) + '</b></span>'
+  ).join('') + '<span class="pip-tick-gold">💰 <b>' + state.gold + 'g</b></span>';
+}
+
+export function updatePipPanel() {
+  const p = document.getElementById('pipP');
+  if (!p?.classList.contains('sh')) return;
+  const ticker = document.getElementById('pipTicker');
+  if (ticker) _updateTicker(ticker);
+  for (const it of SELL_ITEMS) {
+    const qty = state.resources[it.type] || 0;
+    const lbl = p.querySelector('[data-sell-label="' + it.type + '"]');
+    if (lbl) lbl.textContent = it.icon + ' ' + it.name + ' ×' + qty;
+    const btn = p.querySelector('[data-sell-btn="' + it.type + '"]');
+    if (btn) btn.disabled = qty <= 0;
+  }
+}
+
 // ─── Render ───────────────────────────────────────────────────────────────────
 
 function renderPip() {
@@ -136,6 +163,13 @@ function renderPip() {
   portrait.appendChild(img);
   c.appendChild(portrait);
 
+  // Resource ticker (gold + sellable resources)
+  const ticker = document.createElement('div');
+  ticker.className = 'pip-ticker';
+  ticker.id = 'pipTicker';
+  _updateTicker(ticker);
+  c.appendChild(ticker);
+
   // Sell Resources
   const sellSec = _mkSec('💰 Sell Resources');
   const sellGrid = document.createElement('div');
@@ -146,9 +180,11 @@ function renderPip() {
     row.className = 'pip-sell-row';
     const lbl = document.createElement('span');
     lbl.className = 'pip-sell-label';
+    lbl.dataset.sellLabel = it.type;
     lbl.textContent = it.icon + ' ' + it.name + ' ×' + qty;
     const btn = document.createElement('button');
     btn.className = 'pip-sell-btn';
+    btn.dataset.sellBtn = it.type;
     btn.textContent = 'Sell 1 · +' + it.price + 'g';
     btn.disabled = qty <= 0;
     btn.addEventListener('click', () => {
@@ -195,7 +231,7 @@ function renderPip() {
       _ΨΔ(() => { state.gold -= bp.cost; });
       state.pip.bBought[bp.id] = true;
       state.unlockedTowers.add(bp.unlocks);
-      addToInventory('blueprints', { id: bp.id, icon: bp.icon, name: bp.name });
+      addToInventory('blueprints', { id: bp.id, icon: '🟦', name: bp.name });
       renderPip(); hudU(); panelU();
       showBanner('📋 ' + bp.name + ' acquired!');
     }, bought || alreadyOwned ? 'Owned' : 'Sold'));

@@ -55,7 +55,7 @@ import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from '
 import { placeNodes, updateNodes } from './resources.js';
 import { placeNpcs, initNpcUI, updateNpcBubble } from './npc.js';
 import { initWeather, tickWeather, updateWeather } from './weather.js';
-import { refreshPipStock, syncPipBtn, initPipUI } from './ui-pip.js';
+import { refreshPipStock, syncPipBtn, updatePipPanel, initPipUI } from './ui-pip.js';
 
 export const VERSION = 'v1.4';
 export const WORLD_COLS = 20;
@@ -176,6 +176,7 @@ export function fIncome() {
 }
 state.fIncome = fIncome;
 state.syncPipBtn = syncPipBtn;
+state.updatePipPanel = updatePipPanel;
 
 /* ═══ Update ═══ */
 function update() {

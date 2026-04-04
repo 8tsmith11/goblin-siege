@@ -30,6 +30,7 @@ export function hudU() {
   const goBtn = document.getElementById('goBtn');
   if (goBtn) goBtn.style.display = phase === 'prep' ? '' : 'none';
   state.syncPipBtn?.();
+  state.updatePipPanel?.();
   const hRes = document.getElementById('hRes');
   if (hRes) {
     const rtKeys = Object.keys(RTYPES);
@@ -345,8 +346,7 @@ export function syncPause() {
   const welcomeOpen = !document.getElementById('welcome')?.classList.contains('hid');
   const invOpen = document.getElementById('invP')?.classList.contains('sh');
   const craftOpen = document.getElementById('craftP')?.classList.contains('sh');
-  const pipOpen = document.getElementById('pipP')?.classList.contains('sh');
-  state.paused = !!(resOpen || beastOpen || scribeOpen || welcomeOpen || invOpen || craftOpen || pipOpen);
+  state.paused = !!(resOpen || beastOpen || scribeOpen || welcomeOpen || invOpen || craftOpen);
 }
 
 export function toggleBestiary() {
