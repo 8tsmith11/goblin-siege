@@ -18,6 +18,7 @@ export const FEED_TYPES = {
   npc:        { icon: '🌳',  color: '#a3e635' },
   system:     { icon: '🏰',  color: '#64748b' },
   weather:    { icon: '🌤️', color: '#7dd3fc' },
+  herald:     { icon: '📯',  color: '#f59e0b' },
 };
 
 let _log = [];

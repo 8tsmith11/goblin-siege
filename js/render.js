@@ -371,6 +371,28 @@ export function render() {
     cx.restore();
   }
 
+  // Herald / Boss warning overlay — darkens screen with announcement text
+  if (state.heraldWarn) {
+    const elapsed = ticks - state.heraldWarn.tick;
+    const dur = 300;
+    if (elapsed < dur) {
+      const alpha = elapsed < 60 ? elapsed / 60 : elapsed > 240 ? (dur - elapsed) / 60 : 1;
+      cx.save();
+      cx.fillStyle = `rgba(0,0,0,${0.65 * alpha})`;
+      cx.fillRect(0, 0, W, H);
+      cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.font = `bold ${Math.floor(H * 0.08)}px serif`;
+      cx.fillStyle = `rgba(245,158,11,${alpha})`;
+      cx.fillText(state.heraldWarn.text, W / 2, H / 2 - Math.floor(H * 0.04));
+      if (state.heraldWarn.sub) {
+        cx.font = `${Math.floor(H * 0.04)}px serif`;
+        cx.fillStyle = `rgba(255,220,130,${alpha * 0.85})`;
+        cx.fillText(state.heraldWarn.sub, W / 2, H / 2 + Math.floor(H * 0.045));
+      }
+      cx.restore();
+    }
+  }
+
   // Rain overlay — screen space, drawn after camera restore
   if (state.weather?.id === 'rain') {
     _ensureRain(W, H);

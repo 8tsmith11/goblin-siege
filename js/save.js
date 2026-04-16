@@ -72,6 +72,7 @@ function _build() {
     _wx: state.weather || { id: 'clear', wavesLeft: 0 },
     _fog: state.fogWave || false,
     _fst: state.fogStartTick || 0,
+    _hh: state.hasHeraldHorn || false,
     _pip: state.pip || null,
   };
 }
@@ -141,6 +142,7 @@ function _apply(d) {
   state.weather = d._wx || { id: 'clear', wavesLeft: 0 };
   state.fogWave = d._fog || false;
   state.fogStartTick = d._fst || 0;
+  state.hasHeraldHorn = d._hh || (d._inv?.augments?.some(a => a?.id === 'heralds_horn') ?? false);
   state.pip = d._pip || null;
   state.sel = null; state.ttTower = null; state.gameOver = false;
   state.started = true; state.wave = d._w; state.phase = 'idle';

@@ -18,6 +18,23 @@ export function genWave(w) {
   const q = [], isBoss = w % 5 === 0 && w > 0;
   const bHP = 50 * (1 + w * 0.04), bSpd = 0.5;
 
+  // Wave 5: Proud Herald — special boss, announces itself
+  if (w === 5) {
+    const heraldHP = Math.floor(bHP * 8 + w * 80);
+    state.bSen.add('boss');
+    q.push({
+      tp: 'boss', hp: heraldHP, mhp: heraldHP,
+      spd: bSpd * 0.35, sz: 0.65, rew: 40, clr: '#f59e0b', em: '📯', drops: [],
+      pi: 0, x: 0, y: 0, slow: 0, _trapSlow: 0, st: 0, dead: false, spdBuff: 0, frozen: 0,
+      stealth: false, stealthTimer: 0, healCD: 0, boss: true, herald: true,
+      line: 'I am here to announce',
+      reversed: false, reverseTimer: 0, poison: null, stunned: 0,
+    });
+    const mc = Math.floor(3 + w * 0.5);
+    for (let i = 0; i < mc; i++) q.push(mkE(ETYPES[['normal', 'fast', 'berserker'][i % 3]], bHP, bSpd));
+    return q;
+  }
+
   // Wave 15: Considerate Fog — replaces normal boss, no entity boss
   if (w === 15) {
     state.fogWave = true;

@@ -24,6 +24,16 @@ bus.on('enemyDeath', e => {
     }
   }
   
+  // Herald drops — guaranteed artifact + Herald's Horn
+  if (e.herald) {
+    const art = ARTIFACTS[Math.floor(Math.random() * ARTIFACTS.length)];
+    addToInventory('artifacts', { id: art.id, icon: art.icon, name: art.name, rarity: art.rarity, desc: art.desc });
+    addToInventory('augments', { id: 'heralds_horn', icon: '📯', name: "Herald's Horn", desc: 'Boss waves announced 1 wave early.' });
+    state.hasHeraldHorn = true;
+    mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '📯', 1, '#f59e0b');
+    addFeed('herald', "📯 Herald's Horn recovered — boss warnings now active!");
+  }
+
   // Dust Collection (Lab)
   const lab = state.towers.find(t => t.type === 'lab');
   if (lab && state.resources) {
@@ -92,6 +102,7 @@ export const state = {
   npcs: [], firedTriggerLines: new Set(),
   weather: { id: 'clear', wavesLeft: 1 },
   fogWave: false, fogStartTick: 0,
+  heraldWarn: null, hasHeraldHorn: false,
   pip: null,
   research: null, researchUnlocks: {},
   traps: [],
@@ -193,6 +204,7 @@ function update() {
     state.prepTicks--;
     if (state.prepTicks <= 0) { startWave(); }
     else if (state.ticks % 60 === 0) { _φ = false; hudU(); _φ = true; } // Temporarily flip φ if needed for hud
+    if (state.heraldWarn && state.ticks - state.heraldWarn.tick > 300) state.heraldWarn = null;
   }
 
   updateNodes();
@@ -305,6 +317,18 @@ function update() {
     if (_scribe) addFeed('scribe', 'The scribe has written in the journal.');
     if (Math.random() < 0.4 && state.wave > 1) setTimeout(() => triggerEvent(), 500);
     showBanner(_wasFog ? '🌫️ The fog clears. An artifact glints at the castle gate.' : '✅ Wave ' + state.wave + ' Complete!');
+    // Herald / Horn warning — announce upcoming boss wave during prep
+    const _nextW = state.wave + 1;
+    const _isHeraldNext = _nextW === 5;
+    const _isBossNext = _nextW % 5 === 0 && _nextW > 5 && _nextW !== 15;
+    if (_isHeraldNext || (_isBossNext && state.hasHeraldHorn)) {
+      const _warnTxt = _isHeraldNext ? '📯 The Proud Herald Approaches' : '👑 Boss Wave ' + _nextW + ' Approaches';
+      const _warnSub = _isHeraldNext ? 'Prepare for Wave ' + _nextW : 'A powerful foe comes next wave';
+      state.heraldWarn = { tick: state.ticks, text: _warnTxt, sub: _warnSub };
+      addFeed(_isHeraldNext ? 'herald' : 'boss', _isHeraldNext
+        ? '📯 The Proud Herald announces its arrival — prepare for Wave 5!'
+        : '👑 Boss Wave ' + _nextW + ' approaches next wave!');
+    }
     hudU(); panelU();
     return;
   }
@@ -341,10 +365,17 @@ export function startWave() {
     addFeed('boss', '🌫️ The Considerate Fog rolls in...');
     sfxBoss();
   } else {
+    const heraldWave = state.spawnQueue.some(e => e.herald);
     const boss = state.wave % 5 === 0 && state.wave > 0;
-    showBanner(boss ? '👑 BOSS W' + state.wave : '⚔️ Wave ' + state.wave);
-    addFeed(boss ? 'boss' : 'wave', boss ? 'Boss Wave ' + state.wave + '!' : 'Wave ' + state.wave + ' begins.');
-    if (boss) sfxBoss();
+    if (heraldWave) {
+      showBanner('📯 Proud Herald');
+      addFeed('herald', '📯 The Proud Herald arrives at Wave 5!');
+      sfxBoss();
+    } else {
+      showBanner(boss ? '👑 BOSS W' + state.wave : '⚔️ Wave ' + state.wave);
+      addFeed(boss ? 'boss' : 'wave', boss ? 'Boss Wave ' + state.wave + '!' : 'Wave ' + state.wave + ' begins.');
+      if (boss) sfxBoss();
+    }
   }
   hudU(); panelU();
 }
@@ -362,7 +393,7 @@ export function resetGame() {
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
     gameOver: false, started: false, pathReady: false, paused: false, sel: null, ttTower: null,
-    nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, fogWave: false, fogStartTick: 0, pip: null, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin','lab','workbench']), bSen: new Set(['sleepy_door']), age: 'stone',
+    nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, fogWave: false, fogStartTick: 0, heraldWarn: null, hasHeraldHorn: false, pip: null, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin','lab','workbench']), bSen: new Set(['sleepy_door']), age: 'stone',
     traps: [],
     inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null], seenSections: {} },
     cam: { panX: 0, panY: 0, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
