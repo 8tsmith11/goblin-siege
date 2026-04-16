@@ -2,9 +2,11 @@
 import { state } from './main.js';
 import { showTip, syncPause } from './ui.js';
 import { RARITY_COLORS } from './artifacts.js';
+import { applyAugment } from './craft.js';
 
 const INV_MAX = 512;
 let _invSel = null; // { source: 'inv'|'equip', section: string, index: number }
+let _augTarget = null; // { tower, onApplied } — set when tower panel triggers augment pick
 
 const INV_ROW = 6; // slots per row
 
@@ -14,60 +16,73 @@ function _slotsToShow(arr) {
   return rows * INV_ROW;
 }
 
+export function syncInvBtn() {
+  const btn = document.getElementById('invBtn');
+  if (!btn) return;
+  const inv = state.inventory;
+  if (!inv) { btn.style.display = 'none'; return; }
+  const seen = inv.seenSections || {};
+  const hasAnything = seen.artifacts || seen.augments || seen.blueprints || seen.consumables;
+  btn.style.display = hasAnything ? '' : 'none';
+}
+
 function renderInventory() {
   const c = document.getElementById('invC');
   if (!c) return;
   const inv = state.inventory;
   if (!inv) return;
   c.innerHTML = '';
+  const seen = inv.seenSections || {};
 
-  const artSec = document.createElement('div');
-  artSec.className = 'inv-section';
-  const artTitle = document.createElement('div');
-  artTitle.className = 'inv-section-title';
-  artTitle.textContent = 'Artifacts';
-  artSec.appendChild(artTitle);
+  if (seen.artifacts) {
+    const artSec = document.createElement('div');
+    artSec.className = 'inv-section';
+    const artTitle = document.createElement('div');
+    artTitle.className = 'inv-section-title';
+    artTitle.textContent = 'Artifacts';
+    artSec.appendChild(artTitle);
 
-  const eqLabel = document.createElement('div');
-  eqLabel.className = 'inv-equipped-label';
-  eqLabel.textContent = 'Equipped';
-  artSec.appendChild(eqLabel);
-  const eqGrid = document.createElement('div');
-  eqGrid.className = 'inv-grid';
-  eqGrid.style.marginBottom = '12px';
-  for (let i = 0; i < 3; i++) {
-    const item = inv.equipped[i];
-    const isSel = _invSel?.source === 'equip' && _invSel?.index === i;
-    const cell = document.createElement('div');
-    cell.className = 'inv-cell equip-slot' + (item ? ' filled' : '') + (isSel ? ' sel' : '');
-    if (item) {
-      cell.innerHTML = '<div class="inv-ic">' + item.icon + '</div><div class="inv-nm">' + item.name + '</div>';
-    } else {
-      cell.innerHTML = '<div style="font-size:22px;opacity:.25">○</div><div class="inv-nm" style="color:#374151">Empty</div>';
-    }
-    cell.addEventListener('click', () => _invClickEquip(i));
-    eqGrid.appendChild(cell);
-  }
-  artSec.appendChild(eqGrid);
-
-  const artGrid = document.createElement('div');
-  artGrid.className = 'inv-grid';
-  const artSlots = _slotsToShow(inv.artifacts);
-  for (let i = 0; i < artSlots; i++) {
-    const item = inv.artifacts[i];
-    if (item) {
-      const isSel = _invSel?.source === 'inv' && _invSel?.section === 'artifacts' && _invSel?.index === i;
-      const cell = _mkInvCell(item, isSel);
-      cell.addEventListener('click', () => _invClickItem('artifacts', i));
-      artGrid.appendChild(cell);
-    } else {
+    const eqLabel = document.createElement('div');
+    eqLabel.className = 'inv-equipped-label';
+    eqLabel.textContent = 'Equipped';
+    artSec.appendChild(eqLabel);
+    const eqGrid = document.createElement('div');
+    eqGrid.className = 'inv-grid';
+    eqGrid.style.marginBottom = '12px';
+    for (let i = 0; i < 3; i++) {
+      const item = inv.equipped[i];
+      const isSel = _invSel?.source === 'equip' && _invSel?.index === i;
       const cell = document.createElement('div');
-      cell.className = 'inv-cell empty-slot';
-      artGrid.appendChild(cell);
+      cell.className = 'inv-cell equip-slot' + (item ? ' filled' : '') + (isSel ? ' sel' : '');
+      if (item) {
+        cell.innerHTML = '<div class="inv-ic">' + item.icon + '</div><div class="inv-nm">' + item.name + '</div>';
+      } else {
+        cell.innerHTML = '<div style="font-size:22px;opacity:.25">○</div><div class="inv-nm" style="color:#374151">Empty</div>';
+      }
+      cell.addEventListener('click', () => _invClickEquip(i));
+      eqGrid.appendChild(cell);
     }
+    artSec.appendChild(eqGrid);
+
+    const artGrid = document.createElement('div');
+    artGrid.className = 'inv-grid';
+    const artSlots = _slotsToShow(inv.artifacts);
+    for (let i = 0; i < artSlots; i++) {
+      const item = inv.artifacts[i];
+      if (item) {
+        const isSel = _invSel?.source === 'inv' && _invSel?.section === 'artifacts' && _invSel?.index === i;
+        const cell = _mkInvCell(item, isSel);
+        cell.addEventListener('click', () => _invClickItem('artifacts', i));
+        artGrid.appendChild(cell);
+      } else {
+        const cell = document.createElement('div');
+        cell.className = 'inv-cell empty-slot';
+        artGrid.appendChild(cell);
+      }
+    }
+    artSec.appendChild(artGrid);
+    c.appendChild(artSec);
   }
-  artSec.appendChild(artGrid);
-  c.appendChild(artSec);
 
   const sections = [
     { key: 'augments',    label: 'Tower Augments' },
@@ -75,6 +90,7 @@ function renderInventory() {
     { key: 'consumables', label: 'Consumables' },
   ];
   for (const { key, label } of sections) {
+    if (!seen[key]) continue;
     const sec = document.createElement('div');
     sec.className = 'inv-section';
     const title = document.createElement('div');
@@ -160,6 +176,20 @@ function _renderInvActions() {
 
 function _invClickItem(section, index) {
   if (section !== 'artifacts') {
+    // If a tower is waiting for an augment, apply immediately on click
+    if (_augTarget && section === 'augments') {
+      const it = state.inventory.augments[index];
+      if (!it) return;
+      if (!applyAugment(it, _augTarget.tower)) return;
+      it.count = (it.count || 1) - 1;
+      if (it.count <= 0) state.inventory.augments.splice(index, 1);
+      const cb = _augTarget.onApplied;
+      _augTarget = null;
+      document.getElementById('invP')?.classList.remove('sh');
+      syncPause();
+      cb?.();
+      return;
+    }
     if (_invSel?.source === 'inv' && _invSel?.section === section && _invSel?.index === index) {
       _invSel = null;
     } else {
@@ -217,12 +247,23 @@ function _invClickEquip(slotIndex) {
   renderInventory();
 }
 
+export function openInventoryForAugment(tw, onApplied) {
+  _augTarget = { tower: tw, onApplied };
+  _invSel = null;
+  const p = document.getElementById('invP');
+  if (!p) return;
+  renderInventory();
+  p.classList.add('sh');
+  syncPause();
+}
+
 export function initInventoryUI() {
   document.getElementById('invBtn')?.addEventListener('click', () => {
     const p = document.getElementById('invP');
     if (!p) return;
     if (p.classList.contains('sh')) {
       p.classList.remove('sh');
+      _augTarget = null;
     } else {
       _invSel = null;
       renderInventory();
@@ -233,6 +274,7 @@ export function initInventoryUI() {
   document.getElementById('invClose')?.addEventListener('click', () => {
     document.getElementById('invP')?.classList.remove('sh');
     _invSel = null;
+    _augTarget = null;
     syncPause();
   });
 }
@@ -244,9 +286,12 @@ export function addToInventory(section, item) {
   if (!arr) return;
   if ((section === 'augments' || section === 'consumables') && item.id) {
     const existing = arr.find(e => e.id === item.id);
-    if (existing) { existing.count = (existing.count || 1) + 1; return; }
-    if (arr.length < INV_MAX) arr.push({ ...item, count: 1 });
+    if (existing) { existing.count = (existing.count || 1) + 1; }
+    else if (arr.length < INV_MAX) arr.push({ ...item, count: 1 });
   } else {
     if (arr.length < INV_MAX) arr.push(item);
   }
+  if (!inv.seenSections) inv.seenSections = {};
+  inv.seenSections[section] = true;
+  syncInvBtn();
 }

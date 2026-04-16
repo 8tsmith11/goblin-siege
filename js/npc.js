@@ -1,6 +1,7 @@
 'use strict';
 import { state, getCell } from './main.js';
 import { bus } from './bus.js';
+import { addFeed } from './feed.js';
 
 // ─── NPC speech data ──────────────────────────────────────────────────────────
 
@@ -103,6 +104,7 @@ function _handleTrigger(type, ctx) {
       if (line.wave !== undefined && line.wave !== ctx.wave) continue;
       state.firedTriggerLines.add(key);
       _bubbleQueue.push({ npc, text: line.text });
+      addFeed('npc', line.text);
       _processQueue();
     }
   }

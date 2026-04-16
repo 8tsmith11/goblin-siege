@@ -7,19 +7,22 @@ export const RECIPES = [
     id: 'sharpened_flint', name: 'Sharpened Flint', icon: '🗿',
     cost: { stone: 2 }, waves: 1, output: 'augment',
     desc: '+15% damage to one tower',
-    apply: tw => { tw.dmg = Math.round(tw.dmg * 1.15); },
+    apply:   tw => { tw.dmg = Math.round(tw.dmg * 1.15); },
+    unapply: tw => { tw.dmg = Math.round(tw.dmg / 1.15); },
   },
   {
     id: 'polished_stone', name: 'Polished Stone', icon: '⚪',
     cost: { stone: 2 }, waves: 1, output: 'augment',
     desc: '+10% range to one tower',
-    apply: tw => { tw.range = Math.round(tw.range * 1.1 * 10) / 10; },
+    apply:   tw => { tw.range = Math.round(tw.range * 1.1 * 10) / 10; },
+    unapply: tw => { tw.range = Math.round(tw.range / 1.1 * 10) / 10; },
   },
   {
     id: 'taut_sinew', name: 'Taut Sinew', icon: '🧵',
     cost: { wood: 2 }, waves: 1, output: 'augment',
     desc: '-10% cooldown to one tower',
-    apply: tw => { tw.rate = Math.max(1, Math.round(tw.rate * 0.9)); },
+    apply:   tw => { tw.rate = Math.max(1, Math.round(tw.rate * 0.9)); },
+    unapply: tw => { tw.rate = Math.round(tw.rate / 0.9); },
   },
   {
     id: 'stone_trap', name: 'Stone Trap', icon: '🪤',
@@ -110,6 +113,16 @@ export function applyAugment(item, tower) {
   recipe.apply(tower);
   tower.augments.push({ id: item.id, name: item.name, icon: item.icon });
   return true;
+}
+
+// Remove augment at index from a tower, reversing its stat effect. Returns the augment object.
+export function removeAugment(tower, index) {
+  if (!tower.augments?.[index]) return null;
+  const aug = tower.augments[index];
+  const recipe = RECIPES.find(r => r.id === aug.id);
+  if (recipe?.unapply) recipe.unapply(tower);
+  tower.augments.splice(index, 1);
+  return aug;
 }
 
 // Place a consumable at grid position (gx, gy). Returns true on success.

@@ -126,17 +126,9 @@ function _mkBuyRow(item, canBuy, onBuy, soldText) {
 
 // ─── Live update ─────────────────────────────────────────────────────────────
 
-function _updateTicker(el) {
-  el.innerHTML = SELL_ITEMS.map(it =>
-    '<span class="pip-tick-item">' + it.icon + ' <b>' + (state.resources[it.type] || 0) + '</b></span>'
-  ).join('') + '<span class="pip-tick-gold">💰 <b>' + state.gold + 'g</b></span>';
-}
-
 export function updatePipPanel() {
   const p = document.getElementById('pipP');
   if (!p?.classList.contains('sh')) return;
-  const ticker = document.getElementById('pipTicker');
-  if (ticker) _updateTicker(ticker);
   for (const it of SELL_ITEMS) {
     const qty = state.resources[it.type] || 0;
     const lbl = p.querySelector('[data-sell-label="' + it.type + '"]');
@@ -157,18 +149,11 @@ function renderPip() {
   const portrait = document.createElement('div');
   portrait.className = 'pip-portrait';
   const img = document.createElement('img');
-  img.src = 'assets/tiles/pip.png';
+  img.src = 'assets/pip.png';
   img.alt = 'Pip';
   img.onerror = () => { portrait.style.display = 'none'; };
   portrait.appendChild(img);
   c.appendChild(portrait);
-
-  // Resource ticker (gold + sellable resources)
-  const ticker = document.createElement('div');
-  ticker.className = 'pip-ticker';
-  ticker.id = 'pipTicker';
-  _updateTicker(ticker);
-  c.appendChild(ticker);
 
   // Sell Resources
   const sellSec = _mkSec('💰 Sell Resources');

@@ -1,6 +1,5 @@
 'use strict';
 import { state, getCell } from './main.js';
-import { addFeed } from './feed.js';
 
 // ─── Weather type definitions ─────────────────────────────────────────────────
 
@@ -34,9 +33,6 @@ export function tickWeather() {
   const next = _roll();
   const waves = next.min + Math.floor(Math.random() * (next.max - next.min + 1));
   state.weather = { id: next.id, wavesLeft: waves };
-  if (next.id !== prevId) {
-    addFeed('weather', next.icon + ' ' + next.name + ' — ' + next.desc);
-  }
 }
 
 // ─── Per-tick rain wash-away ──────────────────────────────────────────────────

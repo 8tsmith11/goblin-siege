@@ -4,10 +4,10 @@ import { TD, TOWER_SKILLS, HOARD_LEVELS, HOARD_UPGS } from './data.js';
 import { spawnBees } from './support.js';
 import { showTowerSkill } from './skills.js';
 import { sfxPlace } from './audio.js';
-import { RECIPES } from './craft.js';
+import { RECIPES, removeAugment } from './craft.js';
 import { dropItem, RTYPES, getItemDef, _itemRegistry } from './resources.js';
-import { hudU, panelU, hideTT, hideTdesc, showOv, hideOv } from './ui.js';
-import { addToInventory } from './ui-inventory.js';
+import { hudU, panelU, hideTT, hideTdesc, showOv, hideOv, showBanner } from './ui.js';
+import { addToInventory, openInventoryForAugment } from './ui-inventory.js';
 import { showResearch } from './ui-research.js';
 import { openCraftPanel } from './ui-craft.js';
 
@@ -164,14 +164,6 @@ export function showTT(tw, px, py) {
     s = (qi ? 'Crafting: ' + qi : sel ? 'Ready: ' + sel : 'Idle — select recipe');
   }
   else { s = 'DMG:' + tw.dmg + ' RNG:' + tw.range?.toFixed(1) + ' CD:' + tw.rate; if (tw.slow > 0) s += ' Slow:' + Math.floor(tw.slow * 100) + '%'; if (tw.splash > 0) s += ' Spl:' + tw.splash.toFixed(1); if (tw.pierce) s += ' Prc:' + tw.pierce; if (tw.chain) s += ' Chn:' + tw.chain; if (tw._buffed) s += ' 🐚'; }
-  if (TD[tw.type]?.cat === 'tower') {
-    const slots = (tw.level || 0) >= 5 ? 2 : (tw.level || 0) >= 3 ? 1 : 0;
-    if (slots > 0) {
-      const augs = tw.augments || [];
-      const slotStr = Array.from({ length: slots }, (_, i) => augs[i] ? augs[i].icon : '○').join(' ');
-      s += '  🔧 ' + slotStr;
-    }
-  }
   document.getElementById('ttS').textContent = s;
 
   const a = document.getElementById('ttA'); a.innerHTML = '';
@@ -257,6 +249,27 @@ export function showTT(tw, px, py) {
     }
     a.appendChild(stockRow);
     addTTB(a, '⚒️ Open', 'ttc', true, () => { hideTT(); state.ttTower = null; openCraftPanel(tw); });
+  }
+  if (TD[tw.type]?.cat === 'tower') {
+    const slots = (tw.level || 0) >= 5 ? 2 : (tw.level || 0) >= 3 ? 1 : 0;
+    const augs = tw.augments || [];
+    for (let i = 0; i < slots; i++) {
+      if (augs[i]) {
+        addTTB(a, '🔧 ' + augs[i].icon + ' ' + augs[i].name + ' ✕', 'tts2', true, () => {
+          const removed = removeAugment(tw, i);
+          if (removed) {
+            addToInventory('augments', { id: removed.id, icon: removed.icon, name: removed.name });
+            showBanner('🔧 ' + removed.name + ' removed');
+            refreshTT(tw);
+          }
+        });
+      } else {
+        const hasAugs = (state.inventory?.augments?.length || 0) > 0;
+        addTTB(a, '🔧 + Augment', 'tts2', hasAugs, () => {
+          openInventoryForAugment(tw, () => refreshTT(tw));
+        });
+      }
+    }
   }
   if (TD[tw.type]?.cat === 'tower' && TOWER_SKILLS[tw.type]) { addTTB(a, '⚡Skill', 'ttc', true, () => { showTowerSkill(tw); hideTT(); state.ttTower = null; }); }
   const sv = Math.floor(def.cost * 0.75 + (tw.level * def.cost * 0.4));

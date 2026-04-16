@@ -46,7 +46,8 @@ import { updateEnemies, genWave } from './enemies.js';
 import { updateTowers } from './towers.js';
 import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser } from './support.js';
 import { updateMonkeys } from './monkeys.js';
-import { render, invalidateBg } from './render.js';
+import { render, invalidateBg, clearFogParticles } from './render.js';
+import { ARTIFACTS } from './artifacts.js';
 import { triggerEvent } from './events.js';
 import { sfxBoss, sfxWave, sfxKill, sfxHit } from './audio.js';
 import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, initInventoryUI, initCraftUI } from './ui.js';
@@ -56,8 +57,9 @@ import { placeNodes, updateNodes } from './resources.js';
 import { placeNpcs, initNpcUI, updateNpcBubble } from './npc.js';
 import { initWeather, tickWeather, updateWeather } from './weather.js';
 import { refreshPipStock, syncPipBtn, updatePipPanel, initPipUI } from './ui-pip.js';
+import { syncInvBtn, addToInventory } from './ui-inventory.js';
 
-export const VERSION = 'v1.4';
+export const VERSION = 'v1.5';
 export const WORLD_COLS = 20;
 export const WORLD_ROWS = 12;
 export const PAD = 6; // forest border width in tiles
@@ -89,10 +91,11 @@ export const state = {
   nodes: [], resources: {},
   npcs: [], firedTriggerLines: new Set(),
   weather: { id: 'clear', wavesLeft: 1 },
+  fogWave: false, fogStartTick: 0,
   pip: null,
   research: null, researchUnlocks: {},
   traps: [],
-  inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null] },
+  inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null], seenSections: {} },
   unlockedTowers: new Set(['squirrel', 'lion', 'penguin', 'lab', 'workbench']),
   sel: null, tab: 'towers',
   bSen: new Set(['sleepy_door']),
@@ -177,6 +180,7 @@ export function fIncome() {
 state.fIncome = fIncome;
 state.syncPipBtn = syncPipBtn;
 state.updatePipPanel = updatePipPanel;
+state.syncInvBtn = syncInvBtn;
 
 /* ═══ Update ═══ */
 function update() {
@@ -283,14 +287,24 @@ function update() {
     state.towers.forEach(tw => { if (tw.disabled && tw.disabledWave === state.wave) tw.disabled = false; });
     tickWeather();
     refreshPipStock();
+    // Fog wave clear
+    const _wasFog = state.fogWave;
+    if (_wasFog) {
+      state.fogWave = false;
+      state.fogStartTick = 0;
+      clearFogParticles();
+      const art = ARTIFACTS[Math.floor(Math.random() * ARTIFACTS.length)];
+      addToInventory('artifacts', { id: art.id, icon: art.icon, name: art.name, rarity: art.rarity, desc: art.desc });
+      addFeed('boss', '🌫️ Fog cleared — artifact recovered at the gate.');
+    }
     // Transition seamlessly into the prep phase without a blocking modal.
     bus.emit('trigger', { type: 'wave_prep', wave: state.wave + 1 });
     state.phase = 'prep'; state.prepTicks = 1800; sfxWave(); _φ = false;
     autoSave();
     const _scribe = getScribeEntry(state.wave, state);
-    if (_scribe) addFeed('scribe', _scribe);
+    if (_scribe) addFeed('scribe', 'The scribe has written in the journal.');
     if (Math.random() < 0.4 && state.wave > 1) setTimeout(() => triggerEvent(), 500);
-    showBanner('✅ Wave ' + state.wave + ' Complete!');
+    showBanner(_wasFog ? '🌫️ The fog clears. An artifact glints at the castle gate.' : '✅ Wave ' + state.wave + ' Complete!');
     hudU(); panelU();
     return;
   }
@@ -311,6 +325,7 @@ export function startGame() {
   state.started = true; state.phase = 'prep'; state.prepTicks = 1800;
   invalidateBg(); initSz(); hideOv(); hudU(); panelU();
   initWeather();
+  syncInvBtn();
   addFeed('system', 'The siege begins.');
   bus.emit('trigger', { type: 'game_start' });
   bus.emit('trigger', { type: 'wave_prep', wave: 1 });
@@ -318,13 +333,19 @@ export function startGame() {
 
 export function startWave() {
   state.wave++;
-  state.spawnQueue = genWave(state.wave);
+  state.spawnQueue = genWave(state.wave); // may set state.fogWave for wave 15
   state.spawnTimer = 30; state.phase = 'active';
   hideOv();
-  const boss = state.wave % 5 === 0 && state.wave > 0;
-  showBanner(boss ? '👑 BOSS W' + state.wave : '⚔️ Wave ' + state.wave);
-  addFeed(boss ? 'boss' : 'wave', boss ? 'Boss Wave ' + state.wave + '!' : 'Wave ' + state.wave + ' begins.');
-  if (boss) sfxBoss();
+  if (state.fogWave) {
+    showBanner('🌫️ Considerate Fog');
+    addFeed('boss', '🌫️ The Considerate Fog rolls in...');
+    sfxBoss();
+  } else {
+    const boss = state.wave % 5 === 0 && state.wave > 0;
+    showBanner(boss ? '👑 BOSS W' + state.wave : '⚔️ Wave ' + state.wave);
+    addFeed(boss ? 'boss' : 'wave', boss ? 'Boss Wave ' + state.wave + '!' : 'Wave ' + state.wave + ' begins.');
+    if (boss) sfxBoss();
+  }
   hudU(); panelU();
 }
 
@@ -341,9 +362,9 @@ export function resetGame() {
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
     gameOver: false, started: false, pathReady: false, paused: false, sel: null, ttTower: null,
-    nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, pip: null, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin','lab','workbench']), bSen: new Set(['sleepy_door']), age: 'stone',
+    nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, fogWave: false, fogStartTick: 0, pip: null, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin','lab','workbench']), bSen: new Set(['sleepy_door']), age: 'stone',
     traps: [],
-    inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null] },
+    inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null], seenSections: {} },
     cam: { panX: 0, panY: 0, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
     _Σ: 0, _Ω: 0,
   });

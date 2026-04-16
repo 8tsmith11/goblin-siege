@@ -7,7 +7,23 @@ import { renderNodes, renderStacks, RTYPES, getItemDef } from './resources.js';
 const _rain = [];
 function _ensureRain(W, H) {
   if (_rain.length) return;
-  for (let i = 0; i < 140; i++) _rain.push({ x: Math.random() * W, y: Math.random() * H, spd: 4 + Math.random() * 3 });
+  for (let i = 0; i < 140; i++) _rain.push({ x: Math.random() * W, y: Math.random() * H, spd: 14 + Math.random() * 8 });
+}
+
+// ─── Fog wisps (screen-space, Considerate Fog wave) ──────────────────────────
+const _fogW = [];
+export function clearFogParticles() { _fogW.length = 0; }
+function _ensureFog(W, H) {
+  if (_fogW.length) return;
+  for (let i = 0; i < 32; i++) {
+    _fogW.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: 90 + Math.random() * 130,
+      vx: 0.15 + Math.random() * 0.25,
+      vy: (Math.random() - 0.5) * 0.08,
+    });
+  }
 }
 
 const _imgPath = new Image(); _imgPath.src = 'assets/tiles/path.png';
@@ -334,6 +350,27 @@ export function render() {
   cx.restore();
   if (freezeActive > 0) { cx.fillStyle = 'rgba(56,189,248,' + (0.06 + 0.03 * Math.sin(ticks * 0.2)) + ')'; cx.fillRect(0, 0, W, H); }
 
+  // Fog overlay — Considerate Fog wave, screen space
+  if (state.fogWave) {
+    _ensureFog(W, H);
+    const density = Math.min(1, (ticks - (state.fogStartTick || 0)) / 360);
+    cx.save();
+    for (const f of _fogW) {
+      f.x += f.vx; f.y += f.vy;
+      if (f.x - f.r > W) { f.x = -f.r; f.y = Math.random() * H; }
+      if (f.y < -f.r) f.y = H + f.r;
+      if (f.y > H + f.r) f.y = -f.r;
+      const g = cx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r);
+      g.addColorStop(0, `rgba(210,220,230,${0.14 * density})`);
+      g.addColorStop(1, 'rgba(210,220,230,0)');
+      cx.fillStyle = g;
+      cx.beginPath(); cx.arc(f.x, f.y, f.r, 0, Math.PI * 2); cx.fill();
+    }
+    cx.fillStyle = `rgba(190,205,220,${0.28 * density})`;
+    cx.fillRect(0, 0, W, H);
+    cx.restore();
+  }
+
   // Rain overlay — screen space, drawn after camera restore
   if (state.weather?.id === 'rain') {
     _ensureRain(W, H);
@@ -345,7 +382,7 @@ export function render() {
       d.y += d.spd; d.x += d.spd * 0.22;
       if (d.y > H) { d.y = -10; d.x = Math.random() * W; }
       if (d.x > W) d.x -= W;
-      cx.moveTo(d.x, d.y); cx.lineTo(d.x + 2, d.y + 9);
+      cx.moveTo(d.x, d.y); cx.lineTo(d.x + 3, d.y + 18);
     }
     cx.stroke();
     // Dim overlay

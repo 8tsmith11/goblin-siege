@@ -37,6 +37,11 @@ Jump directly to frequently-needed content:
 | HUD update | `js/ui.js` — `hudU` |
 | Bottom panel update | `js/ui.js` — `panelU` |
 | NPC placement + speech bubble + triggers | `js/npc.js` — `placeNpcs`, `fireTrigger`, `initNpcUI` |
+| Pip Pip shop (sell resources, buy consumables/blueprints) | `js/ui-pip.js` — `initPipUI`, `refreshPipStock`, `updatePipPanel` |
+| Player inventory (artifacts, blueprints, consumables, equipped) | `js/ui-inventory.js` — `initInventoryUI`, `addToInventory` |
+| Crafting system (recipes, workbench UI, traps/barricades) | `js/craft.js` + `js/ui-craft.js` — `RECIPES`, `tickCraft`, `openCraftPanel` |
+| Artifacts & rarity definitions | `js/artifacts.js` — `ARTIFACTS`, `RARITY_COLORS` |
+| Weather types & effects | `js/weather.js` — `WEATHER_TYPES`, `tickWeather`, `updateWeather` |
 | Grid accessors (unified, hide PAD offset) | `js/main.js:63` — `getCell`, `setCell` |
 
 ## Protected State & Common Patterns
@@ -96,6 +101,14 @@ All shared mutable game state lives in a single `const state = {}` object export
 | `js/bus.js` | Simple event bus (`bus.on` / `bus.emit`) for decoupled module communication |
 | `js/utils.js` | `spawnParticles`, `getCenter` — shared rendering helpers |
 | `js/npc.js` | `placeNpcs`, `initNpcUI`, `updateNpcBubble` — NPC placement, speech bubble, universal trigger system |
+| `js/ui-pip.js` | Pip Pip merchant shop panel — `refreshPipStock` (per-wave random consumable stock), `syncPipBtn` (show after wave 4), `updatePipPanel` (live resource ticker), `initPipUI` |
+| `js/ui-inventory.js` | Player inventory panel — `initInventoryUI`, `addToInventory(section, item)` — sections: `'artifacts'`, `'augments'`, `'blueprints'`, `'consumables'`; blueprint items use `bpOverlay` for stacked 🟦+icon display |
+| `js/ui-craft.js` | Workbench crafting panel — `openCraftPanel(tw)`, `renderCraftPanel()`, `initCraftUI()` |
+| `js/ui-tower.js` | Tower tooltip and selection panel — `showTT(tw, px, py)`, `refreshActiveTT()` |
+| `js/ui-research.js` | Research web panel — `showResearch()`, `refreshResearch()`, `initResearchUI()` |
+| `js/artifacts.js` | `ARTIFACTS` array and `RARITY_COLORS` map — artifact definitions with stat effects |
+| `js/craft.js` | `RECIPES`, `tickCraft()`, `placeConsumable()`, `updateTraps()`, `cleanupBarricades()`, `applyAugment()` — crafting logic separate from UI |
+| `js/weather.js` | `WEATHER_TYPES` (`clear`, `rain`), `initWeather()`, `tickWeather()` (wave-end), `updateWeather()` (per-tick rain wash-away) |
 
 **Key state properties:**
 - `state.path` — ordered array of `{x, y}` grid cells forming the goblin route
@@ -115,6 +128,11 @@ All shared mutable game state lives in a single `const state = {}` object export
 - `state._kills` — running kill counter incremented in the `enemyDeath` bus handler
 - `state.npcs` — array of placed NPCs `{ id, icon, name, x, y }` (in inner coords; x=COLS for right-border NPCs)
 - `state.firedTriggerLines` — `Set` of `"npcId:lineIndex"` strings tracking which NPC lines have already fired
+- `state.pip` — Pip Pip merchant state `{ cStock, cWave, bBought, aSold }` — `cStock` is current wave's consumable stock; `bBought` tracks purchased blueprints; `null` until first refresh
+- `state.inventory` — `{ artifacts:[], augments:[], blueprints:[], consumables:[], equipped:[null,null,null] }` — player's item collection; equipped slots hold artifact objects
+- `state.weather` — `{ id, wavesLeft }` — current weather effect; `id` is `'clear'` or `'rain'`
+- `state.fogWave` — `boolean` — true during the Considerate Fog (wave 15); all combat tower range capped to 1; cleared on wave complete
+- `state.fogStartTick` — `number` — `state.ticks` value when fog wave started; used by render.js to build fog density from 0→1 over ~360 ticks
 
 ## Enemy Types (ETYPES in js/data.js:58)
 
@@ -165,6 +183,17 @@ The Lab (`cat:'support'`) is a singleton — only one may be placed per map. It 
 
 Current towers with skills: squirrel, lion, penguin, fish, seahorse, lizard, heron.
 
+## Considerate Fog (wave 15 boss)
+
+Wave 15 replaces the normal boss wave with the **Considerate Fog** 🌫️. No boss entity — the wave itself is the threat.
+
+- `genWave(15)` in `js/enemies.js` sets `state.fogWave = true` and `state.fogStartTick = state.ticks`, returns 28 mixed enemies at 1.2× HP (no crown entity)
+- All combat tower range is capped to 1 tile for the wave's duration (`updateTowers` in `js/towers.js` uses `effectiveRange = state.fogWave ? Math.min(tw.range, 1) : tw.range`)
+- Enemies that leak deal **3 lives** each (same as boss leak) — `updateEnemies` checks `e.boss || state.fogWave`
+- Visual: fog wisps (`_fogW` in `render.js`) drift slowly right; opacity builds from 0→1 over 360 ticks after `fogStartTick`
+- Wave clear: `state.fogWave` and `state.fogStartTick` reset to 0/false; `clearFogParticles()` resets the wisp array; a **guaranteed artifact** is added to inventory
+- `js/startWave` banner: `'🌫️ Considerate Fog'` (not `'👑 BOSS Wn'`)
+
 ## Clown support
 
 The Clown (`tw.type === 'clown'`) reverses enemy movement direction. It is **single-target** — targets the enemy furthest along the path within `reverseRange`. Stats: `reverseRange:3`, `reverseDur:80`, `reverseCD:150`.
@@ -176,6 +205,8 @@ The Hoard (`tw.type === 'hoard'`) stores resources in a single `tw.stored` integ
 ## NPC System
 
 NPCs live in `js/npc.js`. Currently: **Elder Elderberry** (🌳), placed on a right-border forest tile (inner `x = COLS`) not adjacent to water and not on the path exit row.
+
+**Pip Pip** (🐸) is a merchant NPC implemented separately in `js/ui-pip.js` (not `npc.js`). The shop panel (`#pipP`) is a compact right-side panel — it does **not** pause the game. Button (`#pipBtn`) is hidden until wave 4. Pip sells: consumables (random 2–3 per wave from `PIP_CONSUMABLES`), blueprints (`PIP_BLUEPRINTS` — e.g. Clam Blueprint for 80g), and buys resources (`SELL_ITEMS`: stone/wood for 5g each). Blueprint items in inventory render as stacked 🟦 + tower icon using `bpOverlay` field. Portrait: `assets/pip.png`.
 
 **Speech bubble**: DOM element `#npcBubble`, `position:absolute` inside `#gc`. Positioned using the same world→screen formula as `mkF`/`mkGain`. Queued — multiple lines display one after another. Has a CSS `::after` right-pointing arrow tail.
 

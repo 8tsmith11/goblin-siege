@@ -17,6 +17,22 @@ export function mkE(et, bHP, bSpd) {
 export function genWave(w) {
   const q = [], isBoss = w % 5 === 0 && w > 0;
   const bHP = 50 * (1 + w * 0.04), bSpd = 0.5;
+
+  // Wave 15: Considerate Fog — replaces normal boss, no entity boss
+  if (w === 15) {
+    state.fogWave = true;
+    state.fogStartTick = state.ticks;
+    const avail = ['normal','fast','tank','berserker','shaman','stealth','healer','swarm','shield'];
+    const cnt = 28;
+    for (let i = 0; i < cnt; i++) {
+      const tp = avail[Math.floor(Math.random() * avail.length)];
+      state.bSen.add(tp);
+      if (tp === 'swarm') { for (let j = 0; j < 4; j++) q.push(mkE(ETYPES.swarm, bHP * 1.2, bSpd)); }
+      else q.push(mkE(ETYPES[tp], bHP * 1.2, bSpd));
+    }
+    return q;
+  }
+
   if (isBoss) {
     state.bSen.add('boss');
     q.push({
@@ -53,7 +69,7 @@ export function updateEnemies() {
     if (e.dead) continue;
     if (e.pi >= path.length - 1 && !e.reversed) {
       e.dead = true;
-      state.lives -= e.boss ? 3 : 1;
+      state.lives -= (e.boss || state.fogWave) ? 3 : 1;
       continue;
     }
     if (e.pi <= 0 && e.reversed) { e.reversed = false; e.reverseTimer = 0; }

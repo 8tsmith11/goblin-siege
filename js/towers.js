@@ -35,7 +35,8 @@ export function updateTowers() {
     if (tw.cd > 0) { tw.cd -= (tw._rateBuff < 1 ? 1.2 : 1); return; }
     
     const def = TD[tw.type];
-    const vis = getEnemiesInRadius(grid, tw.x, tw.y, tw.range, true, tw.seeInvis);
+    const effectiveRange = state.fogWave ? Math.min(tw.range, 1) : tw.range;
+    const vis = getEnemiesInRadius(grid, tw.x, tw.y, effectiveRange, true, tw.seeInvis);
     if (!vis.length) return;
     
     const tgt = findTarget(vis, def.target);

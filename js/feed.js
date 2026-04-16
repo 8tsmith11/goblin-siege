@@ -15,6 +15,7 @@ export const FEED_TYPES = {
   lab:        { icon: '🧪',  color: '#a78bfa' },
   craft:      { icon: '⚒️',  color: '#6ee7b7' },
   scribe:     { icon: '📓',  color: '#c084fc' },
+  npc:        { icon: '🌳',  color: '#a3e635' },
   system:     { icon: '🏰',  color: '#64748b' },
   weather:    { icon: '🌤️', color: '#7dd3fc' },
 };
