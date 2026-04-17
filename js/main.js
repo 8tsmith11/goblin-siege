@@ -253,7 +253,7 @@ function update() {
       e.x = state.path[0].x; e.y = state.path[0].y; e.pi = 0;
       state.enemies.push(e);
       if (e.boss) { sfxBoss(); showBL(e.line); }
-      state.spawnTimer = state.wave <= 4 ? Math.max(20, 44 - state.wave * 4) : Math.max(8, 28 - state.wave * 0.6);
+      state.spawnTimer = state.wave <= 4 ? Math.max(40, 90 - state.wave * 8) : Math.max(12, 40 - state.wave * 0.8);
     }
   }
 
@@ -397,7 +397,7 @@ function update() {
 
 /* ═══ Game flow ═══ */
 export function startGame() {
-  _ΨΔ(() => { _wG(80); _wL(20); });
+  _ΨΔ(() => { _wG(100); _wL(20); });
   if (!state.research) state.research = buildResearchGraph();
   state.started = true; state.phase = 'prep'; state.prepTicks = 1800;
   invalidateBg(); initSz(); hideOv(); hudU(); panelU();
@@ -452,7 +452,7 @@ export function startPrep() {
 }
 
 export function resetGame() {
-  _ΨΔ(() => { _wG(80); _wL(20); });
+  _ΨΔ(() => { _wG(100); _wL(20); });
   Object.assign(state, {
     wave: 0, phase: 'idle', ticks: 0, prepTicks: 0,
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],

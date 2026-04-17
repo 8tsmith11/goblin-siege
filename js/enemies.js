@@ -20,7 +20,7 @@ export function genWave(w) {
 
   // Wave 5: Proud Herald — special boss, announces itself
   if (w === 5) {
-    const heraldHP = Math.floor(bHP * 8 + w * 80);
+    const heraldHP = Math.floor(bHP * 6 + w * 50);
     state.bSen.add('boss');
     q.push({
       tp: 'boss', hp: heraldHP, mhp: heraldHP,
@@ -53,7 +53,7 @@ export function genWave(w) {
   if (isBoss) {
     state.bSen.add('boss');
     q.push({
-      tp: 'boss', hp: Math.floor(bHP * 8 + w * 80), mhp: Math.floor(bHP * 8 + w * 80),
+      tp: 'boss', hp: Math.floor(bHP * 5 + w * 50), mhp: Math.floor(bHP * 5 + w * 50),
       spd: bSpd * 0.35, sz: 0.65, rew: 40, clr: '#ef4444', em: '👑', drops: [{ type: 'stone', chance: 0.7 }, { type: 'wood', chance: 0.85 }],
       pi: 0, x: 0, y: 0, slow: 0, _trapSlow: 0, st: 0, dead: false, spdBuff: 0, frozen: 0,
       stealth: false, stealthTimer: 0, healCD: 0, boss: true,
@@ -68,7 +68,7 @@ export function genWave(w) {
     if (w >= 8) avail.push('berserker'); if (w >= 10) avail.push('shaman');
     if (w >= 12) avail.push('stealth'); if (w >= 14) avail.push('healer');
     if (w >= 17) avail.push('swarm'); if (w >= 19) avail.push('shield');
-    const earlyScale = w <= 4 ? 0.75 : 1;
+    const earlyScale = w <= 3 ? 0.6 : w <= 6 ? 0.85 : 1;
     const cnt = Math.floor((4 + w * 1.1 + Math.pow(w, 0.82)) * earlyScale);
     for (let i = 0; i < cnt; i++) {
       const tp = avail[Math.floor(Math.random() * avail.length)];
