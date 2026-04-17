@@ -52,10 +52,10 @@ bus.on('enemyDeath', e => {
   if (lab && state.resources) {
     const dist = Math.hypot(e.x - lab.x, e.y - lab.y);
     if (dist <= lab.obsRange) {
-      let dustYield = e.boss ? 5 : (Math.random() < 0.5 ? Math.floor(rew / 2) : 0);
+      const tallyStick = state.inventory?.equipped?.some(a => a?.id === 'tally_stick');
+      const dustChance = tallyStick ? 0.65 : 0.5;
+      let dustYield = e.boss ? 5 : (Math.random() < dustChance ? Math.floor(rew / 2) : 0);
       if (dustYield > 0) {
-        const tallyStick = state.inventory?.equipped?.some(a => a?.id === 'tally_stick');
-        if (tallyStick) dustYield = Math.ceil(dustYield * 1.1);
         state.resources.dust = (state.resources.dust || 0) + dustYield;
         mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '🔮', dustYield, '#a855f7');
       }

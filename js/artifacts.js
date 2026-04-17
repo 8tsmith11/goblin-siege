@@ -33,7 +33,7 @@ export const ARTIFACTS = [
     name: 'Tally Stick',
     icon: '🪵',
     rarity: 'uncommon',
-    desc: '+10% Dust from all sources.',
+    desc: '+15% chance of Dust drops from enemies.',
     flavor: '"The notches are older than the wood."',
     cost: 35,
     pipShop: false,

@@ -154,7 +154,8 @@ function _mkInvCell(item, selected) {
   const iconHtml = item.bpOverlay
     ? '<div class="inv-ic pip-bp-ic"><span class="pip-bp-base">' + item.icon + '</span><span class="pip-bp-overlay">' + item.bpOverlay + '</span></div>'
     : '<div class="inv-ic">' + item.icon + '</div>';
-  cell.innerHTML = iconHtml + '<div class="inv-nm">' + item.name + '</div>' + countBadge + rarityBadge;
+  const tipHtml = item.desc ? '<div class="inv-tip">' + item.desc + '</div>' : '';
+  cell.innerHTML = iconHtml + '<div class="inv-nm">' + item.name + '</div>' + countBadge + rarityBadge + tipHtml;
   return cell;
 }
 
