@@ -67,9 +67,14 @@ function _elderSpeak(text) {
   utt.rate = 0.68;
   utt.pitch = 1.1;
   utt.volume = 0.82;
+  // Prefer warm/soothing accents: Irish > Australian > Scottish > UK > US
   const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find(v => /samantha|alex/i.test(v.name))
-    || voices.find(v => v.lang === 'en-US')
+  const preferred = voices.find(v => /moira/i.test(v.name))
+    || voices.find(v => v.lang === 'en-IE')
+    || voices.find(v => /karen|lee/i.test(v.name))
+    || voices.find(v => v.lang === 'en-AU')
+    || voices.find(v => /fiona/i.test(v.name))
+    || voices.find(v => v.lang === 'en-GB')
     || voices.find(v => v.lang.startsWith('en'))
     || voices[0];
   if (preferred) utt.voice = preferred;
