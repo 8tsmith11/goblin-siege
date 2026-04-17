@@ -2,7 +2,6 @@
 import { state, getCell } from './main.js';
 import { bus } from './bus.js';
 import { addFeed } from './feed.js';
-import { sfxElderSpeak } from './audio.js';
 
 // ─── NPC speech data ──────────────────────────────────────────────────────────
 
@@ -56,6 +55,22 @@ let _bubbleActive = false;
 let _bubbleQueue = [];
 let _bubbleTimer = null;
 
+function _elderSpeak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.rate = 0.82;
+  utt.pitch = 0.75;
+  utt.volume = 1.0;
+  // Prefer a deep male voice if available
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = voices.find(v => /male/i.test(v.name) && v.lang.startsWith('en'))
+    || voices.find(v => v.lang.startsWith('en'))
+    || voices[0];
+  if (preferred) utt.voice = preferred;
+  window.speechSynthesis.speak(utt);
+}
+
 export function initNpcUI() {
   _bubble = document.createElement('div');
   _bubble.id = 'npcBubble';
@@ -69,7 +84,7 @@ function _processQueue() {
   _bubble.textContent = text;
   _bubble.classList.add('sh');
   _positionBubble(npc);
-  sfxElderSpeak();
+  _elderSpeak(text);
   clearTimeout(_bubbleTimer);
   _bubbleTimer = setTimeout(() => {
     _bubble.classList.remove('sh');
