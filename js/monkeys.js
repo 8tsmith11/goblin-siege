@@ -80,60 +80,70 @@ function moveToRaw(mk, tx, ty) {
   return false;
 }
 
-// Movement with water avoidance — go to nearest border tile, then follow edge toward dest
+// BFS path around water tiles (inner grid coords)
+function bfsPath(fromGx, fromGy, toGx, toGy) {
+  const { COLS, ROWS } = state;
+  if (fromGx === toGx && fromGy === toGy) return [];
+  const prev = new Map();
+  const queue = [[fromGx, fromGy]];
+  const startKey = `${fromGx},${fromGy}`;
+  prev.set(startKey, null);
+  while (queue.length) {
+    const [x, y] = queue.shift();
+    if (x === toGx && y === toGy) {
+      const path = [];
+      let cur = `${x},${y}`;
+      while (cur !== startKey) {
+        const [cx, cy] = cur.split(',').map(Number);
+        path.unshift({ x: cx, y: cy });
+        cur = prev.get(cur);
+      }
+      return path;
+    }
+    for (const [ddx, ddy] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+      const nx = x + ddx, ny = y + ddy;
+      if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
+      const key = `${nx},${ny}`;
+      if (prev.has(key)) continue;
+      if (getCell(nx, ny)?.type === 'water') continue;
+      prev.set(key, `${x},${y}`);
+      queue.push([nx, ny]);
+    }
+  }
+  return [];
+}
+
+// Movement with BFS water avoidance
 function moveTo(mk, tx, ty) {
+  const { CELL } = state;
   const dx = tx - mk.x, dy = ty - mk.y, d = Math.hypot(dx, dy);
   const weatherMult = state.weather?.id === 'rain' ? 0.8 : 1;
-  const spd = MONKEY_SPEED * state.CELL * weatherMult;
-  if (d <= spd) { mk.x = tx; mk.y = ty; mk._waterWpt = null; mk._waterWptPrev = null; return true; }
-  const { CELL } = state;
+  const spd = MONKEY_SPEED * CELL * weatherMult;
+  if (d <= spd) { mk.x = tx; mk.y = ty; mk._waterPath = null; return true; }
+
   const nx = dx / d, ny = dy / d;
   const px = mk.x + nx * spd, py = mk.y + ny * spd;
   // Direct step clear — go straight
   if (getCell(Math.floor(px / CELL), Math.floor(py / CELL))?.type !== 'water') {
-    mk._waterWpt = null; mk._waterWptPrev = null; mk.x = px; mk.y = py; return false;
+    mk._waterPath = null;
+    mk.x = px; mk.y = py;
+    return false;
   }
-  // Blocked by water
-  const borders = state.waterBorderTiles;
-  if (!borders?.length) return false;
-  // First block: find nearest border tile to current position
-  if (mk._waterWpt == null) {
-    let best = null, bestD = Infinity;
-    for (const b of borders) {
-      const dist = Math.hypot(mk.x - (b.x * CELL + CELL / 2), mk.y - (b.y * CELL + CELL / 2));
-      if (dist < bestD) { bestD = dist; best = b; }
-    }
-    mk._waterWpt = best; mk._waterWptPrev = null;
+
+  // Blocked by water — compute or follow BFS path
+  const fromGx = Math.floor(mk.x / CELL), fromGy = Math.floor(mk.y / CELL);
+  const toGx   = Math.floor(tx   / CELL), toGy   = Math.floor(ty   / CELL);
+  if (!mk._waterPath || !mk._waterPath.length ||
+      mk._waterDstGx !== toGx || mk._waterDstGy !== toGy) {
+    mk._waterPath = bfsPath(fromGx, fromGy, toGx, toGy);
+    mk._waterDstGx = toGx; mk._waterDstGy = toGy;
   }
-  // At waypoint: check if dest now reachable, else step to next border tile closer to dest
-  if (mk._waterWpt) {
-    const wptX = mk._waterWpt.x * CELL + CELL / 2, wptY = mk._waterWpt.y * CELL + CELL / 2;
-    if (Math.hypot(mk.x - wptX, mk.y - wptY) < CELL * 0.5) {
-      // Try direct to dest
-      const tdx = tx - mk.x, tdy = ty - mk.y, td = Math.hypot(tdx, tdy);
-      const npx = mk.x + tdx / td * spd, npy = mk.y + tdy / td * spd;
-      if (getCell(Math.floor(npx / CELL), Math.floor(npy / CELL))?.type !== 'water') {
-        mk._waterWpt = null; mk._waterWptPrev = null; mk.x = npx; mk.y = npy; return false;
-      }
-      // Pick next border tile closest to dest, excluding current and prev
-      const prev = mk._waterWptPrev;
-      let next = null, nextScore = Infinity;
-      for (const b of borders) {
-        if (b.x === mk._waterWpt.x && b.y === mk._waterWpt.y) continue;
-        if (prev && b.x === prev.x && b.y === prev.y) continue;
-        const score = Math.hypot(b.x * CELL + CELL / 2 - tx, b.y * CELL + CELL / 2 - ty);
-        if (score < nextScore) { nextScore = score; next = b; }
-      }
-      mk._waterWptPrev = mk._waterWpt;
-      mk._waterWpt = next;
-    }
-  }
-  // Move toward current waypoint
-  if (mk._waterWpt) {
-    const gx = mk._waterWpt.x * CELL + CELL / 2, gy = mk._waterWpt.y * CELL + CELL / 2;
-    const ddx = gx - mk.x, ddy = gy - mk.y, dd = Math.hypot(ddx, ddy);
-    if (dd > spd) { mk.x += ddx / dd * spd; mk.y += ddy / dd * spd; }
-    else { mk.x = gx; mk.y = gy; }
+  if (mk._waterPath && mk._waterPath.length) {
+    const wp = mk._waterPath[0];
+    const wpx = wp.x * CELL + CELL / 2, wpy = wp.y * CELL + CELL / 2;
+    const wd = Math.hypot(wpx - mk.x, wpy - mk.y);
+    if (wd <= spd) { mk.x = wpx; mk.y = wpy; mk._waterPath.shift(); }
+    else { mk.x += (wpx - mk.x) / wd * spd; mk.y += (wpy - mk.y) / wd * spd; }
   }
   return false;
 }
@@ -343,8 +353,14 @@ function tickCourier(mk, tw) {
   } else if (mk.st === 'carrying') {
     if (moveTo(mk, mk.targetX, mk.targetY)) {
       if (mk.waitCd > 0) { mk.waitCd--; return; }
-      // Auto-place consumables on path tiles if neuron_activation researched
-      if (tryAutoPlace(mk, cfg.dest.x, cfg.dest.y)) { mk.st = 'idle'; return; }
+      // Deploy traps/consumables on path tiles (courier always does this, no research needed)
+      if (mk.carrying && AUTO_PLACE_IDS.has(mk.carrying.type) && state.pathSet?.has(`${cfg.dest.x},${cfg.dest.y}`)) {
+        if (state.traps?.some(t => t.x === cfg.dest.x && t.y === cfg.dest.y)) {
+          mk.waitCd = 60; return; // trap already there — wait for it to be consumed
+        }
+        const placed = placeConsumable({ id: mk.carrying.type, output: 'consumable' }, cfg.dest.x, cfg.dest.y);
+        if (placed) { mk.carrying = null; mk.trips++; mk.st = 'idle'; return; }
+      }
       const dropped = dropItem(cfg.dest.x, cfg.dest.y, mk.carrying.type);
       if (dropped) {
         mk.carrying = null;
@@ -379,20 +395,32 @@ function tickRoundRobin(mk, tw) {
       mk.st = 'carrying';
       return;
     }
-    const itemTile = findNearestStack(tw.x, tw.y, tw.range, cfg.filter, targets);
-    if (itemTile) {
-      const c = cellCenter(itemTile.x, itemTile.y);
+    // Go to 'from' source if configured and in range; otherwise seek nearest item
+    if (cfg.from && inRange(tw, cfg.from.x, cfg.from.y)) {
+      const c = cellCenter(cfg.from.x, cfg.from.y);
       mk.targetX = c.x; mk.targetY = c.y;
-      mk._itemTarget = itemTile;
+      mk._itemTarget = cfg.from;
       mk.st = 'moving';
     } else {
-      tickIdle(mk, tw);
+      const itemTile = findNearestStack(tw.x, tw.y, tw.range, cfg.filter, targets);
+      if (itemTile) {
+        const c = cellCenter(itemTile.x, itemTile.y);
+        mk.targetX = c.x; mk.targetY = c.y;
+        mk._itemTarget = itemTile;
+        mk.st = 'moving';
+      } else {
+        tickIdle(mk, tw);
+      }
     }
   } else if (mk.st === 'moving') {
     if (moveTo(mk, mk.targetX, mk.targetY)) {
-      const item = takeFromCell(mk._itemTarget.x, mk._itemTarget.y, cfg.filter);
-      mk.st = 'idle';
-      if (item) mk.carrying = item;
+      const src = mk._itemTarget;
+      let item = null;
+      if (src && isStorageStockpile(src.x, src.y)) item = takeFromStockpileSlots(src.x, src.y, cfg.filter);
+      else if (src) item = takeFromCell(src.x, src.y, cfg.filter);
+      if (item) { mk.carrying = item; mk.st = 'idle'; }
+      else if (cfg.from) { mk.waitCd = 30; mk.st = 'idle'; } // wait at source, retry
+      else mk.st = 'idle';
     }
   } else if (mk.st === 'carrying') {
     if (mk.waitCd > 0) { mk.waitCd--; moveTo(mk, mk.targetX, mk.targetY); return; }
@@ -568,22 +596,12 @@ export function updateMonkeys() {
     if (tw.type !== 'monkey' || !tw.monkeys) continue;
     const hutCx = tw.x * CELL + CELL / 2, hutCy = tw.y * CELL + CELL / 2;
     for (const mk of tw.monkeys) {
-      const prevX = mk.x, prevY = mk.y;
       if      (mk.role === 'gatherer')    tickGatherer(mk, tw);
       else if (mk.role === 'courier')     tickCourier(mk, tw);
       else if (mk.role === 'booster')     tickBooster(mk, tw);
       else if (mk.role === 'round_robin') tickRoundRobin(mk, tw);
       else if (mk.role === 'harvester')   tickHarvester(mk, tw);
       else                                tickIdle(mk, tw);
-      // Stuck detection: if on water or barely moved for too long, snap back to hut
-      const onWater = state.grid.length && getCell(Math.floor(mk.x / CELL), Math.floor(mk.y / CELL))?.type === 'water';
-      if (onWater) { mk.x = hutCx; mk.y = hutCy; mk._stuckTicks = 0; mk._waterWpt = null; continue; }
-      if (Math.hypot(mk.x - prevX, mk.y - prevY) < 0.1) {
-        mk._stuckTicks = (mk._stuckTicks || 0) + 1;
-        if (mk._stuckTicks > 120) { mk.x = hutCx; mk.y = hutCy; mk._stuckTicks = 0; mk._waterWpt = null; mk.st = 'idle'; }
-      } else {
-        mk._stuckTicks = 0;
-      }
     }
   }
   applyBoosterEffects();

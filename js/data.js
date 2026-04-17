@@ -65,6 +65,7 @@ export const TOWER_SKILLS = {
     B: { name:'Pratfall',           desc:'Reversed target also stunned 10 ticks',               excludes:'A', cost:{dust:25,gold:50},  owned:false,            apply:tw=>{ tw.reverseStun=true; } },
     C: { name:"Jester's Privilege", desc:'Swaps the frontmost and backmost enemy with dramatic confetti', excludes:'D', cost:{dust:50,gold:100}, owned:false, req:'any', apply:tw=>{ tw.jesterPriv=true; } },
     D: { name:'Grand Finale',       desc:'Reverse duration x2',                                  excludes:'C', cost:{dust:50,gold:100}, owned:false, req:'any', apply:tw=>{ tw.reverseDur=Math.round(tw.reverseDur*2); } },
+    E: { name:'Mastery',            desc:'Reverses ALL enemies in range simultaneously. +1 range. Jester\'s Privilege hits every enemy.', cost:{dust:60}, owned:false, req:'either_cd', apply:tw=>{ tw.reverseRange+=1; tw.reverseAll=true; } },
   },
   heron: {
     A: { name:'Storm Chain',   desc:'Chain to 5 targets',                excludes:'B', cost:{dust:25,gold:50},  owned:false,              apply:tw=>{ tw.chain=5; } },

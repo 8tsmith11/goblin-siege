@@ -49,16 +49,17 @@ export function updateClown() {
     if (!inR.length) return;
 
     const sorted = [...inR].sort((a, b) => b.pi - a.pi);
-    const targets = sorted.slice(0, cl.reverseCount || 1);
+    // reverseAll (Mastery): reverse every enemy in range; otherwise use reverseCount
+    const targets = cl.reverseAll ? sorted : sorted.slice(0, cl.reverseCount || 1);
 
     targets.forEach(tgt => {
       tgt.reversed = true; tgt.reverseTimer = cl.reverseDur;
       if (cl.reverseStun) tgt.stunned = Math.max(tgt.stunned, 10);
     });
 
-    // Jester's Privilege: swap frontmost and backmost enemies within range
+    // Jester's Privilege: swap enemies within range (Mastery = swap all pairs)
     if (cl.jesterPriv) {
-      const all = inR.filter(e => !e.boss);
+      const all = cl.reverseAll ? inR.filter(e => !e.boss) : inR.filter(e => !e.boss);
       if (all.length >= 2) {
         const front = all.reduce((a, b) => a.pi > b.pi ? a : b);
         const back  = all.reduce((a, b) => a.pi < b.pi ? a : b);

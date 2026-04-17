@@ -496,21 +496,21 @@ function _mkCtrlRow(...children) {
 function buildMonkeyTT(tw, container) {
   if (!tw.monkeys) return;
   for (const mk of tw.monkeys) {
+    // Each monkey is a horizontal row of controls
     const block = document.createElement('div');
-    block.style.cssText = 'display:flex;flex-direction:column;gap:2px;margin:6px 0 2px;border:1px solid #334155;border-radius:5px;padding:5px 6px;background:#0d1520';
+    block.style.cssText = 'display:flex;flex-wrap:wrap;gap:3px;align-items:center;margin:4px 0 2px;padding:4px 6px;border:1px solid #334155;border-radius:5px;background:#0d1520';
 
-    // Header row: name + role cycle + trip count
-    const header = document.createElement('div');
-    header.style.cssText = 'display:flex;gap:5px;align-items:center;margin-bottom:2px';
     const nameEl = document.createElement('span');
-    nameEl.style.cssText = 'color:#fb923c;font-size:10px;font-weight:700;flex-shrink:0;min-width:48px';
+    nameEl.style.cssText = 'color:#fb923c;font-size:10px;font-weight:700;flex-shrink:0;min-width:44px';
     nameEl.textContent = mk.name;
-    header.appendChild(nameEl);
+    block.appendChild(nameEl);
+
     const roleBtn = document.createElement('button');
     roleBtn.className = 'ttb tts2';
-    roleBtn.style.cssText = 'flex:1;font-size:10px;padding:3px 4px';
+    roleBtn.style.cssText = 'font-size:10px;padding:3px 5px';
     roleBtn.textContent = ROLE_LABEL[mk.role] ?? 'Idle 💤';
-    roleBtn.onclick = () => {
+    roleBtn.onclick = e => {
+      e.stopPropagation();
       const cycle = getRoleCycle();
       const idx = cycle.indexOf(mk.role);
       mk.role = cycle[(idx + 1) % cycle.length];
@@ -518,21 +518,17 @@ function buildMonkeyTT(tw, container) {
       mk.st = 'idle'; mk.carrying = null;
       refreshTT(tw);
     };
-    header.appendChild(roleBtn);
+    block.appendChild(roleBtn);
+
     if (mk.trips > 0) {
       const tripEl = document.createElement('span');
-      tripEl.style.cssText = 'color:#64748b;font-size:9px;flex-shrink:0';
+      tripEl.style.cssText = 'color:#64748b;font-size:9px;flex-shrink:0;order:99';
       tripEl.textContent = mk.trips + (mk.trips === 1 ? ' trip' : ' trips');
-      header.appendChild(tripEl);
+      block.appendChild(tripEl);
     }
-    block.appendChild(header);
 
-    // Role-specific controls — one control per row
-    const addCtrl = (label, cb) => {
-      const r = _mkCtrlRow();
-      addTTB(r, label, 'tts2', true, cb);
-      block.appendChild(r);
-    };
+    // Inline controls appended directly to the row
+    const addCtrl = (label, cb) => { addTTB(block, label, 'tts2', true, cb); };
 
     if (mk.role === 'gatherer') {
       addCtrl('Filter: ' + FILTER_LABEL[mk.cfg.filter ?? null], () => {

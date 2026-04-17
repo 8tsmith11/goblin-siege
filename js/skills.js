@@ -2,6 +2,9 @@
 import { state, _ΨΔ } from './main.js';
 import { TOWER_SKILLS, TD } from './data.js';
 
+// Max level per tower type (must match TOWER_UPGS in ui-tower.js)
+const MAX_LEVEL = { squirrel:5, lion:5, penguin:5, fish:5, seahorse:5, lizard:5, heron:5, clown:5 };
+
 export function renderSk() {
   const c = document.getElementById('skC'); c.innerHTML = '';
   const h = document.createElement('div');
@@ -27,22 +30,37 @@ export function showTowerSkill(tw) {
   h.textContent = TD[tw.type].icon + ' ' + TD[tw.type].name + ' Skills'; c.appendChild(h);
   const note = document.createElement('div');
   note.style.cssText = 'color:#64748b;font-size:9px;margin-bottom:6px';
-  note.textContent = 'A & B are mutually exclusive. Pick C or D (both require A or B). E requires C or D.'; c.appendChild(note);
+  note.textContent = 'A & B are mutually exclusive. C or D requires A or B. Mastery (E) requires C or D + max level.'; c.appendChild(note);
   const row = document.createElement('div'); row.className = 'skr';
+  const maxLvl = MAX_LEVEL[tw.type] ?? 5;
   for (const [k, sk] of Object.entries(tree)) {
     const owned = !!tw.ownedSkills[k];
-    // E skill: only show if C or D is owned on this tower
     if (sk.req === 'either_cd') {
       if (!tw.ownedSkills['C'] && !tw.ownedSkills['D']) continue;
+      if ((tw.level || 0) < maxLvl) continue; // mastery needs max level
     }
     const isBlocked = sk.excludes && !!tw.ownedSkills[sk.excludes];
-    const needsReq = sk.req === 'any' && !Object.entries(tree).some(([k2, _]) => k2 !== 'C' && k2 !== 'D' && k2 !== 'E' && tw.ownedSkills[k2]);
+    const needsReq = sk.req === 'any' && !Object.entries(tree).some(([k2]) => k2 !== 'C' && k2 !== 'D' && k2 !== 'E' && tw.ownedSkills[k2]);
     const affordable = !isBlocked && !needsReq && !owned &&
       (state.resources?.dust || 0) >= (sk.cost.dust || 0) && state.gold >= (sk.cost.gold || 0);
     const b = document.createElement('div');
-    b.className = 'skb' + (owned ? ' owned' : isBlocked ? ' blocked' : affordable ? '' : ' locked');
+    const isMastery = k === 'E';
+    if (isMastery) {
+      b.className = 'skb' + (owned ? ' owned' : affordable ? '' : ' locked');
+      b.style.cssText = 'background:linear-gradient(135deg,#1a1200,#2a1f00);border:2px solid ' + (owned ? '#f59e0b' : '#78580a') + ';position:relative;overflow:hidden';
+      const shimmer = document.createElement('div');
+      shimmer.style.cssText = 'position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(245,158,11,.07),transparent);pointer-events:none';
+      b.appendChild(shimmer);
+    } else {
+      b.className = 'skb' + (owned ? ' owned' : isBlocked ? ' blocked' : affordable ? '' : ' locked');
+    }
     const costStr = owned ? 'Owned' : isBlocked ? 'Blocked' : '🔮' + (sk.cost.dust || 0) + (sk.cost.gold ? ' 💰' + sk.cost.gold : '');
-    b.innerHTML = '<div class="skn">[' + k + '] ' + (owned ? '✅ ' : '') + sk.name + '</div><div>' + sk.desc + '</div><div class="skc">' + costStr + '</div>';
+    const label = isMastery
+      ? '<div class="skn" style="color:#f59e0b;font-size:11px">⭐ ' + (owned ? '✅ ' : '') + sk.name + '</div>'
+      : '<div class="skn">[' + k + '] ' + (owned ? '✅ ' : '') + sk.name + '</div>';
+    const inner = document.createElement('div');
+    inner.innerHTML = label + '<div style="' + (isMastery ? 'color:#fde68a;font-size:10px' : '') + '">' + sk.desc + '</div><div class="skc" style="' + (isMastery ? 'color:#f59e0b' : '') + '">' + costStr + '</div>';
+    b.appendChild(inner);
     if (!owned && !isBlocked && affordable) b.onclick = () => {
       _ΨΔ(() => {
         if (!tw.ownedSkills) tw.ownedSkills = {};
@@ -50,7 +68,7 @@ export function showTowerSkill(tw) {
         if (sk.cost.dust) state.resources.dust = (state.resources.dust || 0) - sk.cost.dust;
         if (sk.cost.gold) state.gold -= sk.cost.gold;
         tw.ownedSkills[k] = true;
-        sk.owned = true; // keep definition in sync for legacy compat
+        sk.owned = true;
         sk.apply(tw);
       });
       showTowerSkill(tw);
