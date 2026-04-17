@@ -65,7 +65,7 @@ function _elderSpeak(text) {
   window.speechSynthesis.cancel();
   const utt = new SpeechSynthesisUtterance(text);
   utt.rate = 0.68;
-  utt.pitch = 0.85;
+  utt.pitch = 1.1;
   utt.volume = 0.82;
   // Prefer a calm deep English voice — UK tends to be smoother
   const voices = window.speechSynthesis.getVoices();
