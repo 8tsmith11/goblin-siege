@@ -155,6 +155,9 @@ function _apply(d) {
   state.inventory = d._inv || { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} };
   if (!state.inventory.equipped) state.inventory.equipped = [null];
   if (!state.inventory.seenSections) state.inventory.seenSections = {};
+  for (const bp of (state.inventory.blueprints || [])) {
+    if (bp?.unlocks) state.unlockedTowers.add(bp.unlocks);
+  }
   state.npcs = d._npcs || [];
   state.firedTriggerLines = new Set(d._ftl || []);
   state.weather = d._wx || { id: 'clear', wavesLeft: 0 };

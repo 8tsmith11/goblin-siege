@@ -66,7 +66,8 @@ bus.on('enemyDeath', e => {
     const bpType = state.worldGenChoices.wave10Blueprint;
     const bpDef = TD[bpType];
     if (bpDef) {
-      addToInventory('blueprints', { id: bpType + '_bp', icon: '🟦', bpOverlay: bpDef.icon, name: bpDef.name + ' Blueprint' });
+      state.unlockedTowers.add(bpType);
+      addToInventory('blueprints', { id: bpType + '_bp', icon: '🟦', bpOverlay: bpDef.icon, name: bpDef.name + ' Blueprint', unlocks: bpType });
       mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '🟦', 1, '#3b82f6');
       addFeed('boss', '🟦 ' + bpDef.name + ' Blueprint recovered!');
     }
