@@ -5,8 +5,8 @@ import { addToInventory } from './ui-inventory.js';
 import { syncPause, showBanner, hudU, panelU } from './ui.js';
 
 const PIP_CONSUMABLES = [
-  { id: 'stone_trap', icon: '🪤', name: 'Stone Trap', desc: 'Place on path: 30 dmg to first enemy that steps on it.', cost: 12 },
-  { id: 'sticky_sap', icon: '🍯', name: 'Sticky Sap',  desc: 'Place on path: 40% slow to all enemies crossing for 10s.', cost: 15 },
+  { id: 'stone_trap', icon: '🪤', name: 'Stone Trap', desc: 'Place on path: instantly kills the first enemy that steps on it. Barely scratches bosses.', cost: 12 },
+  { id: 'sticky_sap', icon: '🍯', name: 'Sticky Sap',  desc: 'Place on path: 40% slow to all enemies crossing. Lasts until worn down.', cost: 15 },
 ];
 
 const PIP_BLUEPRINTS = [
@@ -34,7 +34,7 @@ export function refreshPipStock() {
 export function syncPipBtn() {
   const btn = document.getElementById('pipBtn');
   if (!btn) return;
-  btn.style.display = (state.started && state.wave >= 4) ? '' : 'none';
+  btn.style.display = (state.started && state.wave >= 15) ? '' : 'none';
 }
 
 // ─── UI helpers ───────────────────────────────────────────────────────────────

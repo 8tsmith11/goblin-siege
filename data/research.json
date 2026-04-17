@@ -12,7 +12,7 @@
       "unlocks": "hoard",
       "prereqs": [],
       "desc": "Establishes the foundations of your settlement.",
-      "tooltip": "Unlocks the Hoard Pile for storing resources. The Lab becomes available at Wave 5.",
+      "tooltip": "Unlocks the Hoard Pile for storing resources.",
       "x": 960,
       "y": 600
     },

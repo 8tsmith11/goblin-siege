@@ -397,7 +397,7 @@ function update() {
 
 /* ═══ Game flow ═══ */
 export function startGame() {
-  _ΨΔ(() => { _wG(80); _wL(20); });
+  _ΨΔ(() => { _wG(90); _wL(20); });
   if (!state.research) state.research = buildResearchGraph();
   state.started = true; state.phase = 'prep'; state.prepTicks = 1800;
   invalidateBg(); initSz(); hideOv(); hudU(); panelU();
@@ -453,13 +453,13 @@ export function startPrep() {
 }
 
 export function resetGame() {
-  _ΨΔ(() => { _wG(80); _wL(20); });
+  _ΨΔ(() => { _wG(90); _wL(20); });
   Object.assign(state, {
     wave: 0, phase: 'idle', ticks: 0, prepTicks: 0,
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
     gameOver: false, started: false, pathReady: false, paused: false, sel: null, ttTower: null,
-    nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, fogWave: false, fogStartTick: 0, heraldWarn: null, hasHeraldHorn: false, pip: null, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin','workbench']), bSen: new Set(['sleepy_door']), age: 'stone',
+    nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, fogWave: false, fogStartTick: 0, heraldWarn: null, hasHeraldHorn: false, pip: null, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin']), bSen: new Set(['sleepy_door']), age: 'stone',
     traps: [],
     inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} },
     worldGenChoices: {}, totalGoblinsKilled: 0, totalGoldEarned: 0,

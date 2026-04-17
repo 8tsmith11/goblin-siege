@@ -36,7 +36,7 @@ export const ARTIFACTS = [
     desc: '+10% Dust from all sources.',
     flavor: '"The notches are older than the wood."',
     cost: 35,
-    pipShop: true,
+    pipShop: false,
   },
   {
     id: 'warm_pebble',
@@ -46,7 +46,7 @@ export const ARTIFACTS = [
     desc: 'Towers adjacent to the Lab fire 10% faster.',
     flavor: '"Where does the heat come from?"',
     cost: 40,
-    pipShop: true,
+    pipShop: false,
   },
   {
     id: 'the_bell',

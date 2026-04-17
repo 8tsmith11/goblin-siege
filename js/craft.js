@@ -33,7 +33,7 @@ export const RECIPES = [
   {
     id: 'sticky_sap', name: 'Sticky Sap', icon: '🍯',
     cost: { wood: 2, stone: 1 }, waves: 1, output: 'consumable',
-    desc: 'Place on path: 40% slow to all enemies crossing for 10 seconds',
+    desc: 'Place on path: 40% slow to all enemies crossing. Lasts until worn down.',
     trapType: 'sap',
   },
 ];
