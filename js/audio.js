@@ -74,20 +74,30 @@ export function sfxElderSpeak() {
 
 let _humOsc = null, _humGain = null;
 export function startHum() {
-  if (!AC || !sOn || _humOsc) return;
-  _humOsc = AC.createOscillator(); _humGain = AC.createGain();
-  _humOsc.type = 'sine'; _humOsc.frequency.value = 40;
+  if (!AC || !sOn || _humOsc?.length) return;
+  // Duck BGM while hum plays
+  if (window.bgm && sOn) { window.bgm.volume = 0.04; }
+  _humGain = AC.createGain();
   _humGain.gain.setValueAtTime(0, AC.currentTime);
-  _humGain.gain.linearRampToValueAtTime(0.04 * 0.5, AC.currentTime + 2);
-  _humOsc.connect(_humGain); _humGain.connect(MG);
-  _humOsc.start();
+  _humGain.gain.linearRampToValueAtTime(0.45, AC.currentTime + 3);
+  _humGain.connect(MG);
+  _humOsc = [];
+  for (const [freq, vol] of [[80, 0.7], [160, 0.3], [240, 0.15]]) {
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.value = vol;
+    o.connect(g); g.connect(_humGain);
+    o.start(); _humOsc.push(o);
+  }
 }
 export function stopHum() {
-  if (!_humOsc || !_humGain) return;
+  if (!_humOsc?.length || !_humGain) return;
   _humGain.gain.setValueAtTime(_humGain.gain.value, AC.currentTime);
   _humGain.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 1.5);
-  _humOsc.stop(AC.currentTime + 1.5);
+  _humOsc.forEach(o => o.stop(AC.currentTime + 1.5));
   _humOsc = null; _humGain = null;
+  // Restore BGM
+  if (window.bgm && sOn) { window.bgm.volume = 0.3; }
 }
 
 window.bgm = null;
