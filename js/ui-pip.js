@@ -35,7 +35,7 @@ export function refreshPipStock() {
 export function syncPipBtn() {
   const btn = document.getElementById('pipBtn');
   if (!btn) return;
-  btn.style.display = (state.started && state.wave >= 15) ? '' : 'none';
+  btn.style.display = (state.started && state.wave >= 12) ? '' : 'none';
 }
 
 // ─── UI helpers ───────────────────────────────────────────────────────────────
