@@ -3,11 +3,12 @@ import { state, _ΨΔ } from './main.js';
 import { ARTIFACTS, RARITY_COLORS } from './artifacts.js';
 import { addToInventory } from './ui-inventory.js';
 import { syncPause, showBanner, hudU, panelU } from './ui.js';
+import { RECIPES } from './craft.js';
 
 const PIP_CONSUMABLES = [
-  { id: 'stone_trap', icon: '🪤', name: 'Stone Trap', desc: 'Place on path: instantly kills the first enemy that steps on it. Barely scratches bosses.', cost: 12 },
-  { id: 'sticky_sap', icon: '🍯', name: 'Sticky Sap',  desc: 'Place on path: 40% slow to all enemies crossing. Lasts until worn down.', cost: 15 },
-];
+  { id: 'stone_trap', icon: '🪤', name: 'Stone Trap', cost: 12 },
+  { id: 'sticky_sap', icon: '🍯', name: 'Sticky Sap',  cost: 15 },
+].map(c => ({ ...c, desc: RECIPES.find(r => r.id === c.id)?.desc ?? '' }));
 
 const PIP_BLUEPRINTS = [
   { id: 'bp_clam', icon: '🐚', name: 'Clam Blueprint', desc: 'Unlocks the Clam support building.', cost: 80, unlocks: 'clam', blueprint: true },
