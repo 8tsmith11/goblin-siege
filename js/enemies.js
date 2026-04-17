@@ -68,7 +68,7 @@ export function genWave(w) {
     if (w >= 8) avail.push('berserker'); if (w >= 10) avail.push('shaman');
     if (w >= 12) avail.push('stealth'); if (w >= 14) avail.push('healer');
     if (w >= 17) avail.push('swarm'); if (w >= 19) avail.push('shield');
-    const earlyScale = w <= 3 ? 0.6 : w <= 6 ? 0.85 : 1;
+    const earlyScale = w <= 3 ? 0.85 : w <= 6 ? 0.9 : 1;
     const cnt = Math.floor((4 + w * 1.1 + Math.pow(w, 0.82)) * earlyScale);
     for (let i = 0; i < cnt; i++) {
       const tp = avail[Math.floor(Math.random() * avail.length)];

@@ -201,7 +201,8 @@ function _renderInvActions() {
     } else {
       const btn = document.createElement('button');
       btn.className = 'inv-use-btn inv-use-con';
-      btn.textContent = '📍 Place on Path';
+      const _cnt = it.count && it.count > 1 ? ' ×' + it.count : '';
+      btn.textContent = '📍 Use' + _cnt;
       btn.onclick = () => {
         const i = _invSel.index;
         const item = state.inventory.consumables[i];
@@ -210,7 +211,7 @@ function _renderInvActions() {
         _invSel = null;
         syncPause();
         state.sel = { type: 'consumable_pick', item: { ...item }, index: i };
-        showTip('Click a path tile to place the consumable');
+        showTip('Click a path tile to use the consumable');
       };
       el.appendChild(btn);
     }

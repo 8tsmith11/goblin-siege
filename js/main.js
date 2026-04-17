@@ -26,20 +26,15 @@ bus.on('enemyDeath', e => {
     }
   }
   
-  // Herald drops — Herald's Horn artifact + random non-duplicate artifact
+  // Herald drops — Herald's Horn artifact only (1 artifact per boss)
   if (e.herald) {
     const hornArt = ARTIFACTS.find(a => a.id === 'heralds_horn');
     const inv = state.inventory;
     const owned = new Set([...inv.artifacts.map(a => a?.id), ...inv.equipped.map(a => a?.id)].filter(Boolean));
     if (!owned.has('heralds_horn')) {
-      addToInventory('artifacts', { id: hornArt.id, icon: hornArt.icon, name: hornArt.name, rarity: hornArt.rarity, desc: hornArt.desc });
+      addToInventory('artifacts', { ...hornArt, cdWavesLeft: 0 });
       mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '📯', 1, '#f59e0b');
       addFeed('herald', "📯 Herald's Horn recovered — equip it to receive early boss warnings!");
-    }
-    const bonusArt = ARTIFACTS.filter(a => a.id !== 'heralds_horn' && !owned.has(a.id));
-    if (bonusArt.length) {
-      const art = bonusArt[Math.floor(Math.random() * bonusArt.length)];
-      addToInventory('artifacts', { id: art.id, icon: art.icon, name: art.name, rarity: art.rarity, desc: art.desc });
     }
     // Also drop a relocation charm
     addToInventory('consumables', { id: 'relocation_charm', icon: '✨', name: 'Relocation Charm', desc: 'Move any tower to a new valid tile, preserving all upgrades.' });
@@ -343,7 +338,7 @@ function update() {
       const _owned = new Set([..._inv.artifacts.map(a => a?.id), ..._inv.equipped.map(a => a?.id)].filter(Boolean));
       const _avail = ARTIFACTS.filter(a => !_owned.has(a.id));
       const art = _avail.length ? _avail[Math.floor(Math.random() * _avail.length)] : null;
-      if (art) addToInventory('artifacts', { id: art.id, icon: art.icon, name: art.name, rarity: art.rarity, desc: art.desc });
+      if (art) addToInventory('artifacts', { ...art, cdWavesLeft: 0 });
       addFeed('boss', art ? '🌫️ Fog cleared — artifact recovered at the gate.' : '🌫️ Fog cleared.');
     }
     // Decrement active artifact cooldowns
@@ -409,7 +404,7 @@ export function startGame() {
 }
 
 export function startWave() {
-  stopHum();
+  if (state.wave !== 3) stopHum(); // let hum run through wave 4 (started at end of wave 3)
   state.wave++;
   // Unlock lab at wave 8
   if (state.wave >= 8 && !state.unlockedTowers.has('lab')) {
