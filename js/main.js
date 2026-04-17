@@ -359,6 +359,11 @@ function update() {
     // Transition seamlessly into the prep phase without a blocking modal.
     bus.emit('trigger', { type: 'wave_prep', wave: state.wave + 1 });
     state.phase = 'prep'; state.prepTicks = 1800; sfxWave(); _φ = false;
+    if (state.wave === 3 && !state.frequencyPlayed) {
+      state.frequencyPlayed = true;
+      startHum();
+      bus.emit('trigger', { type: 'frequency_played' });
+    }
     autoSave();
     const _scribe = getScribeEntry(state.wave, state);
     if (_scribe) addFeed('scribe', 'The scribe has written in the journal.');
@@ -439,11 +444,6 @@ export function startPrep() {
   state.phase = 'prep'; state.prepTicks = 1800;
   invalidateBg();
   clampCam(); hideTT(); hudU(); panelU();
-  if (state.wave === 3 && !state.frequencyPlayed) {
-    state.frequencyPlayed = true;
-    startHum();
-    bus.emit('trigger', { type: 'frequency_played' });
-  }
 }
 
 export function resetGame() {
