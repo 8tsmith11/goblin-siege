@@ -18,6 +18,11 @@ const NPC_LINES = {
     },
     {
       trigger: 'wave_prep',
+      wave: 2,
+      text: "The rocks and stumps around here — try clicking on them. They give things. I used to collect things. I don't remember why I stopped."
+    },
+    {
+      trigger: 'wave_prep',
       wave: 5,
       text: "The Lab can be placed now, if you're inclined toward observation. I've found observation helps. Eventually."
     },
