@@ -55,16 +55,21 @@ export function sfxRage() { pT(300, 0.2, 'sawtooth', 0.15); }
 
 export function sfxElderSpeak() {
   if (!AC || !sOn) return;
-  const o = AC.createOscillator(), lfo = AC.createOscillator(), lfoG = AC.createGain(), g = AC.createGain();
-  o.type = 'sine'; o.frequency.value = 180;
-  lfo.type = 'sine'; lfo.frequency.value = 4;
-  lfoG.gain.value = 8;
-  lfo.connect(lfoG); lfoG.connect(o.frequency);
-  g.gain.setValueAtTime(0, AC.currentTime);
-  g.gain.linearRampToValueAtTime(0.06 * 0.5, AC.currentTime + 0.05);
-  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.4);
-  o.connect(g); g.connect(MG);
-  o.start(); lfo.start(); o.stop(AC.currentTime + 0.4); lfo.stop(AC.currentTime + 0.4);
+  const now = AC.currentTime;
+  // Two gentle harmonics for a warmer, more voice-like tone
+  for (const [freq, vol] of [[220, 0.28], [330, 0.14]]) {
+    const o = AC.createOscillator(), lfo = AC.createOscillator(), lfoG = AC.createGain(), g = AC.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    lfo.type = 'sine'; lfo.frequency.value = 4.5;
+    lfoG.gain.value = 5;
+    lfo.connect(lfoG); lfoG.connect(o.frequency);
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(vol, now + 0.06);
+    g.gain.setValueAtTime(vol, now + 0.22);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+    o.connect(g); g.connect(MG);
+    o.start(now); lfo.start(now); o.stop(now + 0.55); lfo.stop(now + 0.55);
+  }
 }
 
 let _humOsc = null, _humGain = null;

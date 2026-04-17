@@ -137,7 +137,7 @@ export const state = {
   research: null, researchUnlocks: {},
   traps: [],
   inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} },
-  unlockedTowers: new Set(['squirrel', 'lion', 'penguin', 'workbench']),
+  unlockedTowers: new Set(['squirrel', 'lion', 'penguin']),
   sel: null, tab: 'towers',
   bSen: new Set(['sleepy_door']),
   volcanoActive: null, freezeActive: 0,

@@ -16,6 +16,23 @@
       "x": 960,
       "y": 600
     },
+    "crude_crafting": {
+      "name": "Crude Crafting",
+      "icon": "🛠️",
+      "cost": {
+        "wood": 8,
+        "stone": 4
+      },
+      "waves": 1,
+      "unlocks": "workbench",
+      "prereqs": [
+        "settlement"
+      ],
+      "desc": "Lashes together a rough workbench from salvaged materials.",
+      "tooltip": "Unlocks the Workbench — crafts augments and consumables over waves.",
+      "x": 960,
+      "y": 480
+    },
     "basic_obs": {
       "name": "Basic Observation",
       "icon": "👁️",

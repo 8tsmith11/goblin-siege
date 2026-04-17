@@ -143,7 +143,7 @@ function _apply(d) {
     refreshStatuses(state.research);
   }
   state.researchUnlocks = { ...(d._rUnlocks || {}) };
-  state.unlockedTowers = new Set(d._unlocked || ['squirrel','lion','penguin','workbench']);
+  state.unlockedTowers = new Set(d._unlocked || ['squirrel','lion','penguin']);
   state.bSen = new Set(d._bSen || ['sleepy_door']);
   state.bees = [];
   state.towers.filter(tw => tw.type === 'beehive').forEach(tw => spawnBees(tw));

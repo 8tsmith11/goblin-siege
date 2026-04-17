@@ -54,6 +54,7 @@ export const UNLOCK_DESC = {
   'monkey_auto_place':  'Monkeys auto-place path consumables',
   'hoard':              'Hoard Pile unlocked',
   'tower_skills':       'Tower skill upgrades unlocked',
+  'workbench':          'Workbench available',
 };
 
 // Evaluate a game-state prerequisite string against current state.
