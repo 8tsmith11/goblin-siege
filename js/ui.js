@@ -211,7 +211,7 @@ export function panelU() {
     }
     const cons = state.inventory?.consumables || [];
     cons.forEach((item, i) => {
-      const countLbl = (item.count && item.count > 1) ? 'x' + item.count : 'Place';
+      const countLbl = (item.count && item.count > 1) ? 'x' + item.count : 'Use';
       const isSelRR = item.id === 'relocation_charm' ? (state.sel?.type === 'relocate_source' || state.sel?.type === 'relocate_dest') : (state.sel?.type === 'consumable_pick' && state.sel?.index === i);
       const el = mkIB(item.icon, item.name, countLbl, true, isSelRR, () => {
         if (item.id === 'relocation_charm') {
@@ -219,7 +219,7 @@ export function panelU() {
           showTip('Click the tower you want to move');
         } else {
           state.sel = { type: 'consumable_pick', item: { ...item }, index: i };
-          showTip('Click a path tile to place ' + item.name);
+          showTip('Click a path tile to use ' + item.name);
         }
         panelU();
       });
