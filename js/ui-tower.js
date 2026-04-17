@@ -496,9 +496,9 @@ function _mkCtrlRow(...children) {
 function buildMonkeyTT(tw, container) {
   if (!tw.monkeys) return;
   for (const mk of tw.monkeys) {
-    // Each monkey is a horizontal row of controls
+    // Each monkey is a horizontal row — full width so it doesn't share a line with sell/skill
     const block = document.createElement('div');
-    block.style.cssText = 'display:flex;flex-wrap:wrap;gap:3px;align-items:center;margin:4px 0 2px;padding:4px 6px;border:1px solid #334155;border-radius:5px;background:#0d1520';
+    block.style.cssText = 'display:flex;flex-wrap:wrap;gap:3px;align-items:center;margin:4px 0 2px;padding:4px 6px;border:1px solid #334155;border-radius:5px;background:#0d1520;width:100%;box-sizing:border-box';
 
     const nameEl = document.createElement('span');
     nameEl.style.cssText = 'color:#fb923c;font-size:10px;font-weight:700;flex-shrink:0;min-width:44px';
@@ -514,7 +514,7 @@ function buildMonkeyTT(tw, container) {
       const cycle = getRoleCycle();
       const idx = cycle.indexOf(mk.role);
       mk.role = cycle[(idx + 1) % cycle.length];
-      mk.cfg = { filter: null, dest: null, from: null, boost: null, targets: [], rrIdx: 0 };
+      mk.cfg = { filter: null, dest: null, from: null, boost: null, targets: [], rrIdx: 0, froms: [], rrFromIdx: 0, rrMode: 'tos' };
       mk.st = 'idle'; mk.carrying = null;
       refreshTT(tw);
     };
@@ -578,28 +578,62 @@ function buildMonkeyTT(tw, container) {
     }
 
     if (mk.role === 'round_robin') {
+      if (!mk.cfg.rrMode) mk.cfg.rrMode = 'tos';
+      if (!mk.cfg.froms) mk.cfg.froms = [];
       addCtrl('Filter: ' + FILTER_LABEL[mk.cfg.filter ?? null], () => {
         const fi = FILTER_CYCLE.indexOf(mk.cfg.filter ?? null);
         mk.cfg.filter = FILTER_CYCLE[(fi + 1) % FILTER_CYCLE.length] ?? null;
         refreshTT(tw);
       });
-      addCtrl(mk.cfg.from ? `From: (${mk.cfg.from.x}, ${mk.cfg.from.y}) 📍` : 'Set From 📍', () => {
-        state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'from' };
-        hideTT(); state.ttTower = null; panelU();
+      // Mode toggle — multi-tos and multi-froms are mutually exclusive
+      addCtrl('Mode: ' + (mk.cfg.rrMode === 'froms' ? 'Multi-From →1 Dest' : '1 From → Multi-To'), () => {
+        mk.cfg.rrMode = mk.cfg.rrMode === 'froms' ? 'tos' : 'froms';
+        mk.cfg.targets = []; mk.cfg.rrIdx = 0;
+        mk.cfg.froms = []; mk.cfg.rrFromIdx = 0;
+        mk.cfg.from = null; mk.cfg.dest = null;
+        mk.st = 'idle'; mk.carrying = null;
+        refreshTT(tw);
       });
-      const targets = mk.cfg.targets || [];
-      targets.forEach((t, i) => {
-        addCtrl(`Target ${i + 1}: (${t.x}, ${t.y}) ✕`, () => {
-          mk.cfg.targets.splice(i, 1);
-          if ((mk.cfg.rrIdx || 0) >= mk.cfg.targets.length) mk.cfg.rrIdx = 0;
-          refreshTT(tw);
+      if (mk.cfg.rrMode === 'froms') {
+        // Multi-from mode: list of froms + single dest
+        const froms = mk.cfg.froms || [];
+        froms.forEach((f, i) => {
+          addCtrl(`From ${i + 1}: (${f.x},${f.y}) ✕`, () => {
+            mk.cfg.froms.splice(i, 1);
+            if ((mk.cfg.rrFromIdx || 0) >= mk.cfg.froms.length) mk.cfg.rrFromIdx = 0;
+            refreshTT(tw);
+          });
         });
-      });
-      if (targets.length < 5) {
-        addCtrl('+ Add Target 📍', () => {
-          state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'rr_add_target' };
+        if (froms.length < 5) {
+          addCtrl('+ Add From 📍', () => {
+            state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'rr_add_from' };
+            hideTT(); state.ttTower = null; panelU();
+          });
+        }
+        addCtrl(mk.cfg.dest ? `To: (${mk.cfg.dest.x},${mk.cfg.dest.y}) 📍` : 'Set Dest 📍', () => {
+          state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'dest' };
           hideTT(); state.ttTower = null; panelU();
         });
+      } else {
+        // Multi-to mode: single from + list of targets
+        addCtrl(mk.cfg.from ? `From: (${mk.cfg.from.x},${mk.cfg.from.y}) 📍` : 'Set From 📍', () => {
+          state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'from' };
+          hideTT(); state.ttTower = null; panelU();
+        });
+        const targets = mk.cfg.targets || [];
+        targets.forEach((t, i) => {
+          addCtrl(`To ${i + 1}: (${t.x},${t.y}) ✕`, () => {
+            mk.cfg.targets.splice(i, 1);
+            if ((mk.cfg.rrIdx || 0) >= mk.cfg.targets.length) mk.cfg.rrIdx = 0;
+            refreshTT(tw);
+          });
+        });
+        if (targets.length < 5) {
+          addCtrl('+ Add To 📍', () => {
+            state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'rr_add_target' };
+            hideTT(); state.ttTower = null; panelU();
+          });
+        }
       }
     }
 

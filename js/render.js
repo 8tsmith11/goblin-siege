@@ -232,19 +232,38 @@ export function render() {
     if (tw.level > 0) { cx.font = 'bold ' + Math.floor(CELL * 0.16) + 'px Anybody,sans-serif'; cx.fillStyle = '#fbbf24'; cx.fillText('★'.repeat(Math.min(tw.level, 5)), tx + CELL / 2, ty + CELL - 2); }
     if (tw._mastery) {
       const pulse = 0.5 + Math.sin(ticks * 0.05) * 0.2;
-      // Outer pulsing ring
-      cx.beginPath(); cx.arc(px, py, CELL * 0.54, 0, Math.PI * 2);
-      cx.strokeStyle = `rgba(168,85,247,${pulse.toFixed(2)})`; cx.lineWidth = 2.5; cx.stroke();
-      // Gold accent ring
-      cx.beginPath(); cx.arc(px, py, CELL * 0.48, 0, Math.PI * 2);
-      cx.strokeStyle = `rgba(245,158,11,${(pulse * 0.5).toFixed(2)})`; cx.lineWidth = 1; cx.stroke();
-      // Emit sparkle particles every ~30 ticks
-      if (ticks % 30 === 0) {
-        const angle = Math.random() * Math.PI * 2;
-        const r = CELL * (0.4 + Math.random() * 0.2);
-        state.particles.push({ x: px + Math.cos(angle) * r, y: py + Math.sin(angle) * r,
-          vx: (Math.random() - 0.5) * 0.5, vy: -0.4 - Math.random() * 0.4,
-          life: 25 + Math.random() * 20, clr: Math.random() < 0.5 ? '#a855f7' : '#f59e0b', sz: 2 + Math.random() });
+      if (tw.type === 'clown') {
+        // Jester mastery: spinning multicolor diamond ring + confetti burst
+        const JCLR = ['#f472b6','#facc15','#34d399','#60a5fa','#f87171','#a78bfa'];
+        const spinAngle = ticks * 0.04;
+        const r = CELL * 0.52;
+        for (let i = 0; i < 4; i++) {
+          const a = spinAngle + i * Math.PI / 2;
+          const bx = px + Math.cos(a) * r, by = py + Math.sin(a) * r;
+          cx.fillStyle = JCLR[i % JCLR.length];
+          cx.beginPath(); cx.arc(bx, by, 3, 0, Math.PI * 2); cx.fill();
+        }
+        cx.beginPath(); cx.arc(px, py, r, 0, Math.PI * 2);
+        cx.strokeStyle = `rgba(244,114,182,${pulse.toFixed(2)})`; cx.lineWidth = 1.5; cx.stroke();
+        if (ticks % 20 === 0) {
+          const a = Math.random() * Math.PI * 2;
+          state.particles.push({ x: px + Math.cos(a) * r, y: py + Math.sin(a) * r,
+            vx: Math.cos(a) * (0.5 + Math.random() * 0.5), vy: -0.6 - Math.random() * 0.6,
+            life: 20 + Math.random() * 15, clr: JCLR[Math.floor(Math.random() * JCLR.length)], sz: 2.5 });
+        }
+      } else {
+        // Default mastery: purple-gold aura
+        cx.beginPath(); cx.arc(px, py, CELL * 0.54, 0, Math.PI * 2);
+        cx.strokeStyle = `rgba(168,85,247,${pulse.toFixed(2)})`; cx.lineWidth = 2.5; cx.stroke();
+        cx.beginPath(); cx.arc(px, py, CELL * 0.48, 0, Math.PI * 2);
+        cx.strokeStyle = `rgba(245,158,11,${(pulse * 0.5).toFixed(2)})`; cx.lineWidth = 1; cx.stroke();
+        if (ticks % 30 === 0) {
+          const angle = Math.random() * Math.PI * 2;
+          const r = CELL * (0.4 + Math.random() * 0.2);
+          state.particles.push({ x: px + Math.cos(angle) * r, y: py + Math.sin(angle) * r,
+            vx: (Math.random() - 0.5) * 0.5, vy: -0.4 - Math.random() * 0.4,
+            life: 25 + Math.random() * 20, clr: Math.random() < 0.5 ? '#a855f7' : '#f59e0b', sz: 2 + Math.random() });
+        }
       }
     }
 

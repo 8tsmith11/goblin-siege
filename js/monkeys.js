@@ -390,15 +390,94 @@ function tickCourier(mk, tw) {
   }
 }
 
+// Shared: drop or place-trap at a destination tile, advance rrIdx/rrFromIdx
+function _rrDeliver(mk, cfg, dx, dy, idxKey, listKey) {
+  const list = cfg[listKey] || [];
+  const idx = mk._rrDest ?? 0;
+  if (mk.carrying && AUTO_PLACE_IDS.has(mk.carrying.type) && state.pathSet?.has(`${dx},${dy}`)) {
+    if (state.traps?.some(tr => tr.x === dx && tr.y === dy)) {
+      cfg[idxKey] = (idx + 1) % Math.max(1, list.length);
+      mk._rrDest = undefined; mk.st = 'idle'; return;
+    }
+    const placed = placeConsumable({ id: mk.carrying.type, output: 'consumable' }, dx, dy);
+    if (placed) { mk.carrying = null; mk.trips++; cfg[idxKey] = (idx + 1) % Math.max(1, list.length); mk._rrDest = undefined; mk.st = 'idle'; return; }
+  }
+  const dropped = dropItem(dx, dy, mk.carrying.type);
+  if (dropped) {
+    mk.carrying = null; mk.trips++;
+    cfg[idxKey] = (idx + 1) % Math.max(1, list.length);
+    mk._rrDest = undefined; mk.st = 'idle';
+  } else {
+    mk.waitCd = 60;
+  }
+}
+
+// Orbit a tile center while waiting for pickup
+function _orbitTile(mk, cx, cy) {
+  mk.patrolAngle = (mk.patrolAngle || 0) + IDLE_SPEED;
+  const tx = cx + Math.cos(mk.patrolAngle) * IDLE_RADIUS * state.CELL;
+  const ty = cy + Math.sin(mk.patrolAngle) * IDLE_RADIUS * state.CELL;
+  moveTo(mk, tx, ty);
+}
+
+function _tryPickup(src, filter) {
+  if (!src) return null;
+  if (isStorageStockpile(src.x, src.y)) return takeFromStockpileSlots(src.x, src.y, filter);
+  return takeFromCell(src.x, src.y, filter);
+}
+
 function tickRoundRobin(mk, tw) {
   const { cfg } = mk;
+  const mode = cfg.rrMode || 'tos'; // 'tos' = single-from multi-to, 'froms' = multi-from single-to
+
+  if (mode === 'froms') {
+    // ── MULTI-FROM mode: cycle through froms, deliver to single dest ──
+    const froms = cfg.froms || [];
+    if (!froms.length || !cfg.dest || !inRange(tw, cfg.dest.x, cfg.dest.y)) { tickIdle(mk, tw); return; }
+    const validFroms = froms.filter(f => inRange(tw, f.x, f.y));
+    if (validFroms.length !== froms.length) {
+      cfg.froms = validFroms;
+      if ((cfg.rrFromIdx || 0) >= validFroms.length) cfg.rrFromIdx = 0;
+      if (!validFroms.length) { tickIdle(mk, tw); return; }
+    }
+    const src = froms[cfg.rrFromIdx || 0];
+    const sc = cellCenter(src.x, src.y);
+
+    if (mk.st === 'idle') {
+      if (mk.carrying) {
+        const dc = cellCenter(cfg.dest.x, cfg.dest.y);
+        mk.targetX = dc.x; mk.targetY = dc.y; mk._rrDest = 0; mk.st = 'carrying';
+      } else {
+        mk.targetX = sc.x; mk.targetY = sc.y; mk.st = 'moving';
+      }
+    } else if (mk.st === 'moving') {
+      if (moveTo(mk, mk.targetX, mk.targetY)) {
+        const item = _tryPickup(src, cfg.filter);
+        if (item) { mk.carrying = item; mk.st = 'idle'; }
+        else { mk.waitCd = 30; mk.st = 'at_from'; }
+      }
+    } else if (mk.st === 'at_from') {
+      _orbitTile(mk, sc.x, sc.y);
+      if (mk.waitCd > 0) { mk.waitCd--; return; }
+      const item = _tryPickup(src, cfg.filter);
+      if (item) { mk.carrying = item; mk.st = 'idle'; }
+      else mk.waitCd = 30;
+    } else if (mk.st === 'carrying') {
+      if (mk.waitCd > 0) { mk.waitCd--; return; }
+      if (moveTo(mk, mk.targetX, mk.targetY)) {
+        _rrDeliver(mk, cfg, cfg.dest.x, cfg.dest.y, 'rrFromIdx', 'froms');
+      }
+    }
+    return;
+  }
+
+  // ── TOS mode: single-from (optional), multi-target ──
   const targets = cfg.targets || [];
   if (!targets.length) { tickIdle(mk, tw); return; }
-  // Remove out-of-range targets
   const valid = targets.filter(t => inRange(tw, t.x, t.y));
   if (valid.length !== targets.length) {
     cfg.targets = valid;
-    if (cfg.rrIdx >= valid.length) cfg.rrIdx = 0;
+    if ((cfg.rrIdx || 0) >= valid.length) cfg.rrIdx = 0;
     if (!valid.length) { tickIdle(mk, tw); return; }
   }
 
@@ -408,75 +487,52 @@ function tickRoundRobin(mk, tw) {
       if (!result) { tickIdle(mk, tw); return; }
       mk._rrDest = result.idx;
       const c = cellCenter(result.t.x, result.t.y);
-      mk.targetX = c.x; mk.targetY = c.y;
-      mk.st = 'carrying';
-      return;
+      mk.targetX = c.x; mk.targetY = c.y; mk.st = 'carrying'; return;
     }
-    // Go to 'from' source if configured and in range; otherwise seek nearest item
     if (cfg.from && inRange(tw, cfg.from.x, cfg.from.y)) {
       const c = cellCenter(cfg.from.x, cfg.from.y);
-      mk.targetX = c.x; mk.targetY = c.y;
-      mk._itemTarget = cfg.from;
-      mk.st = 'moving';
+      mk.targetX = c.x; mk.targetY = c.y; mk._itemTarget = cfg.from; mk.st = 'moving';
     } else {
       const itemTile = findNearestStack(tw.x, tw.y, tw.range, cfg.filter, targets);
       if (itemTile) {
         const c = cellCenter(itemTile.x, itemTile.y);
-        mk.targetX = c.x; mk.targetY = c.y;
-        mk._itemTarget = itemTile;
-        mk.st = 'moving';
-      } else {
-        tickIdle(mk, tw);
-      }
+        mk.targetX = c.x; mk.targetY = c.y; mk._itemTarget = itemTile; mk.st = 'moving';
+      } else { tickIdle(mk, tw); }
     }
   } else if (mk.st === 'moving') {
     if (moveTo(mk, mk.targetX, mk.targetY)) {
-      const src = mk._itemTarget;
-      let item = null;
-      if (src && isStorageStockpile(src.x, src.y)) item = takeFromStockpileSlots(src.x, src.y, cfg.filter);
-      else if (src) item = takeFromCell(src.x, src.y, cfg.filter);
+      const item = _tryPickup(mk._itemTarget, cfg.filter);
       if (item) { mk.carrying = item; mk.st = 'idle'; }
-      else if (cfg.from) { mk.waitCd = 30; mk.st = 'idle'; } // wait at source, retry
+      else if (cfg.from) { mk.waitCd = 30; mk.st = 'at_from'; }
       else mk.st = 'idle';
     }
+  } else if (mk.st === 'at_from') {
+    // Orbit the from tile while waiting for items
+    if (cfg.from) {
+      const c = cellCenter(cfg.from.x, cfg.from.y);
+      _orbitTile(mk, c.x, c.y);
+    }
+    if (mk.waitCd > 0) { mk.waitCd--; return; }
+    const item = _tryPickup(cfg.from, cfg.filter);
+    if (item) { mk.carrying = item; mk.st = 'idle'; }
+    else mk.waitCd = 30;
   } else if (mk.st === 'carrying') {
     if (mk.waitCd > 0) { mk.waitCd--; moveTo(mk, mk.targetX, mk.targetY); return; }
     if (moveTo(mk, mk.targetX, mk.targetY)) {
       const destIdx = mk._rrDest ?? 0;
       const t = targets[destIdx];
       if (!t) { mk.st = 'idle'; return; }
-      // Deploy traps/consumables on path tiles (same as courier, no research needed)
-      if (mk.carrying && AUTO_PLACE_IDS.has(mk.carrying.type) && state.pathSet?.has(`${t.x},${t.y}`)) {
-        if (state.traps?.some(tr => tr.x === t.x && tr.y === t.y)) {
-          // Trap already there — advance to next target instead of waiting
-          cfg.rrIdx = (destIdx + 1) % targets.length;
-          mk._rrDest = undefined; mk.st = 'idle'; return;
-        }
-        const placed = placeConsumable({ id: mk.carrying.type, output: 'consumable' }, t.x, t.y);
-        if (placed) { mk.carrying = null; mk.trips++; cfg.rrIdx = (destIdx + 1) % targets.length; mk._rrDest = undefined; mk.st = 'idle'; return; }
-      }
-      {
-        const dropped = dropItem(t.x, t.y, mk.carrying.type);
-        if (dropped) {
-          mk.carrying = null;
-          mk.trips++;
-          cfg.rrIdx = (destIdx + 1) % targets.length;
-          mk._rrDest = undefined;
-          mk.st = 'idle';
-        } else {
-          // Try remaining targets
-          let found = false;
-          for (let i = 1; i < targets.length; i++) {
-            const ni = (destIdx + i) % targets.length;
-            if (canTileAccept(targets[ni].x, targets[ni].y, mk.carrying.type)) {
-              mk._rrDest = ni;
-              const c = cellCenter(targets[ni].x, targets[ni].y);
-              mk.targetX = c.x; mk.targetY = c.y;
-              found = true;
-              break;
-            }
+      mk._rrDest = destIdx; // keep for _rrDeliver
+      _rrDeliver(mk, cfg, t.x, t.y, 'rrIdx', 'targets');
+      // If _rrDeliver didn't deliver, try remaining targets
+      if (mk.st !== 'idle' && mk.waitCd <= 0) {
+        for (let i = 1; i < targets.length; i++) {
+          const ni = (destIdx + i) % targets.length;
+          if (canTileAccept(targets[ni].x, targets[ni].y, mk.carrying?.type)) {
+            mk._rrDest = ni;
+            const c = cellCenter(targets[ni].x, targets[ni].y);
+            mk.targetX = c.x; mk.targetY = c.y; break;
           }
-          if (!found) mk.waitCd = 60;
         }
       }
     }

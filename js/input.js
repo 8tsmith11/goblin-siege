@@ -271,10 +271,17 @@ function handleTap(e) {
       } else {
         showTip(monkey.cfg.targets.length >= 5 ? 'Max 5 targets!' : 'Already a target!');
       }
-      monkey.st = 'idle';
-      state.sel = null;
-      panelU();
-      return;
+      monkey.st = 'idle'; state.sel = null; panelU(); return;
+    }
+    if (field === 'rr_add_from') {
+      if (!monkey.cfg.froms) monkey.cfg.froms = [];
+      if (monkey.cfg.froms.length < 5 && !monkey.cfg.froms.some(f => f.x === c.x && f.y === c.y)) {
+        monkey.cfg.froms.push({ x: c.x, y: c.y });
+        showTip('From added!');
+      } else {
+        showTip(monkey.cfg.froms.length >= 5 ? 'Max 5 sources!' : 'Already a source!');
+      }
+      monkey.st = 'idle'; state.sel = null; panelU(); return;
     }
     if (field === 'boost') {
       const tgt = getCell(c.x, c.y)?.content;
