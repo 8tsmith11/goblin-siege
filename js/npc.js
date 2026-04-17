@@ -28,6 +28,11 @@ const NPC_LINES = {
     },
     {
       trigger: 'wave_prep',
+      wave: 12,
+      text: "Someone set up a shop nearby. Pip. I've seen him before. He doesn't age. I've stopped asking."
+    },
+    {
+      trigger: 'wave_prep',
       wave: 10,
       cond: s => !s.towers?.some(t => t.type === 'lab'),
       text: "No lab yet. That's interesting. Most build one. You haven't. I wonder what you know that they didn't."
