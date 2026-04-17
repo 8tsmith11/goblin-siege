@@ -27,13 +27,13 @@ export function showTowerSkill(tw) {
   h.textContent = TD[tw.type].icon + ' ' + TD[tw.type].name + ' Skills'; c.appendChild(h);
   const note = document.createElement('div');
   note.style.cssText = 'color:#64748b;font-size:9px;margin-bottom:6px';
-  note.textContent = 'A & B are mutually exclusive. Pick C or D (both require A or B). E requires both C and D.'; c.appendChild(note);
+  note.textContent = 'A & B are mutually exclusive. Pick C or D (both require A or B). E requires C or D.'; c.appendChild(note);
   const row = document.createElement('div'); row.className = 'skr';
   for (const [k, sk] of Object.entries(tree)) {
     const owned = !!tw.ownedSkills[k];
-    // E skill: only show if both C and D are owned on this tower
-    if (sk.req === 'both_cd') {
-      if (!tw.ownedSkills['C'] || !tw.ownedSkills['D']) continue;
+    // E skill: only show if C or D is owned on this tower
+    if (sk.req === 'either_cd') {
+      if (!tw.ownedSkills['C'] && !tw.ownedSkills['D']) continue;
     }
     const isBlocked = sk.excludes && !!tw.ownedSkills[sk.excludes];
     const needsReq = sk.req === 'any' && !Object.entries(tree).some(([k2, _]) => k2 !== 'C' && k2 !== 'D' && k2 !== 'E' && tw.ownedSkills[k2]);
