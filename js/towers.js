@@ -25,7 +25,7 @@ function spawnProjectile(tw, tgt, def, isFrenzySecondary = false) {
   if (isFrenzySecondary) {
      Object.assign(p, { x:tw.x, y:tw.y, tgt, dmg, spd:def.pSpd*0.06, clr:def.pClr, splash:tw.splash, slow:tw.slow, pierce:0, chain:0, speedUp:false, hits:[], stun:0, poison:null, blind:false, chainStun:0, bloodlust:tw.bloodlust, lingeringChill:false, brittleIce:false });
   } else {
-     Object.assign(p, { x:tw.x, y:tw.y, tgt, dmg, spd:def.pSpd*0.06, clr:def.pClr, splash:tw.splash, slow:tw.slow, pierce:tw.pierce||0, chain:tw.chain||0, speedUp:def.speedUp, hits:[], stun:tw.stun||0, poison:tw.poison||null, blind:tw.blind, chainStun:tw.chainStun||0, bloodlust:tw.bloodlust, lingeringChill:tw.lingeringChill||false, brittleIce:tw.brittleIce||false });
+     Object.assign(p, { x:tw.x, y:tw.y, tgt, dmg, spd:def.pSpd*0.06, clr:def.pClr, splash:tw.splash, slow:tw.slow, pierce:tw.pierce||0, chain:tw.chain||0, speedUp:def.speedUp, hits:[], stun:tw.stun||0, poison:tw.poison||null, blind:tw.blind, chainStun:tw.chainStun||0, bloodlust:tw.bloodlust, lingeringChill:tw.lingeringChill||false, brittleIce:tw.brittleIce||false, mastery:tw._mastery||false });
   }
   return p;
 }

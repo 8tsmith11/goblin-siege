@@ -209,18 +209,43 @@ export function render() {
       cx.drawImage(_imgHoard, tx, ty, CELL, CELL);
     } else {
       const _dis = tw.disabled && tw.disabledWave === state.wave;
-      cx.fillStyle = _dis ? '#1a0a0a' : isH ? '#0a3d2f' : tw._buffed ? '#1a2040' : '#171838';
+      const _mst = tw._mastery;
+      if (_mst) {
+        // Mastery: deep purple-gold gradient background
+        const grad = cx.createLinearGradient(tx, ty, tx + CELL, ty + CELL);
+        grad.addColorStop(0, '#1a0d30'); grad.addColorStop(0.5, '#2a1800'); grad.addColorStop(1, '#1a0d30');
+        cx.fillStyle = grad;
+      } else {
+        cx.fillStyle = _dis ? '#1a0a0a' : isH ? '#0a3d2f' : tw._buffed ? '#1a2040' : '#171838';
+      }
       cx.fillRect(tx + 2, ty + 2, CELL - 4, CELL - 4);
-      cx.strokeStyle = _dis ? '#ef4444' : isH ? '#10b981' : tw._buffed ? '#5eead4' : (def?.clr || '#555');
-      cx.lineWidth = tw._buffed ? 2 : 1.5; cx.strokeRect(tx + 2, ty + 2, CELL - 4, CELL - 4);
+      cx.strokeStyle = _dis ? '#ef4444' : _mst ? '#a855f7' : isH ? '#10b981' : tw._buffed ? '#5eead4' : (def?.clr || '#555');
+      cx.lineWidth = _mst ? 2.5 : tw._buffed ? 2 : 1.5; cx.strokeRect(tx + 2, ty + 2, CELL - 4, CELL - 4);
+      if (_mst) {
+        // Gold inner glow corners
+        cx.strokeStyle = '#f59e0b44'; cx.lineWidth = 1;
+        cx.strokeRect(tx + 4, ty + 4, CELL - 8, CELL - 8);
+      }
       cx.font = Math.floor(CELL * 0.35) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
       cx.fillText(isH ? '🏺' : (def?.icon || '?'), tx + CELL / 2, ty + CELL / 2);
     }
     if (tw.level > 0) { cx.font = 'bold ' + Math.floor(CELL * 0.16) + 'px Anybody,sans-serif'; cx.fillStyle = '#fbbf24'; cx.fillText('★'.repeat(Math.min(tw.level, 5)), tx + CELL / 2, ty + CELL - 2); }
     if (tw._mastery) {
-      const pulse = 0.5 + Math.sin(ticks * 0.05) * 0.15;
-      cx.beginPath(); cx.arc(px, py, CELL * 0.52, 0, Math.PI * 2);
-      cx.strokeStyle = 'rgba(168,85,247,' + pulse.toFixed(2) + ')'; cx.lineWidth = 2; cx.stroke();
+      const pulse = 0.5 + Math.sin(ticks * 0.05) * 0.2;
+      // Outer pulsing ring
+      cx.beginPath(); cx.arc(px, py, CELL * 0.54, 0, Math.PI * 2);
+      cx.strokeStyle = `rgba(168,85,247,${pulse.toFixed(2)})`; cx.lineWidth = 2.5; cx.stroke();
+      // Gold accent ring
+      cx.beginPath(); cx.arc(px, py, CELL * 0.48, 0, Math.PI * 2);
+      cx.strokeStyle = `rgba(245,158,11,${(pulse * 0.5).toFixed(2)})`; cx.lineWidth = 1; cx.stroke();
+      // Emit sparkle particles every ~30 ticks
+      if (ticks % 30 === 0) {
+        const angle = Math.random() * Math.PI * 2;
+        const r = CELL * (0.4 + Math.random() * 0.2);
+        state.particles.push({ x: px + Math.cos(angle) * r, y: py + Math.sin(angle) * r,
+          vx: (Math.random() - 0.5) * 0.5, vy: -0.4 - Math.random() * 0.4,
+          life: 25 + Math.random() * 20, clr: Math.random() < 0.5 ? '#a855f7' : '#f59e0b', sz: 2 + Math.random() });
+      }
     }
 
 
@@ -296,8 +321,15 @@ export function render() {
   // Projectiles
   projectiles.forEach(p => {
     const px = p.x * CELL + CELL / 2, py = p.y * CELL + CELL / 2;
-    cx.fillStyle = p.clr; cx.beginPath(); cx.arc(px, py, 2.5, 0, Math.PI * 2); cx.fill();
-    cx.fillStyle = p.clr + '44'; cx.beginPath(); cx.arc(px, py, 4, 0, Math.PI * 2); cx.fill();
+    if (p.mastery) {
+      // Mastery projectile: larger core + purple outer glow + gold inner
+      cx.fillStyle = '#f59e0b'; cx.beginPath(); cx.arc(px, py, 3.5, 0, Math.PI * 2); cx.fill();
+      cx.fillStyle = p.clr + 'cc'; cx.beginPath(); cx.arc(px, py, 5.5, 0, Math.PI * 2); cx.fill();
+      cx.fillStyle = '#a855f744'; cx.beginPath(); cx.arc(px, py, 8, 0, Math.PI * 2); cx.fill();
+    } else {
+      cx.fillStyle = p.clr; cx.beginPath(); cx.arc(px, py, 2.5, 0, Math.PI * 2); cx.fill();
+      cx.fillStyle = p.clr + '44'; cx.beginPath(); cx.arc(px, py, 4, 0, Math.PI * 2); cx.fill();
+    }
   });
 
   // Beams
