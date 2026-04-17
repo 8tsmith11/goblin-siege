@@ -75,8 +75,8 @@ export function sfxElderSpeak() {
 let _humOsc = null, _humGain = null;
 export function startHum() {
   if (!AC || !sOn || _humOsc?.length) return;
-  // Silence BGM while hum plays
-  if (window.bgm && sOn) { window.bgm.volume = 0; }
+  // Duck BGM while hum plays
+  if (window.bgm && sOn) { window.bgm.volume = 0.05; }
   _humGain = AC.createGain();
   _humGain.gain.setValueAtTime(0, AC.currentTime);
   _humGain.gain.linearRampToValueAtTime(0.85, AC.currentTime + 3);

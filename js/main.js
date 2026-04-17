@@ -362,6 +362,7 @@ function update() {
     if (state.wave === 3 && !state.frequencyPlayed) {
       state.frequencyPlayed = true;
       startHum();
+      setTimeout(() => stopHum(), 10000);
       bus.emit('trigger', { type: 'frequency_played' });
     }
     autoSave();
