@@ -208,9 +208,10 @@ export function render() {
     if (isH && _imgHoard.naturalWidth) {
       cx.drawImage(_imgHoard, tx, ty, CELL, CELL);
     } else {
-      cx.fillStyle = tw.disabled ? '#1a0a0a' : isH ? '#0a3d2f' : tw._buffed ? '#1a2040' : '#171838';
+      const _dis = tw.disabled && tw.disabledWave === state.wave;
+      cx.fillStyle = _dis ? '#1a0a0a' : isH ? '#0a3d2f' : tw._buffed ? '#1a2040' : '#171838';
       cx.fillRect(tx + 2, ty + 2, CELL - 4, CELL - 4);
-      cx.strokeStyle = tw.disabled ? '#ef4444' : isH ? '#10b981' : tw._buffed ? '#5eead4' : (def?.clr || '#555');
+      cx.strokeStyle = _dis ? '#ef4444' : isH ? '#10b981' : tw._buffed ? '#5eead4' : (def?.clr || '#555');
       cx.lineWidth = tw._buffed ? 2 : 1.5; cx.strokeRect(tx + 2, ty + 2, CELL - 4, CELL - 4);
       cx.font = Math.floor(CELL * 0.35) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
       cx.fillText(isH ? '🏺' : (def?.icon || '?'), tx + CELL / 2, ty + CELL / 2);
