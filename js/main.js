@@ -253,7 +253,7 @@ function update() {
       e.x = state.path[0].x; e.y = state.path[0].y; e.pi = 0;
       state.enemies.push(e);
       if (e.boss) { sfxBoss(); showBL(e.line); }
-      state.spawnTimer = Math.max(8, 28 - state.wave * 0.6);
+      state.spawnTimer = state.wave <= 4 ? Math.max(20, 44 - state.wave * 4) : Math.max(8, 28 - state.wave * 0.6);
     }
   }
 
@@ -411,8 +411,8 @@ export function startGame() {
 export function startWave() {
   stopHum();
   state.wave++;
-  // Unlock lab at wave 5
-  if (state.wave >= 5 && !state.unlockedTowers.has('lab')) {
+  // Unlock lab at wave 8
+  if (state.wave >= 8 && !state.unlockedTowers.has('lab')) {
     state.unlockedTowers.add('lab');
     addFeed('system', '🧪 The Lab is now available to build.');
     showBanner('🧪 Lab Unlocked');
@@ -447,7 +447,6 @@ export function startPrep() {
   if (state.wave === 3 && !state.frequencyPlayed) {
     state.frequencyPlayed = true;
     startHum();
-    addFeed('system', '〰️ A low hum fills the air. 40Hz. Something stirs.');
     bus.emit('trigger', { type: 'frequency_played' });
   }
 }

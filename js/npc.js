@@ -23,7 +23,7 @@ const NPC_LINES = {
     },
     {
       trigger: 'wave_prep',
-      wave: 5,
+      wave: 8,
       text: "The Lab can be placed now, if you're inclined toward observation. I've found observation helps. Eventually."
     },
     {
