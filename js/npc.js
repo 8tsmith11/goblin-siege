@@ -64,12 +64,14 @@ function _elderSpeak(text) {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const utt = new SpeechSynthesisUtterance(text);
-  utt.rate = 0.82;
-  utt.pitch = 0.75;
-  utt.volume = 1.0;
-  // Prefer a deep male voice if available
+  utt.rate = 0.68;
+  utt.pitch = 0.55;
+  utt.volume = 0.82;
+  // Prefer a calm deep English voice — UK tends to be smoother
   const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find(v => /male/i.test(v.name) && v.lang.startsWith('en'))
+  const preferred = voices.find(v => /daniel|oliver|arthur|george/i.test(v.name))
+    || voices.find(v => v.lang === 'en-GB')
+    || voices.find(v => /male/i.test(v.name) && v.lang.startsWith('en'))
     || voices.find(v => v.lang.startsWith('en'))
     || voices[0];
   if (preferred) utt.voice = preferred;
