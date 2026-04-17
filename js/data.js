@@ -29,7 +29,7 @@ export const TOWER_SKILLS = {
     A: { name:'Frenzy',      desc:'Double shot',                                        excludes:'B', cost:{dust:25,gold:50},  owned:false,            apply:tw=>{ tw.frenzy=true; } },
     B: { name:'Savage Bite', desc:'Triple damage, halve rate',                          excludes:'A', cost:{dust:25,gold:50},  owned:false,            apply:tw=>{ tw.dmg*=3; tw.rate*=2; } },
     C: { name:'Iron Mane',   desc:'+60% DMG, applies slow on hit',                     excludes:'D', cost:{dust:50,gold:100}, owned:false, req:'any', apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.6); tw.slow=Math.max(tw.slow,0.25); } },
-    D: { name:'Pride',       desc:'+30% DMG per adjacent Lion (diagonals count)',       excludes:'C', cost:{dust:50,gold:100}, owned:false, req:'any', apply:tw=>{ tw.packHunter=true; } },
+    D: { name:"Lion's Pride",       desc:'+30% DMG per adjacent Lion (diagonals count)',       excludes:'C', cost:{dust:50,gold:100}, owned:false, req:'any', apply:tw=>{ tw.packHunter=true; } },
     E: { name:'Mastery',     desc:'+25% DMG, range, and rate. Purple aura.', cost:{dust:60}, owned:false, req:'both_cd', apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.25); tw.range=Math.round(tw.range*1.25*10)/10; tw.rate=Math.max(1,Math.round(tw.rate*0.8)); tw._mastery=true; } },
   },
   penguin: {

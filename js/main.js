@@ -99,7 +99,7 @@ import { initWeather, tickWeather, updateWeather } from './weather.js';
 import { refreshPipStock, syncPipBtn, updatePipPanel, initPipUI } from './ui-pip.js';
 import { syncInvBtn, addToInventory } from './ui-inventory.js';
 
-export const VERSION = 'v1.7';
+export const VERSION = 'v1.8';
 export const WORLD_COLS = 20;
 export const WORLD_ROWS = 12;
 export const PAD = 6; // forest border width in tiles
