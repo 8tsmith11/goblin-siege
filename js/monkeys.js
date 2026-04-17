@@ -80,36 +80,55 @@ function moveToRaw(mk, tx, ty) {
   return false;
 }
 
-// Movement with water avoidance — follows water border tile chain
+// Movement with water avoidance — go to nearest border tile, then follow edge toward dest
 function moveTo(mk, tx, ty) {
   const dx = tx - mk.x, dy = ty - mk.y, d = Math.hypot(dx, dy);
   const weatherMult = state.weather?.id === 'rain' ? 0.8 : 1;
   const spd = MONKEY_SPEED * state.CELL * weatherMult;
-  if (d <= spd) { mk.x = tx; mk.y = ty; mk._waterWpt = null; return true; }
+  if (d <= spd) { mk.x = tx; mk.y = ty; mk._waterWpt = null; mk._waterWptPrev = null; return true; }
   const { CELL } = state;
   const nx = dx / d, ny = dy / d;
   const px = mk.x + nx * spd, py = mk.y + ny * spd;
-  // Direct step clear — go straight, discard any active waypoint
+  // Direct step clear — go straight
   if (getCell(Math.floor(px / CELL), Math.floor(py / CELL))?.type !== 'water') {
-    mk._waterWpt = null; mk.x = px; mk.y = py; return false;
+    mk._waterWpt = null; mk._waterWptPrev = null; mk.x = px; mk.y = py; return false;
   }
-  // Blocked by water — follow border tile chain
+  // Blocked by water
   const borders = state.waterBorderTiles;
   if (!borders?.length) return false;
-  // Refresh waypoint: on first block, or when arrived at current waypoint
-  const wptX = mk._waterWpt != null ? mk._waterWpt.x * CELL + CELL / 2 : null;
-  const wptY = mk._waterWpt != null ? mk._waterWpt.y * CELL + CELL / 2 : null;
-  const arrivedAtWpt = wptX !== null && Math.hypot(mk.x - wptX, mk.y - wptY) < CELL * 0.5;
-  if (mk._waterWpt == null || arrivedAtWpt) {
-    let bestScore = Infinity;
+  // First block: find nearest border tile to current position
+  if (mk._waterWpt == null) {
+    let best = null, bestD = Infinity;
     for (const b of borders) {
-      // Exclude the tile we just arrived at to force progress
-      if (arrivedAtWpt && mk._waterWpt && b.x === mk._waterWpt.x && b.y === mk._waterWpt.y) continue;
-      const bx = b.x * CELL + CELL / 2, by = b.y * CELL + CELL / 2;
-      const score = Math.hypot(mk.x - bx, mk.y - by) + Math.hypot(bx - tx, by - ty);
-      if (score < bestScore) { bestScore = score; mk._waterWpt = b; }
+      const dist = Math.hypot(mk.x - (b.x * CELL + CELL / 2), mk.y - (b.y * CELL + CELL / 2));
+      if (dist < bestD) { bestD = dist; best = b; }
+    }
+    mk._waterWpt = best; mk._waterWptPrev = null;
+  }
+  // At waypoint: check if dest now reachable, else step to next border tile closer to dest
+  if (mk._waterWpt) {
+    const wptX = mk._waterWpt.x * CELL + CELL / 2, wptY = mk._waterWpt.y * CELL + CELL / 2;
+    if (Math.hypot(mk.x - wptX, mk.y - wptY) < CELL * 0.5) {
+      // Try direct to dest
+      const tdx = tx - mk.x, tdy = ty - mk.y, td = Math.hypot(tdx, tdy);
+      const npx = mk.x + tdx / td * spd, npy = mk.y + tdy / td * spd;
+      if (getCell(Math.floor(npx / CELL), Math.floor(npy / CELL))?.type !== 'water') {
+        mk._waterWpt = null; mk._waterWptPrev = null; mk.x = npx; mk.y = npy; return false;
+      }
+      // Pick next border tile closest to dest, excluding current and prev
+      const prev = mk._waterWptPrev;
+      let next = null, nextScore = Infinity;
+      for (const b of borders) {
+        if (b.x === mk._waterWpt.x && b.y === mk._waterWpt.y) continue;
+        if (prev && b.x === prev.x && b.y === prev.y) continue;
+        const score = Math.hypot(b.x * CELL + CELL / 2 - tx, b.y * CELL + CELL / 2 - ty);
+        if (score < nextScore) { nextScore = score; next = b; }
+      }
+      mk._waterWptPrev = mk._waterWpt;
+      mk._waterWpt = next;
     }
   }
+  // Move toward current waypoint
   if (mk._waterWpt) {
     const gx = mk._waterWpt.x * CELL + CELL / 2, gy = mk._waterWpt.y * CELL + CELL / 2;
     const ddx = gx - mk.x, ddy = gy - mk.y, dd = Math.hypot(ddx, ddy);

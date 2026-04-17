@@ -400,6 +400,8 @@ function update() {
 /* ═══ Game flow ═══ */
 export function startGame() {
   _ΨΔ(() => { _wG(100); _wL(20); });
+  if (!state.worldGenChoices.wave10Blueprint)
+    state.worldGenChoices.wave10Blueprint = Math.random() < 0.5 ? 'clown' : 'lizard';
   if (!state.research) state.research = buildResearchGraph();
   state.started = true; state.phase = 'prep'; state.prepTicks = 1800;
   invalidateBg(); initSz(); hideOv(); hudU(); panelU();

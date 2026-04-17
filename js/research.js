@@ -73,8 +73,10 @@ export function buildResearchGraph() {
   const nonHidden = VARIABLE_RESEARCH.filter(n => !n.hidden);
   const pool = [...nonHidden].sort(() => Math.random() - 0.5);
   const picked = pool.slice(0, 4 + (Math.random() < 0.5 ? 0 : 1));
+  const bpTower = state.worldGenChoices?.wave10Blueprint;
   const nodes = {};
   for (const [id, def] of Object.entries(FIXED_RESEARCH)) {
+    if (bpTower && def.unlocks === bpTower) continue; // this tower comes via wave-10 blueprint drop
     nodes[id] = { ...def, id, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
   }
   for (const def of picked) {
