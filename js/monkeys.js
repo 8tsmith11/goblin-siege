@@ -544,16 +544,27 @@ function applyBoosterEffects() {
 // ─── Main update ─────────────────────────────────────────────────────────────
 
 export function updateMonkeys() {
-  const { towers } = state;
+  const { towers, CELL } = state;
   for (const tw of towers) {
     if (tw.type !== 'monkey' || !tw.monkeys) continue;
+    const hutCx = tw.x * CELL + CELL / 2, hutCy = tw.y * CELL + CELL / 2;
     for (const mk of tw.monkeys) {
+      const prevX = mk.x, prevY = mk.y;
       if      (mk.role === 'gatherer')    tickGatherer(mk, tw);
       else if (mk.role === 'courier')     tickCourier(mk, tw);
       else if (mk.role === 'booster')     tickBooster(mk, tw);
       else if (mk.role === 'round_robin') tickRoundRobin(mk, tw);
       else if (mk.role === 'harvester')   tickHarvester(mk, tw);
       else                                tickIdle(mk, tw);
+      // Stuck detection: if on water or barely moved for too long, snap back to hut
+      const onWater = state.grid.length && getCell(Math.floor(mk.x / CELL), Math.floor(mk.y / CELL))?.type === 'water';
+      if (onWater) { mk.x = hutCx; mk.y = hutCy; mk._stuckTicks = 0; mk._waterWpt = null; continue; }
+      if (Math.hypot(mk.x - prevX, mk.y - prevY) < 0.1) {
+        mk._stuckTicks = (mk._stuckTicks || 0) + 1;
+        if (mk._stuckTicks > 120) { mk.x = hutCx; mk.y = hutCy; mk._stuckTicks = 0; mk._waterWpt = null; mk.st = 'idle'; }
+      } else {
+        mk._stuckTicks = 0;
+      }
     }
   }
   applyBoosterEffects();
