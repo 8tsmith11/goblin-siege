@@ -14,9 +14,14 @@ export function updateProjectiles() {
     }
     const dx = p.tgt.x - p.x, dy = p.tgt.y - p.y, d = Math.sqrt(dx * dx + dy * dy);
     if (d < p.spd + 0.02) {
-      p.tgt.hp -= p.dmg; sfxHit();
-      mkF(p.tgt.x * CELL + CELL / 2, p.tgt.y * CELL + CELL / 2, p.dmg, '#fbbf24');
-      if (p.slow > 0) { p.tgt.slow = Math.max(p.tgt.slow, p.slow); p.tgt.st = 80; }
+      let dmg = p.dmg;
+      if (p.brittleIce && p.tgt.slow > 0) dmg = Math.round(dmg * 1.8);
+      p.tgt.hp -= dmg; sfxHit();
+      mkF(p.tgt.x * CELL + CELL / 2, p.tgt.y * CELL + CELL / 2, dmg, '#fbbf24');
+      if (p.slow > 0) {
+        p.tgt.slow = Math.max(p.tgt.slow, p.slow); p.tgt.st = 80;
+        if (p.lingeringChill && !p.tgt._permSlow) p.tgt._permSlow = p.tgt.slow * 0.25;
+      }
       if (p.stun > 0) p.tgt.stunned = Math.max(p.tgt.stunned, p.stun);
       if (p.blind) p.tgt.slow = Math.max(p.tgt.slow, 0.5);
       if (p.poison) p.tgt.poison = { dmg: p.poison.dmg, dur: p.poison.dur };

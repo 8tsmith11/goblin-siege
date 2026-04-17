@@ -26,17 +26,17 @@ export const TOWER_SKILLS = {
     E: { name:'Mastery',        desc:'+25% DMG, range, and rate. Purple aura.', cost:{dust:60}, owned:false, req:'both_cd', apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.25); tw.range=Math.round(tw.range*1.25*10)/10; tw.rate=Math.max(1,Math.round(tw.rate*0.8)); tw._mastery=true; } },
   },
   lion: {
-    A: { name:'Frenzy',      desc:'Double shot',                         excludes:'B', cost:{dust:25,gold:50},  owned:false,              apply:tw=>{ tw.frenzy=true; } },
-    B: { name:'Savage Bite', desc:'Triple damage, halve rate',           excludes:'A', cost:{dust:25,gold:50},  owned:false,              apply:tw=>{ tw.dmg*=3; tw.rate*=2; } },
-    C: { name:'Iron Mane',   desc:'+60% DMG, hits slow enemies',         excludes:'D', cost:{dust:50,gold:100}, owned:false, req:'any',   apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.6); tw.slow=Math.max(tw.slow,0.25); } },
-    D: { name:'Relentless',  desc:'+35% attack speed',                   excludes:'C', cost:{dust:50,gold:100}, owned:false, req:'any',   apply:tw=>{ tw.rate=Math.round(tw.rate*0.65); } },
+    A: { name:'Frenzy',      desc:'Double shot',                                        excludes:'B', cost:{dust:25,gold:50},  owned:false,            apply:tw=>{ tw.frenzy=true; } },
+    B: { name:'Savage Bite', desc:'Triple damage, halve rate',                          excludes:'A', cost:{dust:25,gold:50},  owned:false,            apply:tw=>{ tw.dmg*=3; tw.rate*=2; } },
+    C: { name:'Iron Mane',   desc:'+60% DMG, applies slow on hit',                     excludes:'D', cost:{dust:50,gold:100}, owned:false, req:'any', apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.6); tw.slow=Math.max(tw.slow,0.25); } },
+    D: { name:'Pack Hunter', desc:'+30% DMG per adjacent Lion (diagonals count)',       excludes:'C', cost:{dust:50,gold:100}, owned:false, req:'any', apply:tw=>{ tw.packHunter=true; } },
     E: { name:'Mastery',     desc:'+25% DMG, range, and rate. Purple aura.', cost:{dust:60}, owned:false, req:'both_cd', apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.25); tw.range=Math.round(tw.range*1.25*10)/10; tw.rate=Math.max(1,Math.round(tw.rate*0.8)); tw._mastery=true; } },
   },
   penguin: {
-    A: { name:'Avalanche',  desc:'Add splash 1.2',                       excludes:'B', cost:{dust:25,gold:50},  owned:false,              apply:tw=>{ tw.splash=1.2; } },
-    B: { name:'Permafrost', desc:'Slow 80%, duration x2',                excludes:'A', cost:{dust:25,gold:50},  owned:false,              apply:tw=>{ tw.slow=.8; tw.slowDur=160; } },
-    C: { name:'Blizzard',   desc:'AoE 20% slow to nearby enemies on shot', excludes:'D', cost:{dust:50,gold:100}, owned:false, req:'any',   apply:tw=>{ tw.blizzard=true; } },
-    D: { name:'Ice Lance',  desc:'Shots pierce 3 enemies, +20% DMG',     excludes:'C', cost:{dust:50,gold:100}, owned:false, req:'any',   apply:tw=>{ tw.pierce=(tw.pierce||0)+3; tw.dmg=Math.round(tw.dmg*1.2); } },
+    A: { name:'Cryo Shell',      desc:'Shots explode on impact (splash 1.2)',              excludes:'B', cost:{dust:25,gold:50},  owned:false,            apply:tw=>{ tw.splash=1.2; } },
+    B: { name:'Glacial Bite',    desc:'Slow increased to 80%',                             excludes:'A', cost:{dust:25,gold:50},  owned:false,            apply:tw=>{ tw.slow=.8; } },
+    C: { name:'Lingering Chill', desc:'Slowed enemies retain 25% slow permanently',        excludes:'D', cost:{dust:50,gold:100}, owned:false, req:'any', apply:tw=>{ tw.lingeringChill=true; } },
+    D: { name:'Brittle Ice',     desc:'+80% DMG to enemies that are already slowed',       excludes:'C', cost:{dust:50,gold:100}, owned:false, req:'any', apply:tw=>{ tw.brittleIce=true; } },
     E: { name:'Mastery',    desc:'+25% DMG, range, and rate. Purple aura.', cost:{dust:60}, owned:false, req:'both_cd', apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.25); tw.range=Math.round(tw.range*1.25*10)/10; tw.rate=Math.max(1,Math.round(tw.rate*0.8)); tw._mastery=true; } },
   },
   fish: {
@@ -62,8 +62,8 @@ export const TOWER_SKILLS = {
   },
   clown: {
     A: { name:'Wide Act',           desc:'Reverses 2 enemies at once, +0.5 range',              excludes:'B', cost:{dust:25,gold:50},  owned:false,            apply:tw=>{ tw.reverseCount=2; tw.reverseRange+=0.5; } },
-    B: { name:'Pratfall',           desc:'Reversed target also stunned 25 ticks',               excludes:'A', cost:{dust:25,gold:50},  owned:false,            apply:tw=>{ tw.reverseStun=true; } },
-    C: { name:"Jester's Privilege", desc:'Stuns all other enemies in range 20 ticks, confetti', excludes:'D', cost:{dust:50,gold:100}, owned:false, req:'any', apply:tw=>{ tw.jesterPriv=true; } },
+    B: { name:'Pratfall',           desc:'Reversed target also stunned 10 ticks',               excludes:'A', cost:{dust:25,gold:50},  owned:false,            apply:tw=>{ tw.reverseStun=true; } },
+    C: { name:"Jester's Privilege", desc:'Swaps the frontmost and backmost enemy with dramatic confetti', excludes:'D', cost:{dust:50,gold:100}, owned:false, req:'any', apply:tw=>{ tw.jesterPriv=true; } },
     D: { name:'Grand Finale',       desc:'Reverse duration x2',                                  excludes:'C', cost:{dust:50,gold:100}, owned:false, req:'any', apply:tw=>{ tw.reverseDur=Math.round(tw.reverseDur*2); } },
   },
   heron: {

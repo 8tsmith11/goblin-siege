@@ -105,7 +105,7 @@ function applyStatusEffects(e, freezeActive, ticks, CELL, particles, enemies) {
 
   if (e.reverseTimer > 0) { e.reverseTimer--; if (e.reverseTimer <= 0) e.reversed = false; }
   if (e.stealthTimer > 0) { e.stealthTimer--; if (e.stealthTimer <= 0) e.stealth = false; }
-  if (e.st > 0) { e.st--; if (e.st <= 0) e.slow = 0; }
+  if (e.st > 0) { e.st--; if (e.st <= 0) e.slow = e._permSlow || 0; }
 
   if (e.poison) {
     e.hp -= e.poison.dmg; e.poison.dur--;
@@ -123,6 +123,13 @@ function applyStatusEffects(e, freezeActive, ticks, CELL, particles, enemies) {
 }
 
 function moveEnemy(e, path) {
+  // Jester's Privilege rush: zip quickly to swap destination
+  if (e._rushToX !== undefined) {
+    const dx = e._rushToX - e.x, dy = e._rushToY - e.y, d = Math.sqrt(dx*dx + dy*dy);
+    if (d < 0.32) { e.x = e._rushToX; e.y = e._rushToY; e.pi = e._rushToPi; delete e._rushToX; delete e._rushToY; delete e._rushToPi; }
+    else { e.x += dx/d * 0.3; e.y += dy/d * 0.3; }
+    return;
+  }
   const nextI = e.reversed ? Math.max(0, e.pi - 1) : Math.min(path.length - 1, e.pi + 1);
   const t = path[nextI];
 

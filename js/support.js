@@ -53,22 +53,34 @@ export function updateClown() {
 
     targets.forEach(tgt => {
       tgt.reversed = true; tgt.reverseTimer = cl.reverseDur;
-      if (cl.reverseStun) tgt.stunned = Math.max(tgt.stunned, 25);
+      if (cl.reverseStun) tgt.stunned = Math.max(tgt.stunned, 10);
     });
 
-    // Jester's Privilege: stun all non-target enemies in range with confetti
+    // Jester's Privilege: swap frontmost and backmost enemies globally
     if (cl.jesterPriv) {
-      const allInR = getEnemiesInRadius(grid, cl.x, cl.y, cl.reverseRange).filter(e => !e.boss);
-      allInR.forEach(e => {
-        if (!targets.includes(e)) e.stunned = Math.max(e.stunned, 20);
-        spawnParticles(particles, getCenter(e.x, CELL), getCenter(e.y, CELL), 5,
-          { spreadX: 2, spreadY: 2, life: 22, clr: CONFETTI[Math.floor(Math.random() * CONFETTI.length)], sz: 4 });
-      });
+      const all = state.enemies.filter(e => !e.dead && !e.boss);
+      if (all.length >= 2) {
+        const front = all.reduce((a, b) => a.pi > b.pi ? a : b);
+        const back  = all.reduce((a, b) => a.pi < b.pi ? a : b);
+        if (front !== back) {
+          // spawn huge confetti bursts at both positions + midpoint
+          const mx = (front.x + back.x) / 2, my = (front.y + back.y) / 2;
+          for (const pos of [[front.x, front.y],[back.x, back.y],[mx, my]]) {
+            spawnParticles(particles, getCenter(pos[0], CELL), getCenter(pos[1], CELL), 20,
+              { spreadX: 3, spreadY: 3, life: 30, clr: CONFETTI[Math.floor(Math.random() * CONFETTI.length)], sz: 5 });
+          }
+          // give each a rush destination toward the other's current position
+          const [fx, fy, fpi] = [front.x, front.y, front.pi];
+          front._rushToX = back.x; front._rushToY = back.y; front._rushToPi = back.pi;
+          back._rushToX  = fx;     back._rushToY  = fy;     back._rushToPi  = fpi;
+          mkF(getCenter(mx, CELL), getCenter(my, CELL), '🎪 SWAP!', '#f472b6');
+        }
+      }
     }
 
     cl.cd = cl.reverseCD; sfxClown();
-    spawnParticles(particles, getCenter(cl.x, CELL), getCenter(cl.y, CELL), cl.jesterPriv ? 16 : 8, { spreadX: 4, spreadY: 4, life: 20, clr: '#f472b6', sz: 3 });
-    mkF(getCenter(cl.x, CELL), getCenter(cl.y, CELL), cl.jesterPriv ? '🤡 CHAOS!' : '🤡 REVERSE!', '#f472b6');
+    spawnParticles(particles, getCenter(cl.x, CELL), getCenter(cl.y, CELL), cl.jesterPriv ? 20 : 8, { spreadX: 4, spreadY: 4, life: 20, clr: '#f472b6', sz: 3 });
+    mkF(getCenter(cl.x, CELL), getCenter(cl.y, CELL), cl.jesterPriv ? '🤡 SWAP!' : '🤡 REVERSE!', '#f472b6');
   });
 }
 
