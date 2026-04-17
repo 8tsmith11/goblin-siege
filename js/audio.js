@@ -82,7 +82,7 @@ export function startHum() {
   _humGain.gain.linearRampToValueAtTime(0.85, AC.currentTime + 3);
   _humGain.connect(MG);
   _humOsc = [];
-  for (const [freq, vol] of [[80, 0.6], [160, 0.35], [240, 0.2], [440, 0.12]]) {
+  for (const [freq, vol] of [[220, 0.5], [440, 0.3], [660, 0.15], [880, 0.08]]) {
     const o = AC.createOscillator(), g = AC.createGain();
     o.type = 'sine'; o.frequency.value = freq;
     g.gain.value = vol;
