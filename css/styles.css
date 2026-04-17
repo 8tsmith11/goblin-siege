@@ -65,15 +65,15 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 #bL.sh{opacity:1}
 #evBanner{position:absolute;top:20%;left:50%;transform:translate(-50%,-50%);background:#1a2236ee;border:2px solid #f59e0b;border-radius:10px;padding:8px 16px;font-size:11px;color:var(--gold);font-weight:700;text-align:center;pointer-events:none;z-index:32;opacity:0;transition:opacity .3s;max-width:85%}
 #evBanner.sh{opacity:1}
-#tip{position:absolute;bottom:90px;left:50%;transform:translateX(-50%);background:#1a2236dd;color:#94a3b8;font-size:9px;padding:4px 10px;border-radius:6px;border:1px solid #2a3550;pointer-events:none;z-index:20;white-space:nowrap;opacity:0;transition:opacity .3s}
+#tip{position:absolute;bottom:90px;left:50%;transform:translateX(-50%);background:#1a2236ee;color:#e2e8f0;font-size:36px;font-weight:700;padding:16px 40px;border-radius:12px;border:2px solid #2a3550;pointer-events:none;z-index:20;white-space:nowrap;opacity:0;transition:opacity .3s}
 #tip.sh{opacity:1}
 .flt{position:absolute;font-size:10px;font-weight:800;pointer-events:none;z-index:25;animation:fu .6s ease-out forwards;text-shadow:0 1px 2px #000}
 @keyframes fu{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-20px) scale(.8)}}
 .fltG{position:absolute;font-size:16px;font-weight:800;pointer-events:none;z-index:25;animation:fuG 1.9s ease-out forwards;text-shadow:0 1px 3px #000;white-space:nowrap}
 @keyframes fuG{0%{opacity:1;transform:translateY(0) scale(1.1)}100%{opacity:0;transform:translateY(-38px) scale(.85)}}
-#npcBubble{position:absolute;background:#101e18;border:1.5px solid #4ade80;border-radius:10px;padding:9px 13px;max-width:210px;font-size:12px;color:#d1fae5;pointer-events:none;z-index:35;line-height:1.55;box-shadow:0 2px 14px rgba(0,0,0,.75);opacity:0;transition:opacity .5s;white-space:normal}
+#npcBubble{position:absolute;background:rgba(15,25,15,0.92);border:1.5px solid #86efac;border-radius:10px;padding:14px 18px;max-width:280px;font-size:18px;color:#d1fae5;pointer-events:none;z-index:35;line-height:1.55;box-shadow:0 2px 14px rgba(0,0,0,.75);opacity:0;transition:opacity .5s;white-space:normal}
 #npcBubble.sh{opacity:1}
-#npcBubble::after{content:'';position:absolute;right:-9px;top:50%;transform:translateY(-50%);border:5px solid transparent;border-left-color:#4ade80}
+#npcBubble::after{content:'';position:absolute;right:-9px;top:50%;transform:translateY(-50%);border:5px solid transparent;border-left-color:#86efac}
 #hRes{display:flex;align-items:center;gap:6px;flex-shrink:0}
 #skP{position:absolute;inset:0;background:rgba(11,14,23,.96);z-index:55;display:none;flex-direction:column;align-items:center;padding:8px;overflow-y:auto}
 #skP.sh{display:flex}
@@ -207,6 +207,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .inv-cell .inv-cnt{position:absolute;bottom:3px;right:4px;font-size:8px;font-weight:700;color:#fbbf24;background:rgba(0,0,0,.7);border-radius:3px;padding:0 2px;line-height:1.4}
 .inv-equipped-label{font-size:10px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
 .inv-empty-msg{font-size:12px;color:#374151;font-style:italic;padding:8px 0}
+#ledgerBox{background:#0d1520;border:2px solid #a78bfa;border-radius:16px;padding:40px 60px;text-align:center;min-width:320px;box-shadow:0 0 40px rgba(168,85,247,.4)}
+#ledgerTitle{font-family:'MedievalSharp',cursive;font-size:28px;color:#a78bfa;margin-bottom:24px}
+.ledger-row{display:flex;justify-content:space-between;gap:40px;padding:10px 0;border-bottom:1px solid rgba(168,85,247,.2);font-size:16px}
+.ledger-label{color:#94a3b8}.ledger-val{color:#e2e8f0;font-weight:800;font-size:20px}
+#ledgerDismiss{margin-top:24px;color:#64748b;font-size:13px;font-style:italic}
 .inv-rarity{position:absolute;top:3px;right:4px;font-size:9px;line-height:1}
 #pipBtn{top:210px;border-color:#eab308;box-shadow:0 0 10px rgba(234,179,8,0.4)}
 #pipP{position:absolute;right:62px;top:160px;width:290px;max-height:calc(100% - 180px);background:rgba(11,14,23,.98);border:2px solid #713f12;border-radius:10px;z-index:74;display:none;flex-direction:column;overflow:hidden;box-shadow:0 0 20px rgba(234,179,8,0.25)}

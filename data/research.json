@@ -9,10 +9,10 @@
         "stone": 10
       },
       "waves": 1,
-      "unlocks": "hoard,lab",
+      "unlocks": "hoard",
       "prereqs": [],
       "desc": "Establishes the foundations of your settlement.",
-      "tooltip": "Unlocks the Hoard Pile for storing resources and the Lab for gathering Dust.",
+      "tooltip": "Unlocks the Hoard Pile for storing resources. The Lab becomes available at Wave 5.",
       "x": 960,
       "y": 600
     },
@@ -185,6 +185,41 @@
       "tooltip": "Each existing and future Monkey Hut gains +1 monkey capacity.",
       "x": 1200,
       "y": 840
+    },
+    "combat_training": {
+      "name": "Combat Training",
+      "icon": "⚔️",
+      "cost": {
+        "dust": 15,
+        "stone": 5
+      },
+      "waves": 2,
+      "unlocks": "tower_skills",
+      "prereqs": [
+        "settlement"
+      ],
+      "desc": "Establishes a formal training regimen for your tower crews.",
+      "tooltip": "Unlocks the tower skill upgrade system — spend Dust to upgrade individual towers.",
+      "x": 1200,
+      "y": 600
+    },
+    "monkey_logistics": {
+      "name": "Monkey Logistics",
+      "icon": "🔄",
+      "cost": {
+        "dust": 35,
+        "wood": 20
+      },
+      "waves": 4,
+      "unlocks": "monkey_logistics",
+      "prereqs": [
+        "monkey_training",
+        "the_forge"
+      ],
+      "desc": "Advanced primate training: rotating deliveries and forest foraging.",
+      "tooltip": "Unlocks Round Robin (cycle up to 5 delivery targets) and Harvest (mine rock nodes or forage wood from forest) roles for monkeys.",
+      "x": 1320,
+      "y": 840
     }
   },
   "variable": [
@@ -261,20 +296,20 @@
       "y": 360
     },
     {
-      "id": "fortification",
-      "name": "Fortification",
-      "icon": "🏰",
+      "id": "neuron_activation",
+      "name": "Neuron Activation",
+      "icon": "🧠",
       "cost": {
-        "dust": 25,
-        "stone": 10
+        "dust": 30,
+        "wood": 10
       },
       "waves": 3,
-      "unlocks": "tower_wall",
+      "unlocks": "monkey_auto_place",
       "prereqs": [
-        "structural"
+        "monkey_logistics"
       ],
-      "desc": "Designs reinforced stone barriers to funnel enemy paths.",
-      "tooltip": "Unlocks the Wall tower, a cheap placeable obstacle with no attack.",
+      "desc": "Monkeys learn to recognize and deploy path items autonomously.",
+      "tooltip": "Courier and Round Robin monkeys automatically place consumable traps/sap when delivering to a path tile.",
       "x": 480,
       "y": 480
     },
@@ -349,6 +384,23 @@
       "hidden": true,
       "trigger": "tremor_event_seen",
       "x": 120,
+      "y": 600
+    },
+    {
+      "id": "acoustic_anomaly",
+      "name": "Acoustic Anomaly",
+      "icon": "〰️",
+      "cost": {
+        "dust": 20
+      },
+      "waves": 2,
+      "unlocks": "lab_radius_+1",
+      "prereqs": [],
+      "desc": "A 40Hz resonance was detected during wave 3 prep. Something responded.",
+      "tooltip": "Unlocks a passive Lab radius bonus from the anomalous frequency. Requires hearing the hum.",
+      "hidden": true,
+      "trigger": "frequency_played",
+      "x": 240,
       "y": 600
     }
   ]

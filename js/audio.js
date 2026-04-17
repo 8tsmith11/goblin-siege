@@ -53,6 +53,38 @@ export function sfxHeal() { pT(440, 0.15, 'sine', 0.12); }
 export function sfxGoldBoost() { pT(660, 0.1, 'triangle', 0.1); }
 export function sfxRage() { pT(300, 0.2, 'sawtooth', 0.15); }
 
+export function sfxElderSpeak() {
+  if (!AC || !sOn) return;
+  const o = AC.createOscillator(), lfo = AC.createOscillator(), lfoG = AC.createGain(), g = AC.createGain();
+  o.type = 'sine'; o.frequency.value = 180;
+  lfo.type = 'sine'; lfo.frequency.value = 4;
+  lfoG.gain.value = 8;
+  lfo.connect(lfoG); lfoG.connect(o.frequency);
+  g.gain.setValueAtTime(0, AC.currentTime);
+  g.gain.linearRampToValueAtTime(0.06 * 0.5, AC.currentTime + 0.05);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.4);
+  o.connect(g); g.connect(MG);
+  o.start(); lfo.start(); o.stop(AC.currentTime + 0.4); lfo.stop(AC.currentTime + 0.4);
+}
+
+let _humOsc = null, _humGain = null;
+export function startHum() {
+  if (!AC || !sOn || _humOsc) return;
+  _humOsc = AC.createOscillator(); _humGain = AC.createGain();
+  _humOsc.type = 'sine'; _humOsc.frequency.value = 40;
+  _humGain.gain.setValueAtTime(0, AC.currentTime);
+  _humGain.gain.linearRampToValueAtTime(0.04 * 0.5, AC.currentTime + 2);
+  _humOsc.connect(_humGain); _humGain.connect(MG);
+  _humOsc.start();
+}
+export function stopHum() {
+  if (!_humOsc || !_humGain) return;
+  _humGain.gain.setValueAtTime(_humGain.gain.value, AC.currentTime);
+  _humGain.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 1.5);
+  _humOsc.stop(AC.currentTime + 1.5);
+  _humOsc = null; _humGain = null;
+}
+
 window.bgm = null;
 window.bgmWaiting = false;
 

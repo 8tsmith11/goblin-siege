@@ -1,8 +1,9 @@
 'use strict';
-import { state } from './main.js';
+import { state, _ΨΔ } from './main.js';
 import { showTip, syncPause } from './ui.js';
 import { RARITY_COLORS } from './artifacts.js';
 import { applyAugment } from './craft.js';
+import { sfxFreeze } from './audio.js';
 
 const INV_MAX = 512;
 let _invSel = null; // { source: 'inv'|'equip', section: string, index: number }
@@ -63,6 +64,30 @@ function renderInventory() {
       eqGrid.appendChild(cell);
     }
     artSec.appendChild(eqGrid);
+
+    // Active artifact action buttons
+    const activeArts = inv.equipped.filter(a => a?.active);
+    if (activeArts.length > 0) {
+      const actRow = document.createElement('div');
+      actRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px';
+      for (const art of activeArts) {
+        if (!art.cdWavesLeft) art.cdWavesLeft = 0;
+        const canUse = art.cdWavesLeft === 0 && state.phase === 'active';
+        const btn = document.createElement('button');
+        btn.className = 'inv-use-btn' + (canUse ? '' : ' off2');
+        btn.style.cssText = 'position:relative;padding:6px 12px;font-size:12px';
+        btn.textContent = art.icon + ' ' + art.name;
+        if (art.cdWavesLeft > 0) {
+          const cd = document.createElement('div');
+          cd.style.cssText = 'font-size:9px;color:#f87171';
+          cd.textContent = art.cdWavesLeft + ' waves';
+          btn.appendChild(cd);
+        }
+        if (canUse) btn.onclick = () => _activateArtifact(art);
+        actRow.appendChild(btn);
+      }
+      artSec.appendChild(actRow);
+    }
 
     const artGrid = document.createElement('div');
     artGrid.className = 'inv-grid';
@@ -157,20 +182,38 @@ function _renderInvActions() {
     };
     el.appendChild(btn);
   } else if (_invSel.section === 'consumables') {
-    const btn = document.createElement('button');
-    btn.className = 'inv-use-btn inv-use-con';
-    btn.textContent = '📍 Place on Path';
-    btn.onclick = () => {
-      const i = _invSel.index;
-      const it = state.inventory.consumables[i];
-      if (!it) return;
-      document.getElementById('invP')?.classList.remove('sh');
-      _invSel = null;
-      syncPause();
-      state.sel = { type: 'consumable_pick', item: { ...it }, index: i };
-      showTip('Click a path tile to place the consumable');
-    };
-    el.appendChild(btn);
+    const it = state.inventory.consumables[_invSel.index];
+    if (it?.id === 'relocation_charm') {
+      const btn = document.createElement('button');
+      btn.className = 'inv-use-btn inv-use-con';
+      btn.textContent = '🏗️ Move Tower';
+      btn.onclick = () => {
+        const i = _invSel.index;
+        const item = state.inventory.consumables[i];
+        if (!item) return;
+        document.getElementById('invP')?.classList.remove('sh');
+        _invSel = null;
+        syncPause();
+        state.sel = { type: 'relocate_source', invIndex: i };
+        showTip('Click the tower you want to move');
+      };
+      el.appendChild(btn);
+    } else {
+      const btn = document.createElement('button');
+      btn.className = 'inv-use-btn inv-use-con';
+      btn.textContent = '📍 Place on Path';
+      btn.onclick = () => {
+        const i = _invSel.index;
+        const item = state.inventory.consumables[i];
+        if (!item) return;
+        document.getElementById('invP')?.classList.remove('sh');
+        _invSel = null;
+        syncPause();
+        state.sel = { type: 'consumable_pick', item: { ...item }, index: i };
+        showTip('Click a path tile to place the consumable');
+      };
+      el.appendChild(btn);
+    }
   }
 }
 
@@ -245,6 +288,16 @@ function _invClickEquip(slotIndex) {
     }
   }
   renderInventory();
+}
+
+function _activateArtifact(art) {
+  if (!art?.active || art.cdWavesLeft > 0 || state.phase !== 'active') return;
+  if (art.id === 'the_bell') {
+    _ΨΔ(() => { state.freezeActive = Math.max(state.freezeActive, 150); });
+    sfxFreeze();
+    art.cdWavesLeft = art.cooldownWaves || 8;
+    renderInventory();
+  }
 }
 
 export function openInventoryForAugment(tw, onApplied) {

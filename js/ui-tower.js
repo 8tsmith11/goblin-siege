@@ -1,5 +1,34 @@
 'use strict';
 import { state, _ΨΔ, getCell } from './main.js';
+
+const TRANSLATIONS = [
+  '"Do not go past the red stone."',
+  '"The hum means the tall ones are near."',
+  '"Three clicks: move. Four clicks: run."',
+  '"Leave food by the water. They remember."',
+  '"The crown does not protect you."',
+  '"Some of us do not want to be here either."',
+  '"What is a wall to someone with nothing to lose?"',
+  '"They built this path. Not for us."',
+  '"We are not the first wave."',
+  '"The fog remembers everyone who passed through."',
+  '"Tell the hatchlings the door was already open."',
+  '"We were supposed to arrive at dawn."',
+];
+
+function _showObsLog() {
+  const el = document.getElementById('obsLogP');
+  if (!el) return;
+  const step = Math.min(state.translationStep || 0, TRANSLATIONS.length);
+  const entries = TRANSLATIONS.slice(0, step).reverse();
+  el.innerHTML = `<div style="background:#0d1520;border:2px solid #a78bfa;border-radius:12px;padding:20px;max-width:380px;max-height:60vh;overflow-y:auto">
+    <div style="font-size:14px;font-weight:800;color:#a78bfa;margin-bottom:12px">📜 Observation Log — Goblin Translations</div>
+    ${entries.map((t, i) => `<div style="font-style:italic;color:#c4b5fd;font-size:13px;padding:8px 0;border-bottom:1px solid rgba(168,85,247,.2)">Step ${step - i}: ${t}</div>`).join('')}
+    <button onclick="document.getElementById('obsLogP').style.display='none'" style="margin-top:12px;padding:6px 16px;background:#1a1a3a;border:1px solid #a78bfa;border-radius:6px;color:#a78bfa;cursor:pointer">Close</button>
+  </div>`;
+  el.style.display = 'flex';
+  el.onclick = e => { if (e.target === el) el.style.display = 'none'; };
+}
 import { TD, TOWER_SKILLS, HOARD_LEVELS, HOARD_UPGS } from './data.js';
 import { spawnBees } from './support.js';
 import { showTowerSkill } from './skills.js';
@@ -143,7 +172,7 @@ export function showTT(tw, px, py) {
     const decay = Math.max(1, Math.floor(stored * (tw._monkeyBoosted ? 0.05 : 0.1)));
     s = `${stored}/${hl.cap} · +${income}💰/wave · -${decay}⬇${tw._monkeyBoosted ? ' 🐵' : ''}`;
   }
-  else if (tw.type === 'clam') { s = 'Buff radius: ' + ((tw.level + 1) * 1.5).toFixed(1) + ' · +50%DMG -15%CD'; }
+  else if (tw.type === 'clam') { s = 'Buff radius: ' + (tw.buffRange || 2).toFixed(1) + ' · +50%DMG -15%CD'; }
   else if (tw.type === 'beehive') { s = 'Bees: ' + (tw.beeCount || 3) + ' · Bee DMG: ' + (tw.beeDmg || 4); }
   else if (tw.type === 'clown') { s = 'Reverse rng:' + (tw.reverseRange || 3) + ' dur:' + (tw.reverseDur || 80); }
   else if (tw.type === 'monkey') { const mc = tw.monkeys?.length ?? 0; s = mc + ' Monke' + (mc === 1 ? 'y' : 'ys') + ' · Range:' + (tw.range || 4); }
@@ -216,7 +245,12 @@ export function showTT(tw, px, py) {
     }
   }
   if (tw.type === 'stockpile') buildStockpileTT(tw, a);
-  if (tw.type === 'lab') { addTTB(a, '🔬 Research', 'tts2', !!state.research, () => { hideTT(); state.ttTower = null; showResearch(); }); }
+  if (tw.type === 'lab') {
+    addTTB(a, '🔬 Research', 'tts2', !!state.research, () => { hideTT(); state.ttTower = null; showResearch(); });
+    if (state.patternRecDone && state.translationStep > 0) {
+      addTTB(a, '📜 Observation Log', 'tts2', true, () => _showObsLog());
+    }
+  }
   if (tw.type === 'monkey') buildMonkeyTT(tw, a);
   if (tw.type === 'workbench') {
     const inv = tw.inv || {};
@@ -227,7 +261,7 @@ export function showTT(tw, px, py) {
       const wrap = document.createElement('div');
       wrap.style.cssText = 'display:flex;align-items:center;gap:3px;background:#0d1525;border-radius:4px;padding:2px 6px;font-size:10px;color:#94a3b8';
       const lbl = document.createElement('span');
-      lbl.textContent = rt.icon + ' ' + (inv[k] || 0);
+      lbl.textContent = rt.icon + ' ' + (inv[k] || 0) + '/20';
       wrap.appendChild(lbl);
       const have = state.resources[k] || 0;
       if (have > 0) {
@@ -271,8 +305,8 @@ export function showTT(tw, px, py) {
       }
     }
   }
-  if (TD[tw.type]?.cat === 'tower' && TOWER_SKILLS[tw.type]) { addTTB(a, '⚡Skill', 'ttc', true, () => { showTowerSkill(tw); hideTT(); state.ttTower = null; }); }
-  const sv = Math.floor(def.cost * 0.75 + (tw.level * def.cost * 0.4));
+  if (TOWER_SKILLS[tw.type]) { addTTB(a, '⚡Skill', 'ttc', true, () => { showTowerSkill(tw); hideTT(); state.ttTower = null; }); }
+  const sv = Math.floor(def.cost * 0.5);
   addTTB(a, 'Sell +💰' + sv, 'ttl', true, () => {
     const hasStored = tw.type === 'stockpile' && tw.mode !== 'interface' && tw.slots?.some(s => s);
     const sellMsg = hasStored
@@ -352,11 +386,11 @@ const TOWER_UPGS = {
     { name:'+12 DMG  −12 CD',       cost: 300, apply: tw => { tw.dmg += 12; tw.rate = Math.max(5, tw.rate - 12); } },
   ],
   clam: [
-    { name:'+1.5 Buff Range',       cost: 65,  apply: tw => { tw.buffRange += 1.5; } },
+    { name:'+0.5 Buff Range',       cost: 65,  apply: tw => { tw.buffRange += 0.5; } },
     { name:'+25% DMG Bonus',        cost: 110, apply: tw => { tw.buffDmg = +((tw.buffDmg + 0.25).toFixed(2)); } },
-    { name:'+1.5 Buff Range',       cost: 165, apply: tw => { tw.buffRange += 1.5; } },
+    { name:'+0.5 Buff Range',       cost: 165, apply: tw => { tw.buffRange += 0.5; } },
     { name:'−10% Cooldown Bonus',   cost: 240, apply: tw => { tw.buffRate = Math.max(0.5, +(tw.buffRate - 0.10).toFixed(2)); } },
-    { name:'+2 Range  +25% DMG',    cost: 350, apply: tw => { tw.buffRange += 2; tw.buffDmg = +((tw.buffDmg + 0.25).toFixed(2)); } },
+    { name:'+0.5 Range  +25% DMG',  cost: 350, apply: tw => { tw.buffRange += 0.5; tw.buffDmg = +((tw.buffDmg + 0.25).toFixed(2)); } },
   ],
   beehive: [
     { name:'+3 Bees',               cost: 70,  apply: tw => { tw.beeCount += 3; spawnBees(tw); } },
@@ -366,18 +400,18 @@ const TOWER_UPGS = {
     { name:'+4 Bees  Faster Sting', cost: 350, apply: tw => { tw.beeCount += 4; tw.beeRate = Math.max(5, tw.beeRate - 8); spawnBees(tw); } },
   ],
   clown: [
-    { name:'+1.5 Reverse Range',    cost: 75,  apply: tw => { tw.reverseRange += 1.5; } },
+    { name:'+0.5 Reverse Range',    cost: 75,  apply: tw => { tw.reverseRange += 0.5; } },
     { name:'+50 Reverse Duration',  cost: 115, apply: tw => { tw.reverseDur += 50; } },
-    { name:'+1.5 Reverse Range',    cost: 170, apply: tw => { tw.reverseRange += 1.5; } },
+    { name:'+0.5 Reverse Range',    cost: 170, apply: tw => { tw.reverseRange += 0.5; } },
     { name:'−60 Recharge',          cost: 245, apply: tw => { tw.reverseCD = Math.max(40, tw.reverseCD - 60); } },
-    { name:'+2 Range  +80 Duration',cost: 360, apply: tw => { tw.reverseRange += 2; tw.reverseDur += 80; } },
+    { name:'+0.5 Range  +80 Duration',cost:360, apply: tw => { tw.reverseRange += 0.5; tw.reverseDur += 80; } },
   ],
   monkey: [
-    { name:'+1 Range',              cost: 80,  apply: tw => { tw.range += 1; } },
-    { name:'+1 Range',              cost: 130, apply: tw => { tw.range += 1; } },
-    { name:'+2 Range',              cost: 195, apply: tw => { tw.range += 2; } },
-    { name:'+2 Range',              cost: 280, apply: tw => { tw.range += 2; } },
-    { name:'+3 Range',              cost: 400, apply: tw => { tw.range += 3; } },
+    { name:'+0.5 Range',            cost: 80,  apply: tw => { tw.range += 0.5; } },
+    { name:'+0.5 Range',            cost: 130, apply: tw => { tw.range += 0.5; } },
+    { name:'+0.5 Range',            cost: 195, apply: tw => { tw.range += 0.5; } },
+    { name:'+0.5 Range',            cost: 280, apply: tw => { tw.range += 0.5; } },
+    { name:'+1 Range',              cost: 400, apply: tw => { tw.range += 1; } },
   ],
 };
 
@@ -404,6 +438,28 @@ function _cleanupMonkeysForSoldTile(sx, sy) {
   for (const hut of state.towers) {
     if (hut.type !== 'monkey' || !hut.monkeys) continue;
     for (const mk of hut.monkeys) {
+      if (mk.role === 'harvester') {
+        const src = mk.cfg.harvestSrc;
+        if (src?.x === sx && src?.y === sy) { mk.cfg.harvestSrc = null; mk.st = 'idle'; }
+        if (mk.cfg.dest?.x === sx && mk.cfg.dest?.y === sy) {
+          if (mk.carrying) { dropItem(sx, sy, mk.carrying.type); mk.carrying = null; }
+          mk.st = 'idle';
+        }
+        continue;
+      }
+      if (mk.role === 'round_robin' && mk.cfg.targets) {
+        const before = mk.cfg.targets.length;
+        mk.cfg.targets = mk.cfg.targets.filter(t => !(t.x === sx && t.y === sy));
+        if (mk.cfg.targets.length !== before) {
+          if ((mk.cfg.rrIdx || 0) >= mk.cfg.targets.length) mk.cfg.rrIdx = 0;
+          if (mk.st === 'carrying' && mk.carrying) {
+            dropItem(sx, sy, mk.carrying.type);
+            mk.carrying = null;
+          }
+          mk.st = 'idle';
+        }
+        continue;
+      }
       if (!mk.carrying) continue;
       const dest = mk.role === 'gatherer' ? mk.cfg.dest
                  : mk.role === 'courier'  ? (mk.st === 'carrying' ? mk.cfg.dest : mk.cfg.from)
@@ -419,8 +475,13 @@ function _cleanupMonkeysForSoldTile(sx, sy) {
 
 export function refreshActiveTT() { if (state.ttTower) refreshTT(state.ttTower); }
 
-const ROLE_CYCLE = [null, 'gatherer', 'courier', 'booster'];
-const ROLE_LABEL = { null: 'Idle 💤', gatherer: 'Gather 🌿', courier: 'Courier 🚚', booster: 'Boost 💪' };
+const ROLE_LABEL = { null: 'Idle 💤', gatherer: 'Gather 🌿', courier: 'Courier 🚚', booster: 'Boost 💪', round_robin: 'Round Robin 🔄', harvester: 'Harvest ⛏️' };
+function getRoleCycle() {
+  const roles = [null, 'gatherer', 'courier', 'booster'];
+  if (state.researchUnlocks?.monkey_round_robin) roles.push('round_robin');
+  if (state.researchUnlocks?.monkey_harvester) roles.push('harvester');
+  return roles;
+}
 const FILTER_CYCLE = [null, 'wood', 'stone'];
 const FILTER_LABEL = { null: 'All', wood: '🪵', stone: '🪨' };
 
@@ -438,9 +499,10 @@ function buildMonkeyTT(tw, container) {
     nameEl.textContent = mk.name;
     row1.appendChild(nameEl);
     addTTB(row1, ROLE_LABEL[mk.role] ?? 'Idle 💤', 'tts2', true, () => {
-      const idx = ROLE_CYCLE.indexOf(mk.role);
-      mk.role = ROLE_CYCLE[(idx + 1) % ROLE_CYCLE.length];
-      mk.cfg = { filter: null, dest: null, from: null, boost: null };
+      const cycle = getRoleCycle();
+      const idx = cycle.indexOf(mk.role);
+      mk.role = cycle[(idx + 1) % cycle.length];
+      mk.cfg = { filter: null, dest: null, from: null, boost: null, targets: [], rrIdx: 0 };
       mk.st = 'idle'; mk.carrying = null;
       refreshTT(tw);
     });
@@ -498,6 +560,49 @@ function buildMonkeyTT(tw, container) {
         state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'boost' };
         hideTT(); state.ttTower = null; panelU();
       });
+      block.appendChild(row2);
+    }
+
+    if (mk.role === 'harvester') {
+      const row2 = document.createElement('div');
+      row2.style.cssText = 'display:flex;gap:4px;align-items:center;flex-wrap:wrap';
+      const src = mk.cfg.harvestSrc;
+      const srcLbl = src ? (src.isForest ? `Forest(${src.x},${src.y})` : `Rock(${src.x},${src.y})`) : 'Set Source 📍';
+      addTTB(row2, srcLbl, 'tts2', true, () => {
+        state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'harvestSrc' };
+        hideTT(); state.ttTower = null; panelU();
+      });
+      const destLbl = mk.cfg.dest ? `Dest(${mk.cfg.dest.x},${mk.cfg.dest.y})` : 'Set Dest 📍';
+      addTTB(row2, destLbl, 'tts2', true, () => {
+        state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'dest' };
+        hideTT(); state.ttTower = null; panelU();
+      });
+      block.appendChild(row2);
+    }
+
+    if (mk.role === 'round_robin') {
+      const row2 = document.createElement('div');
+      row2.style.cssText = 'display:flex;gap:4px;align-items:center;flex-wrap:wrap';
+      addTTB(row2, 'Filter:' + FILTER_LABEL[mk.cfg.filter ?? null], 'tts2', true, () => {
+        const fi = FILTER_CYCLE.indexOf(mk.cfg.filter ?? null);
+        mk.cfg.filter = FILTER_CYCLE[(fi + 1) % FILTER_CYCLE.length] ?? null;
+        refreshTT(tw);
+      });
+      const targets = mk.cfg.targets || [];
+      for (let i = 0; i < targets.length; i++) {
+        const t = targets[i];
+        addTTB(row2, `T${i+1}:(${t.x},${t.y}) ✕`, 'tts2', true, () => {
+          mk.cfg.targets.splice(i, 1);
+          if ((mk.cfg.rrIdx || 0) >= mk.cfg.targets.length) mk.cfg.rrIdx = 0;
+          refreshTT(tw);
+        });
+      }
+      if (targets.length < 5) {
+        addTTB(row2, '+ Target 📍', 'tts2', true, () => {
+          state.sel = { type: 'tile_pick', monkey: mk, hut: tw, field: 'rr_add_target' };
+          hideTT(); state.ttTower = null; panelU();
+        });
+      }
       block.appendChild(row2);
     }
 

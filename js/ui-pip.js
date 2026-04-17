@@ -14,8 +14,8 @@ const PIP_BLUEPRINTS = [
 ];
 
 const SELL_ITEMS = [
-  { type: 'stone', icon: '🪨', name: 'Stone', price: 5 },
-  { type: 'wood',  icon: '🪵', name: 'Wood',  price: 5 },
+  { type: 'stone', icon: '🪨', name: 'Stone', price: 1 },
+  { type: 'wood',  icon: '🪵', name: 'Wood',  price: 3 },
 ];
 
 // ─── Stock management ─────────────────────────────────────────────────────────
@@ -226,7 +226,7 @@ function renderPip() {
   // Artifacts
   const artSec = _mkSec('✨ Artifacts');
   artSec.appendChild(_mkNote('Rare items — never restocks'));
-  for (const art of ARTIFACTS) {
+  for (const art of ARTIFACTS.filter(a => a.pipShop !== false)) {
     const sold = !!(state.pip.aSold[art.id]);
     artSec.appendChild(_mkBuyRow(art, !sold, () => {
       if (state.gold < art.cost) { showBanner('⚠️ Not enough gold'); return; }

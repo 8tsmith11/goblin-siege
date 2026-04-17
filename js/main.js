@@ -7,7 +7,9 @@ import { buildPath } from './path.js';
 
 bus.on('enemyDeath', e => {
   state._kills = (state._kills || 0) + 1;
+  state.totalGoblinsKilled = (state.totalGoblinsKilled || 0) + 1;
   let rew = e.rew;
+  state.totalGoldEarned = (state.totalGoldEarned || 0) + rew;
   state.gold += rew; sfxKill();
   for (let j = 0; j < (e.boss ? 18 : 6); j++) {
      let p = getP(); p.x = e.x * state.CELL + state.CELL / 2; p.y = e.y * state.CELL + state.CELL / 2;
@@ -24,14 +26,30 @@ bus.on('enemyDeath', e => {
     }
   }
   
-  // Herald drops — guaranteed artifact + Herald's Horn
+  // Herald drops — Herald's Horn artifact + random non-duplicate artifact
   if (e.herald) {
-    const art = ARTIFACTS[Math.floor(Math.random() * ARTIFACTS.length)];
-    addToInventory('artifacts', { id: art.id, icon: art.icon, name: art.name, rarity: art.rarity, desc: art.desc });
-    addToInventory('augments', { id: 'heralds_horn', icon: '📯', name: "Herald's Horn", desc: 'Boss waves announced 1 wave early.' });
-    state.hasHeraldHorn = true;
-    mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '📯', 1, '#f59e0b');
-    addFeed('herald', "📯 Herald's Horn recovered — boss warnings now active!");
+    const hornArt = ARTIFACTS.find(a => a.id === 'heralds_horn');
+    const inv = state.inventory;
+    const owned = new Set([...inv.artifacts.map(a => a?.id), ...inv.equipped.map(a => a?.id)].filter(Boolean));
+    if (!owned.has('heralds_horn')) {
+      addToInventory('artifacts', { id: hornArt.id, icon: hornArt.icon, name: hornArt.name, rarity: hornArt.rarity, desc: hornArt.desc });
+      mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '📯', 1, '#f59e0b');
+      addFeed('herald', "📯 Herald's Horn recovered — equip it to receive early boss warnings!");
+    }
+    const bonusArt = ARTIFACTS.filter(a => a.id !== 'heralds_horn' && !owned.has(a.id));
+    if (bonusArt.length) {
+      const art = bonusArt[Math.floor(Math.random() * bonusArt.length)];
+      addToInventory('artifacts', { id: art.id, icon: art.icon, name: art.name, rarity: art.rarity, desc: art.desc });
+    }
+    // Also drop a relocation charm
+    addToInventory('consumables', { id: 'relocation_charm', icon: '✨', name: 'Relocation Charm', desc: 'Move any tower to a new valid tile, preserving all upgrades.' });
+    addFeed('herald', '✨ Relocation Charm found!');
+  }
+  // Regular bosses: 50% chance of relocation charm
+  if (e.boss && !e.herald && Math.random() < 0.5) {
+    addToInventory('consumables', { id: 'relocation_charm', icon: '✨', name: 'Relocation Charm', desc: 'Move any tower to a new valid tile, preserving all upgrades.' });
+    mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '✨', 1, '#a855f7');
+    addFeed('boss', '✨ Relocation Charm dropped!');
   }
 
   // Dust Collection (Lab)
@@ -41,9 +59,21 @@ bus.on('enemyDeath', e => {
     if (dist <= lab.obsRange) {
       let dustYield = e.boss ? 5 : Math.floor(rew / 4);
       if (dustYield > 0) {
+        const tallyStick = state.inventory?.equipped?.some(a => a?.id === 'tally_stick');
+        if (tallyStick) dustYield = Math.ceil(dustYield * 1.1);
         state.resources.dust = (state.resources.dust || 0) + dustYield;
         mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '🔮', dustYield, '#a855f7');
       }
+    }
+  }
+  // Wave 10 boss: drop blueprint
+  if (e.boss && state.wave === 10 && state.worldGenChoices?.wave10Blueprint) {
+    const bpType = state.worldGenChoices.wave10Blueprint;
+    const bpDef = TD[bpType];
+    if (bpDef) {
+      addToInventory('blueprints', { id: bpType + '_bp', icon: '🟦', bpOverlay: bpDef.icon, name: bpDef.name + ' Blueprint' });
+      mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '🟦', 1, '#3b82f6');
+      addFeed('boss', '🟦 ' + bpDef.name + ' Blueprint recovered!');
     }
   }
 });
@@ -51,7 +81,7 @@ import { buildResearchGraph, tickResearch } from './research.js';
 import { tickCraft, updateTraps, cleanupBarricades } from './craft.js';
 import { addFeed, clearFeed } from './feed.js';
 import { getScribeEntry } from './bestiary.js';
-import { TOWER_SKILLS, HOARD_LEVELS } from './data.js';
+import { TOWER_SKILLS, HOARD_LEVELS, TD } from './data.js';
 import { updateEnemies, genWave } from './enemies.js';
 import { updateTowers } from './towers.js';
 import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser } from './support.js';
@@ -59,8 +89,8 @@ import { updateMonkeys } from './monkeys.js';
 import { render, invalidateBg, clearFogParticles } from './render.js';
 import { ARTIFACTS } from './artifacts.js';
 import { triggerEvent } from './events.js';
-import { sfxBoss, sfxWave, sfxKill, sfxHit } from './audio.js';
-import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, initInventoryUI, initCraftUI } from './ui.js';
+import { sfxBoss, sfxWave, sfxKill, sfxHit, startHum, stopHum } from './audio.js';
+import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, initInventoryUI, initCraftUI, showLedger } from './ui.js';
 import { initInput, updateCameraKeys } from './input.js';
 import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
 import { placeNodes, updateNodes } from './resources.js';
@@ -69,7 +99,7 @@ import { initWeather, tickWeather, updateWeather } from './weather.js';
 import { refreshPipStock, syncPipBtn, updatePipPanel, initPipUI } from './ui-pip.js';
 import { syncInvBtn, addToInventory } from './ui-inventory.js';
 
-export const VERSION = 'v1.5';
+export const VERSION = 'v1.6';
 export const WORLD_COLS = 20;
 export const WORLD_ROWS = 12;
 export const PAD = 6; // forest border width in tiles
@@ -106,8 +136,8 @@ export const state = {
   pip: null,
   research: null, researchUnlocks: {},
   traps: [],
-  inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null], seenSections: {} },
-  unlockedTowers: new Set(['squirrel', 'lion', 'penguin', 'lab', 'workbench']),
+  inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} },
+  unlockedTowers: new Set(['squirrel', 'lion', 'penguin', 'workbench']),
   sel: null, tab: 'towers',
   bSen: new Set(['sleepy_door']),
   volcanoActive: null, freezeActive: 0,
@@ -119,6 +149,10 @@ export const state = {
   cv: null, cx: null,
   path: [], pathSet: new Set(), grid: [],
   gCell: null,
+  worldGenChoices: {},
+  totalGoblinsKilled: 0, totalGoldEarned: 0,
+  frequencyPlayed: false,
+  patternRecDone: false, translationStep: 0, _translationWaveCount: 0,
   _Σ: 0, _Ω: 0,  // frame consistency markers (internal use)
 };
 // Protected accessors — console writes are silently discarded
@@ -305,10 +339,28 @@ function update() {
       state.fogWave = false;
       state.fogStartTick = 0;
       clearFogParticles();
-      const art = ARTIFACTS[Math.floor(Math.random() * ARTIFACTS.length)];
-      addToInventory('artifacts', { id: art.id, icon: art.icon, name: art.name, rarity: art.rarity, desc: art.desc });
-      addFeed('boss', '🌫️ Fog cleared — artifact recovered at the gate.');
+      const _inv = state.inventory;
+      const _owned = new Set([..._inv.artifacts.map(a => a?.id), ..._inv.equipped.map(a => a?.id)].filter(Boolean));
+      const _avail = ARTIFACTS.filter(a => !_owned.has(a.id));
+      const art = _avail.length ? _avail[Math.floor(Math.random() * _avail.length)] : null;
+      if (art) addToInventory('artifacts', { id: art.id, icon: art.icon, name: art.name, rarity: art.rarity, desc: art.desc });
+      addFeed('boss', art ? '🌫️ Fog cleared — artifact recovered at the gate.' : '🌫️ Fog cleared.');
     }
+    // Decrement active artifact cooldowns
+    if (state.inventory?.equipped) {
+      for (const art of state.inventory.equipped) {
+        if (art?.active && art.cdWavesLeft > 0) art.cdWavesLeft--;
+      }
+    }
+    // Translation tick
+    if (state.patternRecDone) {
+      state._translationWaveCount = (state._translationWaveCount || 0) + 1;
+      if (state._translationWaveCount % 2 === 0) {
+        state.translationStep = Math.min(12, (state.translationStep || 0) + 1);
+      }
+    }
+    // Ledger overlay at wave 20
+    if (state.wave === 20) { _φ = false; showLedger(); _φ = true; }
     // Transition seamlessly into the prep phase without a blocking modal.
     bus.emit('trigger', { type: 'wave_prep', wave: state.wave + 1 });
     state.phase = 'prep'; state.prepTicks = 1800; sfxWave(); _φ = false;
@@ -321,7 +373,8 @@ function update() {
     const _nextW = state.wave + 1;
     const _isHeraldNext = _nextW === 5;
     const _isBossNext = _nextW % 5 === 0 && _nextW > 5 && _nextW !== 15;
-    if (_isHeraldNext || (_isBossNext && state.hasHeraldHorn)) {
+    const _hornEquipped = state.inventory?.equipped?.some(a => a?.id === 'heralds_horn');
+    if (_isHeraldNext || (_isBossNext && _hornEquipped)) {
       const _warnTxt = _isHeraldNext ? '📯 The Proud Herald Approaches' : '👑 Boss Wave ' + _nextW + ' Approaches';
       const _warnSub = _isHeraldNext ? 'Prepare for Wave ' + _nextW : 'A powerful foe comes next wave';
       state.heraldWarn = { tick: state.ticks, text: _warnTxt, sub: _warnSub };
@@ -344,7 +397,7 @@ function update() {
 
 /* ═══ Game flow ═══ */
 export function startGame() {
-  _ΨΔ(() => { _wG(100); _wL(20); });
+  _ΨΔ(() => { _wG(80); _wL(20); });
   if (!state.research) state.research = buildResearchGraph();
   state.started = true; state.phase = 'prep'; state.prepTicks = 1800;
   invalidateBg(); initSz(); hideOv(); hudU(); panelU();
@@ -356,7 +409,14 @@ export function startGame() {
 }
 
 export function startWave() {
+  stopHum();
   state.wave++;
+  // Unlock lab at wave 5
+  if (state.wave >= 5 && !state.unlockedTowers.has('lab')) {
+    state.unlockedTowers.add('lab');
+    addFeed('system', '🧪 The Lab is now available to build.');
+    showBanner('🧪 Lab Unlocked');
+  }
   state.spawnQueue = genWave(state.wave); // may set state.fogWave for wave 15
   state.spawnTimer = 30; state.phase = 'active';
   hideOv();
@@ -384,18 +444,26 @@ export function startPrep() {
   state.phase = 'prep'; state.prepTicks = 1800;
   invalidateBg();
   clampCam(); hideTT(); hudU(); panelU();
+  if (state.wave === 3 && !state.frequencyPlayed) {
+    state.frequencyPlayed = true;
+    startHum();
+    addFeed('system', '〰️ A low hum fills the air. 40Hz. Something stirs.');
+    bus.emit('trigger', { type: 'frequency_played' });
+  }
 }
 
 export function resetGame() {
-  _ΨΔ(() => { _wG(100); _wL(20); });
+  _ΨΔ(() => { _wG(80); _wL(20); });
   Object.assign(state, {
     wave: 0, phase: 'idle', ticks: 0, prepTicks: 0,
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
     gameOver: false, started: false, pathReady: false, paused: false, sel: null, ttTower: null,
-    nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, fogWave: false, fogStartTick: 0, heraldWarn: null, hasHeraldHorn: false, pip: null, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin','lab','workbench']), bSen: new Set(['sleepy_door']), age: 'stone',
+    nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, fogWave: false, fogStartTick: 0, heraldWarn: null, hasHeraldHorn: false, pip: null, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin','workbench']), bSen: new Set(['sleepy_door']), age: 'stone',
     traps: [],
-    inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null], seenSections: {} },
+    inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} },
+    worldGenChoices: {}, totalGoblinsKilled: 0, totalGoldEarned: 0,
+    frequencyPlayed: false, patternRecDone: false, translationStep: 0, _translationWaveCount: 0,
     cam: { panX: 0, panY: 0, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
     _Σ: 0, _Ω: 0,
   });

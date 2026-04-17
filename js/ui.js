@@ -81,6 +81,21 @@ export function showBL(t) {
   addFeed('boss_quote', '\u201c' + t + '\u201d');
 }
 
+export function showLedger() {
+  const el = document.getElementById('ledgerP');
+  if (!el) return;
+  el.innerHTML = `
+    <div id="ledgerBox">
+      <div id="ledgerTitle">📜 The Ledger</div>
+      <div class="ledger-row"><span class="ledger-label">Goblins Slain</span><span class="ledger-val">${state.totalGoblinsKilled || 0}</span></div>
+      <div class="ledger-row"><span class="ledger-label">Gold Earned</span><span class="ledger-val">💰${state.totalGoldEarned || 0}</span></div>
+      <div class="ledger-row"><span class="ledger-label">Waves Survived</span><span class="ledger-val">${state.wave}</span></div>
+      <div id="ledgerDismiss">Click anywhere to continue</div>
+    </div>`;
+  el.style.display = 'flex';
+  el.onclick = () => { el.style.display = 'none'; };
+}
+
 let tipTmr = 0;
 export function showTip(t) {
   const el = document.getElementById('tip'); el.textContent = t; el.classList.add('sh');
@@ -197,9 +212,15 @@ export function panelU() {
     const cons = state.inventory?.consumables || [];
     cons.forEach((item, i) => {
       const countLbl = (item.count && item.count > 1) ? 'x' + item.count : 'Place';
-      const el = mkIB(item.icon, item.name, countLbl, true, state.sel?.type === 'consumable_pick' && state.sel?.index === i, () => {
-        state.sel = { type: 'consumable_pick', item: { ...item }, index: i };
-        showTip('Click a path tile to place ' + item.name);
+      const isSelRR = item.id === 'relocation_charm' ? (state.sel?.type === 'relocate_source' || state.sel?.type === 'relocate_dest') : (state.sel?.type === 'consumable_pick' && state.sel?.index === i);
+      const el = mkIB(item.icon, item.name, countLbl, true, isSelRR, () => {
+        if (item.id === 'relocation_charm') {
+          state.sel = { type: 'relocate_source', invIndex: i };
+          showTip('Click the tower you want to move');
+        } else {
+          state.sel = { type: 'consumable_pick', item: { ...item }, index: i };
+          showTip('Click a path tile to place ' + item.name);
+        }
         panelU();
       });
       pc.appendChild(el);

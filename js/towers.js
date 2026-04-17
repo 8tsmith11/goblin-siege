@@ -35,6 +35,12 @@ export function updateTowers() {
     if (tw.cd > 0) { tw.cd -= (tw._rateBuff < 1 ? 1.2 : 1); return; }
     
     const def = TD[tw.type];
+    // Warm Pebble: towers adjacent to Lab fire 10% faster
+    let warmPebbleBoost = 1;
+    if (state.inventory?.equipped?.some(a => a?.id === 'warm_pebble')) {
+      const lab = towers.find(t => t.type === 'lab');
+      if (lab && Math.abs(tw.x - lab.x) <= 1 && Math.abs(tw.y - lab.y) <= 1) warmPebbleBoost = 0.9;
+    }
     const effectiveRange = state.fogWave ? Math.max(1, tw.range * 0.55) : tw.range;
     const vis = getEnemiesInRadius(grid, tw.x, tw.y, effectiveRange, true, tw.seeInvis);
     if (!vis.length) return;
@@ -42,7 +48,7 @@ export function updateTowers() {
     const tgt = findTarget(vis, def.target);
     
     projectiles.push(spawnProjectile(tw, tgt, def, false));
-    sfxShoot(); tw.cd = def.rate;
+    sfxShoot(); tw.cd = Math.round(def.rate * warmPebbleBoost);
     
     if (tw.frenzy && vis.length > 1) {
       const t2 = vis.filter(e => e !== tgt);
@@ -51,7 +57,7 @@ export function updateTowers() {
       }
     }
     
-    if (tw.blizzard) vis.forEach(e => { e.slow = Math.max(e.slow, tw.slow); e.st = 80; });
+    if (tw.blizzard) vis.forEach(e => { e.slow = Math.max(e.slow, 0.2); e.st = Math.max(e.st, 20); });
     if (def.speedUp) vis.forEach(e => {
       if (!e.spdBuff) e.spdBuff = tw.megaSpeed ? 2 : 1;
       if (ticks % 12 === 0) spawnParticles(particles, getCenter(e.x, CELL), getCenter(e.y, CELL), 1, { vxBase: (Math.random()-.5)*2, vyBase: -1.5, spreadX: 0, spreadY: 0, life: 10, clr: '#a3e635', sz: 2 });

@@ -1,6 +1,16 @@
 'use strict';
 import { state } from './main.js';
 import { TD } from './data.js';
+import { bus } from './bus.js';
+
+bus.on('trigger', ({ type }) => {
+  if (type === 'frequency_played' && state.research) {
+    const def = VARIABLE_RESEARCH.find(n => n.id === 'acoustic_anomaly');
+    if (def && !state.research['acoustic_anomaly']) {
+      state.research['acoustic_anomaly'] = { ...def, status: 'available', wavesLeft: def.waves, wavesTotal: def.waves };
+    }
+  }
+});
 
 // Populated from data/research.json at startup
 export let FIXED_RESEARCH = {};
@@ -40,6 +50,10 @@ export const UNLOCK_DESC = {
   'augment_tripwire':   'Tripwire augment',
   'consumable_ale':     'Consumable: Ale',
   'lore_tremor':        'Tremor lore entry',
+  'monkey_logistics':   'Round Robin & Harvest roles',
+  'monkey_auto_place':  'Monkeys auto-place path consumables',
+  'hoard':              'Hoard Pile unlocked',
+  'tower_skills':       'Tower skill upgrades unlocked',
 };
 
 // Evaluate a game-state prerequisite string against current state.
@@ -54,7 +68,9 @@ export function checkGamePrereq(node) {
 }
 
 export function buildResearchGraph() {
-  const pool = [...VARIABLE_RESEARCH].sort(() => Math.random() - 0.5);
+  // Exclude hidden/trigger nodes from normal random pool; include them separately if triggered
+  const nonHidden = VARIABLE_RESEARCH.filter(n => !n.hidden);
+  const pool = [...nonHidden].sort(() => Math.random() - 0.5);
   const picked = pool.slice(0, 4 + (Math.random() < 0.5 ? 0 : 1));
   const nodes = {};
   for (const [id, def] of Object.entries(FIXED_RESEARCH)) {
@@ -62,6 +78,14 @@ export function buildResearchGraph() {
   }
   for (const def of picked) {
     nodes[def.id] = { ...def, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
+  }
+  // Add triggered hidden nodes if conditions are met
+  for (const def of VARIABLE_RESEARCH.filter(n => n.hidden)) {
+    if (def.trigger === 'frequency_played' && state.frequencyPlayed) {
+      nodes[def.id] = { ...def, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
+    } else if (def.trigger === 'tremor_event_seen' && state.bSen?.has('tremor_event')) {
+      nodes[def.id] = { ...def, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
+    }
   }
   refreshStatuses(nodes);
   return nodes;
@@ -115,13 +139,15 @@ export function applyUnlock(node) {
 
   switch (u) {
     case 'lab_radius_+1': {
+      state.researchUnlocks.lab_radius = (state.researchUnlocks.lab_radius || 0) + 1;
       const lab = state.towers?.find(t => t.type === 'lab');
-      if (lab) lab.obsRange = (lab.obsRange || 3) + 1;
+      if (lab) lab.obsRange = TD.lab.obsRange + state.researchUnlocks.lab_radius;
       break;
     }
     case 'lab_radius_+2': {
+      state.researchUnlocks.lab_radius = (state.researchUnlocks.lab_radius || 0) + 2;
       const lab = state.towers?.find(t => t.type === 'lab');
-      if (lab) lab.obsRange = (lab.obsRange || 3) + 2;
+      if (lab) lab.obsRange = TD.lab.obsRange + state.researchUnlocks.lab_radius;
       break;
     }
     case 'monkey_capacity_+1': {
@@ -150,7 +176,26 @@ export function applyUnlock(node) {
       state.researchUnlocks.stockpile_interface = true;
       break;
     }
+    case 'monkey_logistics': {
+      state.researchUnlocks.monkey_round_robin = true;
+      state.researchUnlocks.monkey_harvester = true;
+      break;
+    }
+    case 'monkey_auto_place': {
+      state.researchUnlocks.monkey_auto_place = true;
+      break;
+    }
+    case 'goblin_translations': {
+      state.patternRecDone = true;
+      break;
+    }
+    case 'tower_skills': {
+      state.researchUnlocks.tower_skills = true;
+      break;
+    }
   }
+  // Handle patternRecDone for translation system
+  if (node.id === 'pattern_rec') state.patternRecDone = true;
 }
 
 // Look up a node's position from the authoritative RESEARCH_JSON source.

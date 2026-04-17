@@ -16,7 +16,7 @@ export function mkE(et, bHP, bSpd) {
 
 export function genWave(w) {
   const q = [], isBoss = w % 5 === 0 && w > 0;
-  const bHP = 50 * (1 + w * 0.04), bSpd = 0.5;
+  const bHP = 50 + 2 * w + 0.03 * w * w, bSpd = 0.5;
 
   // Wave 5: Proud Herald — special boss, announces itself
   if (w === 5) {
@@ -64,11 +64,11 @@ export function genWave(w) {
     for (let i = 0; i < mc; i++) q.push(mkE(ETYPES[['normal', 'fast', 'berserker'][i % 3]], bHP, bSpd));
   } else {
     const avail = ['normal'];
-    if (w >= 2) avail.push('fast'); if (w >= 3) avail.push('tank');
-    if (w >= 4) avail.push('berserker'); if (w >= 5) avail.push('shaman');
-    if (w >= 6) avail.push('stealth'); if (w >= 7) avail.push('healer');
-    if (w >= 8) avail.push('swarm'); if (w >= 9) avail.push('shield');
-    const cnt = Math.floor(5 + w * 1.5 + Math.pow(w, 0.95));
+    if (w >= 3) avail.push('fast'); if (w >= 6) avail.push('tank');
+    if (w >= 8) avail.push('berserker'); if (w >= 10) avail.push('shaman');
+    if (w >= 12) avail.push('stealth'); if (w >= 14) avail.push('healer');
+    if (w >= 17) avail.push('swarm'); if (w >= 19) avail.push('shield');
+    const cnt = Math.floor(4 + w * 1.1 + Math.pow(w, 0.82));
     for (let i = 0; i < cnt; i++) {
       const tp = avail[Math.floor(Math.random() * avail.length)];
       state.bSen.add(tp);

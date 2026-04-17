@@ -27,7 +27,7 @@ export const RECIPES = [
   {
     id: 'stone_trap', name: 'Stone Trap', icon: '🪤',
     cost: { stone: 3 }, waves: 1, output: 'consumable',
-    desc: 'Place on path: 30 dmg to first enemy that steps on it',
+    desc: 'Place on path: instantly kills the first enemy that steps on it. Barely scratches bosses.',
     trapType: 'trap',
   },
   {
@@ -83,8 +83,11 @@ export function tickCraft() {
       const recipe = RECIPES.find(r => r.id === tw.selectedRecipe);
       if (recipe && workbenchHasResources(tw, tw.selectedRecipe)) {
         if (!tw.inv) tw.inv = {};
-        for (const [r, n] of Object.entries(recipe.cost)) {
-          tw.inv[r] = Math.max(0, (tw.inv[r] || 0) - n);
+        const freeCraft = tw._monkeyBoosted && Math.random() < 0.25;
+        if (!freeCraft) {
+          for (const [r, n] of Object.entries(recipe.cost)) {
+            tw.inv[r] = Math.max(0, (tw.inv[r] || 0) - n);
+          }
         }
         tw.craftQueue = { recipeId: tw.selectedRecipe, wavesLeft: recipe.waves, wavesTotal: recipe.waves };
       }
@@ -132,12 +135,12 @@ export function placeConsumable(item, gx, gy) {
   if (!state.pathSet?.has(gx + ',' + gy)) return false;
   const trap = { type: recipe.trapType, x: gx, y: gy };
   if (recipe.trapType === 'trap') {
-    trap.dmg = 30;
+    trap.dmg = 9999; // insta-kill non-bosses; capped vs bosses in updateTraps
   } else if (recipe.trapType === 'barricade') {
     trap.wave = state.wave;
   } else if (recipe.trapType === 'sap') {
-    trap.expiry = state.ticks + 600;
-    trap.slow = 0.4;
+    trap.expiry = Infinity; // lasts the whole wave; cleared by cleanupBarricades
+    trap.slow = 0.55;
   }
   if (!state.traps) state.traps = [];
   state.traps.push(trap);
@@ -164,7 +167,7 @@ export function updateTraps() {
       for (const e of state.enemies) {
         if (e.dead) continue;
         if (Math.abs(e.x - trap.x) < 0.75 && Math.abs(e.y - trap.y) < 0.75) {
-          e.hp -= trap.dmg;
+          e.hp -= e.boss ? Math.min(e.mhp * 0.04, 80) : e.mhp;
           toRemove.push(ti);
           break;
         }
@@ -176,5 +179,5 @@ export function updateTraps() {
 
 // Remove barricades at wave end.
 export function cleanupBarricades() {
-  if (state.traps) state.traps = state.traps.filter(t => t.type !== 'barricade');
+  if (state.traps) state.traps = state.traps.filter(t => t.type !== 'barricade' && t.type !== 'sap');
 }

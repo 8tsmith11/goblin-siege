@@ -141,6 +141,18 @@ export function render() {
         cx.strokeStyle = 'rgba(244,63,94,1)'; cx.lineWidth = 4;
         cx.strokeRect(mk.cfg.boost.x * CELL + 1, mk.cfg.boost.y * CELL + 1, CELL - 2, CELL - 2);
       }
+      if (mk.role === 'harvester' && mk.cfg.harvestSrc) {
+        cx.strokeStyle = 'rgba(16,185,129,1)'; cx.lineWidth = 4;
+        cx.strokeRect(mk.cfg.harvestSrc.x * CELL + 1, mk.cfg.harvestSrc.y * CELL + 1, CELL - 2, CELL - 2);
+      }
+      if (mk.role === 'harvester' && mk.cfg.dest) {
+        cx.strokeStyle = 'rgba(244,63,94,1)'; cx.lineWidth = 4;
+        cx.strokeRect(mk.cfg.dest.x * CELL + 1, mk.cfg.dest.y * CELL + 1, CELL - 2, CELL - 2);
+      }
+      if (mk.role === 'round_robin' && mk.cfg.targets) {
+        cx.strokeStyle = 'rgba(168,85,247,1)'; cx.lineWidth = 4;
+        for (const t of mk.cfg.targets) cx.strokeRect(t.x * CELL + 1, t.y * CELL + 1, CELL - 2, CELL - 2);
+      }
     }
   }
 
@@ -173,9 +185,11 @@ export function render() {
     const px = tw.x * CELL + CELL / 2, py = tw.y * CELL + CELL / 2;
     if (ttTower === tw && (tw.range || tw.obsRange)) {
       const r = (tw.obsRange || tw.range) * CELL;
+      const isLab = tw.type === 'lab';
+      const rc = isLab ? 'rgba(168,85,247,' : 'rgba(244,63,94,';
       cx.beginPath(); cx.arc(px, py, r, 0, Math.PI * 2);
-      cx.fillStyle = 'rgba(244,63,94,.08)'; cx.fill();
-      cx.strokeStyle = 'rgba(244,63,94,.7)'; cx.lineWidth = 2; cx.stroke();
+      cx.fillStyle = rc + '.08)'; cx.fill();
+      cx.strokeStyle = rc + '.7)'; cx.lineWidth = 2; cx.stroke();
     }
 
     if (ttTower === tw && tw.type === 'clam') {
@@ -202,6 +216,11 @@ export function render() {
       cx.fillText(isH ? '🏺' : (def?.icon || '?'), tx + CELL / 2, ty + CELL / 2);
     }
     if (tw.level > 0) { cx.font = 'bold ' + Math.floor(CELL * 0.16) + 'px Anybody,sans-serif'; cx.fillStyle = '#fbbf24'; cx.fillText('★'.repeat(Math.min(tw.level, 5)), tx + CELL / 2, ty + CELL - 2); }
+    if (tw._mastery) {
+      const pulse = 0.5 + Math.sin(ticks * 0.05) * 0.15;
+      cx.beginPath(); cx.arc(px, py, CELL * 0.52, 0, Math.PI * 2);
+      cx.strokeStyle = 'rgba(168,85,247,' + pulse.toFixed(2) + ')'; cx.lineWidth = 2; cx.stroke();
+    }
 
 
   });
@@ -229,6 +248,7 @@ export function render() {
     if (tw.type !== 'monkey' || !tw.monkeys) continue;
     for (const mk of tw.monkeys) {
       if (mk.st === 'boosting') continue;
+      if (mk.role === 'harvester' && mk.cfg.harvestSrc?.isForest && mk.st === 'orbiting') continue;
       if (cam.zoom >= 0.75) {
         cx.font = Math.floor(CELL * 0.5) + 'px serif';
         cx.textAlign = 'center'; cx.textBaseline = 'middle';
@@ -313,7 +333,7 @@ export function render() {
   }
 
   // Ghost placement preview
-  if (sel && sel.type !== 'spell' && sel.type !== 'consumable_pick' && sel.type !== 'augment_pick' && gCell) {
+  if (sel && sel.type !== 'spell' && sel.type !== 'consumable_pick' && sel.type !== 'augment_pick' && sel.type !== 'relocate_source' && sel.type !== 'relocate_dest' && gCell) {
     const gx = gCell.x * CELL, gy = gCell.y * CELL, gpx = gx + CELL / 2, gpy = gy + CELL / 2;
     const ok = canPlace(gCell.x, gCell.y);
     // Range preview

@@ -5,6 +5,7 @@ import { spawnBees } from './support.js';
 import { hudU, panelU, showBanner, showOv, hideOv, hideTT } from './ui.js';
 import { getFeedLog, restoreFeed } from './feed.js';
 import { reinitMonkeys } from './monkeys.js';
+import { FIXED_RESEARCH, refreshStatuses } from './research.js';
 
 // ─── Encode / decode ──────────────────────────────────────────────────────────
 const _ψ = [0x47,0x6f,0x62,0x53,0x69,0x65,0x39,0x31,0x78,0x6b,0x37,0x5a];
@@ -74,6 +75,13 @@ function _build() {
     _fst: state.fogStartTick || 0,
     _hh: state.hasHeraldHorn || false,
     _pip: state.pip || null,
+    _wgc: state.worldGenChoices || {},
+    _tgk: state.totalGoblinsKilled || 0,
+    _tge: state.totalGoldEarned || 0,
+    _fp: state.frequencyPlayed || false,
+    _prd: state.patternRecDone || false,
+    _trs: state.translationStep || 0,
+    _trwc: state._translationWaveCount || 0,
   };
 }
 
@@ -125,8 +133,17 @@ function _apply(d) {
   _reconnectGrid(state.grid, state.towers, state.nodes);
   state.resources = { ...(d._rs || {}) };
   state.research = d._res || null;
+  // Merge any new fixed research nodes added since this save was created
+  if (state.research && FIXED_RESEARCH) {
+    for (const [id, def] of Object.entries(FIXED_RESEARCH)) {
+      if (!state.research[id]) {
+        state.research[id] = { ...def, id, status: 'locked', wavesLeft: def.waves, wavesTotal: def.waves };
+      }
+    }
+    refreshStatuses(state.research);
+  }
   state.researchUnlocks = { ...(d._rUnlocks || {}) };
-  state.unlockedTowers = new Set(d._unlocked || ['squirrel','lion','penguin','lab']);
+  state.unlockedTowers = new Set(d._unlocked || ['squirrel','lion','penguin','workbench']);
   state.bSen = new Set(d._bSen || ['sleepy_door']);
   state.bees = [];
   state.towers.filter(tw => tw.type === 'beehive').forEach(tw => spawnBees(tw));
@@ -135,7 +152,8 @@ function _apply(d) {
   state.spawnQueue = []; state.spawnTimer = 0; state.freezeActive = 0;
   state.volcanoActive = d._va || null;
   state.traps = d._traps || [];
-  state.inventory = d._inv || { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null], seenSections: {} };
+  state.inventory = d._inv || { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} };
+  if (!state.inventory.equipped) state.inventory.equipped = [null];
   if (!state.inventory.seenSections) state.inventory.seenSections = {};
   state.npcs = d._npcs || [];
   state.firedTriggerLines = new Set(d._ftl || []);
@@ -144,6 +162,13 @@ function _apply(d) {
   state.fogStartTick = d._fst || 0;
   state.hasHeraldHorn = d._hh || (d._inv?.augments?.some(a => a?.id === 'heralds_horn') ?? false);
   state.pip = d._pip || null;
+  state.worldGenChoices = d._wgc || {};
+  state.totalGoblinsKilled = d._tgk || 0;
+  state.totalGoldEarned = d._tge || 0;
+  state.frequencyPlayed = d._fp || false;
+  state.patternRecDone = d._prd || false;
+  state.translationStep = d._trs || 0;
+  state._translationWaveCount = d._trwc || 0;
   state.sel = null; state.ttTower = null; state.gameOver = false;
   state.started = true; state.wave = d._w; state.phase = 'idle';
   state.ticks = 0; state.prepTicks = 0;

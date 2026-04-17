@@ -38,6 +38,24 @@ export function buildPath() {
     }
   }
   genLakes(COLS, ROWS);
+  // Predetermine world-gen choices
+  if (!state.worldGenChoices) state.worldGenChoices = {};
+  if (!state.worldGenChoices.wave10Blueprint) {
+    state.worldGenChoices.wave10Blueprint = Math.random() < 0.5 ? 'clown' : 'lizard';
+  }
+  // Precompute water-adjacent tiles for monkey pathfinding
+  state.waterBorderTiles = [];
+  for (let gy = 0; gy < ROWS; gy++) {
+    for (let gx = 0; gx < COLS; gx++) {
+      if (state.grid[gy+PAD][gx+PAD].type === 'water') continue;
+      for (const [ddx, ddy] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+        const bx = gx+ddx, by = gy+ddy;
+        if (bx >= 0 && bx < COLS && by >= 0 && by < ROWS && state.grid[by+PAD][bx+PAD].type === 'water') {
+          state.waterBorderTiles.push({ x: gx, y: gy }); break;
+        }
+      }
+    }
+  }
   state.path = []; state.pathSet.clear();
   const vis = new Set();
   let px = 0, py = Math.max(1, Math.min(Math.floor(ROWS * 0.3), ROWS - 2));

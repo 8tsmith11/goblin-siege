@@ -113,10 +113,10 @@ export function getScribeEntry(wave, state) {
   const hasLab = state.towers?.some(t => t.type === 'lab') || state.bSen?.has('lab');
   const entries = {
     1:  () => 'I should start writing again. One more time.',
-    3:  () => hasLab ? 'They built a lab.' : 'No lab. Interesting.',
+    3:  () => hasLab ? 'They built a lab.' : null,
     5:  () => 'The first boss. They survived. They always survive the first one.',
     8:  () => "One walked backward. In Version 412 the backward walker stopped and faced the camera. That hasn\u2019t happened yet.",
-    10: () => "They\u2019re building faster now. It\u2019s beautiful in a way. The way an avalanche is beautiful.",
+    10: () => !hasLab ? "No lab yet. Interesting. Most build one. Whatever they know that the others didn\u2019t, I hope it\u2019s worth knowing." : "They\u2019re building faster now. It\u2019s beautiful in a way. The way an avalanche is beautiful.",
     12: () => 'The ground shook. It always shakes at this point.',
     15: () => "The fog came. You can\u2019t fight fog.",
     18: () => 'They translated the first sounds. Give it time.',
@@ -132,13 +132,15 @@ export function getScribeLogs(state) {
   let logs = [];
   if (w >= 1) logs.push({ w: 'Wave 1', t: 'I should start writing again. One more time.' });
   if (w >= 3) {
-    const hasLab = state.towers?.some(t => t.type === 'lab') || state.bSen?.has('lab');
-    if (w >= 5 && !hasLab) logs.push({ w: 'Wave 3', t: 'No lab. Interesting.' });
-    else if (hasLab) logs.push({ w: 'Wave 3', t: 'They built a lab.' });
+    const hasLab3 = state.towers?.some(t => t.type === 'lab') || state.bSen?.has('lab');
+    if (hasLab3) logs.push({ w: 'Wave 3', t: 'They built a lab.' });
   }
   if (w >= 5) logs.push({ w: 'Wave 5', t: "The first boss. They survived. They always survive the first one." });
   if (w >= 8) logs.push({ w: 'Wave 8', t: "One walked backward. In Version 412 the backward walker stopped and faced the camera. That hasn't happened yet." });
-  if (w >= 10) logs.push({ w: 'Wave 10', t: "They're building faster now. It's beautiful in a way. The way an avalanche is beautiful." });
+  if (w >= 10) {
+    const hasLab10 = state.towers?.some(t => t.type === 'lab') || state.bSen?.has('lab');
+    logs.push({ w: 'Wave 10', t: !hasLab10 ? "No lab yet. Interesting. Most build one. Whatever they know that the others didn't, I hope it's worth knowing." : "They're building faster now. It's beautiful in a way. The way an avalanche is beautiful." });
+  }
   if (w >= 12) logs.push({ w: 'Wave 12', t: "The ground shook. It always shakes at this point." });
   if (w >= 15) logs.push({ w: 'Wave 15', t: "The fog came. You can't fight fog." });
   if (w >= 18) logs.push({ w: 'Wave 18', t: 'They translated the first sounds. Give it time.' });

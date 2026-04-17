@@ -1,9 +1,9 @@
 'use strict';
-import { state, _ΨΔ, clampCam, minZoom, getCell } from './main.js';
+import { state, _ΨΔ, clampCam, minZoom, getCell, setCell } from './main.js';
 import { iA, sfxPlace, sfxLizard, speak } from './audio.js';
 import { TD, TOWER_SKILLS } from './data.js';
 import { spawnBees } from './support.js';
-import { canPlace } from './render.js';
+import { canPlace, invalidateBg } from './render.js';
 import { showTT, hideTT, showTip, showBanner, panelU, hudU, mkGain, addToInventory } from './ui.js';
 import { clickNode, RTYPES } from './resources.js';
 import { initMonkeys } from './monkeys.js';
@@ -89,10 +89,14 @@ function tryPlaceTower(c, ex) {
     }
   }
 
-  if (state.sel.key === 'lab' && state.towers.some(t => t.type === 'lab')) { 
-    showTip('Only one Lab allowed per map!'); 
+  if (state.sel.key === 'lab' && state.wave < 5) {
+    showTip('Lab unlocks at Wave 5!');
+    return;
+  }
+  if (state.sel.key === 'lab' && state.towers.some(t => t.type === 'lab')) {
+    showTip('Only one Lab allowed per map!');
     state.sel = null; hideTT(); state.ttTower = null; panelU();
-    return; 
+    return;
   }
 
   let tw;
@@ -110,6 +114,7 @@ function tryPlaceTower(c, ex) {
       splash: def?.splash || 0, slow: def?.slow || 0, pierce: def?.pierce || 0, chain: def?.chain || 0,
       stun: 0, poison: null, blind: false, bloodlust: false, blizzard: false, seeInvis: false,
       chainStun: 0, megaSpeed: false, frenzy: false, disabledWave: -1,
+      ownedSkills: {},
     };
     if (tw.type === 'clown') { tw.reverseRange = TD.clown.reverseRange; tw.reverseDur = TD.clown.reverseDur; tw.reverseCD = TD.clown.reverseCD; }
     if (tw.type === 'robot') tw.cd = 100;
@@ -117,7 +122,7 @@ function tryPlaceTower(c, ex) {
     if (tw.type === 'hoard') { tw.stored = 0; }
     if (tw.type === 'stockpile') { tw.slots = [null, null, null, null]; tw.mode = 'storage'; }
     if (tw.type === 'workbench') { tw.craftQueue = null; tw.selectedRecipe = null; tw.inv = {}; }
-    if (tw.type === 'lab') { tw.obsRange = TD.lab.obsRange; }
+    if (tw.type === 'lab') { tw.obsRange = TD.lab.obsRange + (state.researchUnlocks?.lab_radius || 0); }
     if (tw.type === 'monkey') {
       tw.range = TD.monkey.range;
       const cap = 1 + (state.researchUnlocks?.monkey_capacity || 0);
@@ -150,7 +155,10 @@ function handleTap(e) {
   const c = cell(e);
   const tappedCell = getCell(c.x, c.y);
   if (!tappedCell) return; // truly off-grid
-  if (tappedCell.type === 'forest') return; // forest tile — no interaction yet
+  if (tappedCell.type === 'forest') {
+    // Allow forest clicks only when picking a harvest source
+    if (!(state.sel?.type === 'tile_pick' && state.sel?.field === 'harvestSrc')) return;
+  }
   const ex = state.towers.find(t => t.x === c.x && t.y === c.y);
 
   // Augment-pick mode: click a tower to apply the augment
@@ -197,6 +205,43 @@ function handleTap(e) {
     return;
   }
 
+  // Relocation charm — two-step: pick tower, then pick destination
+  if (state.sel?.type === 'relocate_source') {
+    const cellC = getCell(c.x, c.y);
+    const tw = cellC?.content;
+    if (!tw || !TD[tw.type]) { showTip('Click a tower to move'); return; }
+    state.sel = { type: 'relocate_dest', tower: tw, invIndex: state.sel.invIndex };
+    showTip('Now click an empty tile to place it');
+    return;
+  }
+  if (state.sel?.type === 'relocate_dest') {
+    const { tower, invIndex } = state.sel;
+    if (c.x === tower.x && c.y === tower.y) { state.sel = null; panelU(); return; }
+    if (!canPlace(c.x, c.y)) { showTip('Cannot place there!'); return; }
+    // Move tower
+    const oldCell = getCell(tower.x, tower.y);
+    if (oldCell) { oldCell.type = 'empty'; oldCell.content = null; }
+    tower.x = c.x; tower.y = c.y;
+    setCell(c.x, c.y, { type: 'tower', content: tower });
+    // Reset monkey positions if it's a hut
+    if (tower.type === 'monkey' && tower.monkeys) {
+      const px = c.x * state.CELL + state.CELL / 2, py = c.y * state.CELL + state.CELL / 2;
+      for (const mk of tower.monkeys) { mk.x = px; mk.y = py; mk.st = 'idle'; mk.carrying = null; }
+    }
+    // Consume charm
+    const charm = state.inventory?.consumables?.[invIndex];
+    if (charm) {
+      charm.count = (charm.count || 1) - 1;
+      if (charm.count <= 0) state.inventory.consumables.splice(invIndex, 1);
+    }
+    state.sel = null;
+    invalidateBg();
+    panelU(); hudU();
+    showBanner('✨ Tower relocated!');
+    sfxPlace();
+    return;
+  }
+
   // Tile-pick mode: record clicked tile for monkey role config
   if (state.sel?.type === 'tile_pick') {
     const { monkey, hut, field } = state.sel;
@@ -204,13 +249,42 @@ function handleTap(e) {
       showTip('Out of range!');
       return;
     }
+    if (field === 'harvestSrc') {
+      const isForest = c.x < 0 || c.x >= state.COLS || c.y < 0 || c.y >= state.ROWS;
+      const cellAtPos = !isForest ? getCell(c.x, c.y) : null;
+      if (!isForest && cellAtPos?.type !== 'node') {
+        showTip('Select a rock node or forest border tile!');
+        return;
+      }
+      monkey.cfg.harvestSrc = { x: c.x, y: c.y, isForest };
+      monkey.st = 'idle';
+      state.sel = null;
+      showTip(isForest ? 'Forest source set!' : 'Rock node set!');
+      panelU();
+      return;
+    }
+    if (field === 'rr_add_target') {
+      if (!monkey.cfg.targets) monkey.cfg.targets = [];
+      if (monkey.cfg.targets.length < 5 && !monkey.cfg.targets.some(t => t.x === c.x && t.y === c.y)) {
+        monkey.cfg.targets.push({ x: c.x, y: c.y });
+        showTip('Target added!');
+      } else {
+        showTip(monkey.cfg.targets.length >= 5 ? 'Max 5 targets!' : 'Already a target!');
+      }
+      monkey.st = 'idle';
+      state.sel = null;
+      panelU();
+      return;
+    }
     if (field === 'boost') {
+      const tgt = getCell(c.x, c.y)?.content;
+      if (!tgt || tgt.type === 'monkey') { showTip('Cannot boost that tile!'); return; }
       const alreadyBoosted = state.towers.some(h =>
         h.type === 'monkey' && h.monkeys?.some(m =>
           m !== monkey && m.role === 'booster' && m.cfg.boost?.x === c.x && m.cfg.boost?.y === c.y
         )
       );
-      if (alreadyBoosted) { showTip('Already being boosted by another monkey!'); return; }
+      if (alreadyBoosted) { showTip('Already being boosted!'); return; }
     }
     monkey.cfg[field] = { x: c.x, y: c.y };
     monkey.st = 'idle';
@@ -225,7 +299,7 @@ function handleTap(e) {
     if (handleNodeInteraction(c)) return;
   }
 
-  if (state.sel && state.sel.type !== 'spell') {
+  if (state.sel && state.sel.type !== 'spell' && state.sel.type !== 'relocate_source' && state.sel.type !== 'relocate_dest') {
     tryPlaceTower(c, ex);
     return;
   }

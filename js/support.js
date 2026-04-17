@@ -1,5 +1,6 @@
 'use strict';
 import { state } from './main.js';
+import { TD } from './data.js';
 import { sfxClown, sfxBee, sfxLaser } from './audio.js';
 import { getEnemiesInRadius } from './grid.js';
 import { mkF } from './ui.js';
@@ -23,7 +24,7 @@ export function updateClam() {
   const { towers, ticks, CELL, particles } = state;
   towers.forEach(tw => { tw._buffed = false; tw._rateBuff = 1; });
   towers.filter(tw => tw.type === 'clam').forEach(cl => {
-    const br = (cl.level + 1) * 1.5;
+    const br = Math.min(cl.buffRange || TD.clam.buffRange, 3.5);
     towers.forEach(tw => {
       if (tw === cl || tw.type === 'factory') return;
       if (Math.hypot(tw.x - cl.x, tw.y - cl.y) <= br) { tw._buffed = true; tw._rateBuff = 0.85; }
@@ -41,16 +42,33 @@ export function updateClam() {
 
 export function updateClown() {
   const { towers, CELL, particles, grid } = state;
+  const CONFETTI = ['#f472b6','#facc15','#34d399','#60a5fa','#f87171','#a78bfa'];
   towers.filter(tw => tw.type === 'clown').forEach(cl => {
     if (cl.cd > 0) { cl.cd--; return; }
     const inR = getEnemiesInRadius(grid, cl.x, cl.y, cl.reverseRange).filter(e => !e.reversed && !e.boss);
     if (!inR.length) return;
-    // Single target — furthest along the path
-    const tgt = inR.reduce((a, b) => a.pi > b.pi ? a : b);
-    tgt.reversed = true; tgt.reverseTimer = cl.reverseDur;
+
+    const sorted = [...inR].sort((a, b) => b.pi - a.pi);
+    const targets = sorted.slice(0, cl.reverseCount || 1);
+
+    targets.forEach(tgt => {
+      tgt.reversed = true; tgt.reverseTimer = cl.reverseDur;
+      if (cl.reverseStun) tgt.stunned = Math.max(tgt.stunned, 25);
+    });
+
+    // Jester's Privilege: stun all non-target enemies in range with confetti
+    if (cl.jesterPriv) {
+      const allInR = getEnemiesInRadius(grid, cl.x, cl.y, cl.reverseRange).filter(e => !e.boss);
+      allInR.forEach(e => {
+        if (!targets.includes(e)) e.stunned = Math.max(e.stunned, 20);
+        spawnParticles(particles, getCenter(e.x, CELL), getCenter(e.y, CELL), 5,
+          { spreadX: 2, spreadY: 2, life: 22, clr: CONFETTI[Math.floor(Math.random() * CONFETTI.length)], sz: 4 });
+      });
+    }
+
     cl.cd = cl.reverseCD; sfxClown();
-    spawnParticles(particles, getCenter(cl.x, CELL), getCenter(cl.y, CELL), 8, { spreadX: 4, spreadY: 4, life: 20, clr: '#f472b6', sz: 3 });
-    mkF(getCenter(cl.x, CELL), getCenter(cl.y, CELL), '🤡 REVERSE!', '#f472b6');
+    spawnParticles(particles, getCenter(cl.x, CELL), getCenter(cl.y, CELL), cl.jesterPriv ? 16 : 8, { spreadX: 4, spreadY: 4, life: 20, clr: '#f472b6', sz: 3 });
+    mkF(getCenter(cl.x, CELL), getCenter(cl.y, CELL), cl.jesterPriv ? '🤡 CHAOS!' : '🤡 REVERSE!', '#f472b6');
   });
 }
 

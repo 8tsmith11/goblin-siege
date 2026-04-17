@@ -2,6 +2,7 @@
 import { state, getCell } from './main.js';
 import { bus } from './bus.js';
 import { addFeed } from './feed.js';
+import { sfxElderSpeak } from './audio.js';
 
 // ─── NPC speech data ──────────────────────────────────────────────────────────
 
@@ -15,6 +16,17 @@ const NPC_LINES = {
       trigger: 'wave_prep',
       wave: 1,
       text: "You'll want to put something on the path to stop the creatures. The creatures don't like it when you put things on the path, but that won't stop them from walking. Nothing will."
+    },
+    {
+      trigger: 'wave_prep',
+      wave: 5,
+      text: "The Lab can be placed now, if you're inclined toward observation. I've found observation helps. Eventually."
+    },
+    {
+      trigger: 'wave_prep',
+      wave: 10,
+      cond: s => !s.towers?.some(t => t.type === 'lab'),
+      text: "No lab yet. That's interesting. Most build one. You haven't. I wonder what you know that they didn't."
     }
   ]
 };
@@ -57,6 +69,7 @@ function _processQueue() {
   _bubble.textContent = text;
   _bubble.classList.add('sh');
   _positionBubble(npc);
+  sfxElderSpeak();
   clearTimeout(_bubbleTimer);
   _bubbleTimer = setTimeout(() => {
     _bubble.classList.remove('sh');
@@ -102,6 +115,7 @@ function _handleTrigger(type, ctx) {
       if (state.firedTriggerLines.has(key)) continue;
       if (line.trigger !== type) continue;
       if (line.wave !== undefined && line.wave !== ctx.wave) continue;
+      if (line.cond && !line.cond(state)) continue;
       state.firedTriggerLines.add(key);
       _bubbleQueue.push({ npc, text: line.text });
       addFeed('npc', line.text);

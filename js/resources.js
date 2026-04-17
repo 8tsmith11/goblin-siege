@@ -130,7 +130,7 @@ export function canTileAccept(gx, gy, type) {
     const cap = (HOARD_LEVELS[tw.level || 0] ?? HOARD_LEVELS[0]).cap;
     return (tw.stored || 0) < cap;
   }
-  if (tw?.type === 'workbench') return !!RTYPES[type];
+  if (tw?.type === 'workbench') return !!RTYPES[type] && (tw.inv?.[type] || 0) < 20;
   const stacks = cell.stacks;
   if (!stacks) return true;
   return stacks.some(s => !s) || stacks.some(s => s && (!type || s.type === type) && s.count < 64);
@@ -180,8 +180,8 @@ export function dropItem(cx, cy, type) {
     return true;
   }
   if (tw?.type === 'workbench' && RTYPES[type]) {
-    // Accept RTYPE resources into the workbench inventory
     if (!tw.inv) tw.inv = {};
+    if ((tw.inv[type] || 0) >= 20) return false;
     tw.inv[type] = (tw.inv[type] || 0) + 1;
     const rt = RTYPES[type];
     mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr);
