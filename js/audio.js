@@ -75,14 +75,14 @@ export function sfxElderSpeak() {
 let _humOsc = null, _humGain = null;
 export function startHum() {
   if (!AC || !sOn || _humOsc?.length) return;
-  // Duck BGM while hum plays
-  if (window.bgm && sOn) { window.bgm.volume = 0.04; }
+  // Silence BGM while hum plays
+  if (window.bgm && sOn) { window.bgm.volume = 0; }
   _humGain = AC.createGain();
   _humGain.gain.setValueAtTime(0, AC.currentTime);
-  _humGain.gain.linearRampToValueAtTime(0.45, AC.currentTime + 3);
+  _humGain.gain.linearRampToValueAtTime(0.85, AC.currentTime + 3);
   _humGain.connect(MG);
   _humOsc = [];
-  for (const [freq, vol] of [[80, 0.7], [160, 0.3], [240, 0.15]]) {
+  for (const [freq, vol] of [[80, 0.6], [160, 0.35], [240, 0.2], [440, 0.12]]) {
     const o = AC.createOscillator(), g = AC.createGain();
     o.type = 'sine'; o.frequency.value = freq;
     g.gain.value = vol;
