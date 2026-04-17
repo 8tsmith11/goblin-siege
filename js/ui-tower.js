@@ -23,7 +23,7 @@ function _showObsLog() {
   const entries = TRANSLATIONS.slice(0, step).reverse();
   el.innerHTML = `<div style="background:#0d1520;border:2px solid #a78bfa;border-radius:12px;padding:20px;max-width:380px;max-height:60vh;overflow-y:auto">
     <div style="font-size:14px;font-weight:800;color:#a78bfa;margin-bottom:12px">📜 Observation Log — Goblin Translations</div>
-    ${entries.map((t, i) => `<div style="font-style:italic;color:#c4b5fd;font-size:13px;padding:8px 0;border-bottom:1px solid rgba(168,85,247,.2)">Step ${step - i}: ${t}</div>`).join('')}
+    ${entries.length ? entries.map((t, i) => `<div style="font-style:italic;color:#c4b5fd;font-size:13px;padding:8px 0;border-bottom:1px solid rgba(168,85,247,.2)">Step ${step - i}: ${t}</div>`).join('') : '<div style="color:#6b7280;font-size:12px;font-style:italic">No translations recorded yet.</div>'}
     <button onclick="document.getElementById('obsLogP').style.display='none'" style="margin-top:12px;padding:6px 16px;background:#1a1a3a;border:1px solid #a78bfa;border-radius:6px;color:#a78bfa;cursor:pointer">Close</button>
   </div>`;
   el.style.display = 'flex';
@@ -247,8 +247,8 @@ export function showTT(tw, px, py) {
   if (tw.type === 'stockpile') buildStockpileTT(tw, a);
   if (tw.type === 'lab') {
     addTTB(a, '🔬 Research', 'tts2', !!state.research, () => { hideTT(); state.ttTower = null; showResearch(); });
-    if (state.patternRecDone && state.translationStep > 0) {
-      addTTB(a, '📜 Observation Log', 'tts2', true, () => _showObsLog());
+    if (state.patternRecDone) {
+      addTTB(a, '📜 Goblin Translations', 'tts2', true, () => _showObsLog());
     }
   }
   if (tw.type === 'monkey') buildMonkeyTT(tw, a);
