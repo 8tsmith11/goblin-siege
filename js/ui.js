@@ -177,7 +177,7 @@ export function panelU() {
   if (tab === 'towers') {
     for (const k in TD) {
       const d = TD[k];
-      const isUnl = (state.unlockedTowers && state.unlockedTowers.has(k)) || state.inventory?.blueprints?.some(bp => bp?.unlocks === k);
+      const isUnl = (state.unlockedTowers && state.unlockedTowers.has(k)) || state.inventory?.blueprints?.some(bp => bp?.unlocks === k || bp?.id === k + '_bp' || bp?.id === 'bp_' + k);
       if (!isUnl) {
         if (k !== 'robot') continue;
         const el = mkIB(d.icon, '???', 'Locked', false, false, () => { });
