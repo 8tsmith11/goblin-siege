@@ -110,7 +110,7 @@ function showTdesc(key, btnEl) {
   let icon = '?', name = '?', desc = '', catCls = '', catLabel = '', stats = '', costVal = '';
 
   if (TD[key]) {
-    const d = TD[key], isUnl = state.unlockedTowers.has(key) || state.inventory?.blueprints?.some(bp => bp?.unlocks === key);
+    const d = TD[key], isUnl = state.unlockedTowers.has(key) || state.inventory?.blueprints?.some(bp => bp?.unlocks === key || bp?.id === key + '_bp' || bp?.id === 'bp_' + key);
     icon = d.icon;
     if (!isUnl) {
       name = '???'; desc = 'Discover this building via research in the Lab.';
