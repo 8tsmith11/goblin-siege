@@ -56,9 +56,9 @@ export function updateClown() {
       if (cl.reverseStun) tgt.stunned = Math.max(tgt.stunned, 10);
     });
 
-    // Jester's Privilege: swap frontmost and backmost enemies globally
+    // Jester's Privilege: swap frontmost and backmost enemies within range
     if (cl.jesterPriv) {
-      const all = state.enemies.filter(e => !e.dead && !e.boss);
+      const all = inR.filter(e => !e.boss);
       if (all.length >= 2) {
         const front = all.reduce((a, b) => a.pi > b.pi ? a : b);
         const back  = all.reduce((a, b) => a.pi < b.pi ? a : b);
