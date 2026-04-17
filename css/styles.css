@@ -52,7 +52,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 #oCancelBtn{background:linear-gradient(135deg,#334155,#1e293b)!important;box-shadow:none!important}
 #exportLbl{font-size:12px;color:#94a3b8;cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;justify-content:center}
 #ov button:active{transform:scale(.95)}
-#tt{position:absolute;display:none;background:#111827f4;border:2px solid var(--accent);border-radius:7px;padding:7px 9px;z-index:40;min-width:150px;font-size:11px;pointer-events:auto;max-width:480px}
+#tt{position:absolute;display:none;background:#111827f4;border:2px solid var(--accent);border-radius:7px;padding:7px 9px;z-index:40;min-width:150px;font-size:11px;pointer-events:auto;max-width:540px;max-height:80vh;overflow-y:auto}
 .ttt{font-family:'MedievalSharp',cursive;color:var(--accent);font-size:15px;margin-bottom:2px}
 .tts{margin-bottom:4px;line-height:1.3;color:#94a3b8}
 .tta{display:flex;gap:3px;flex-wrap:wrap}
