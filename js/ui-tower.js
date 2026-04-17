@@ -306,7 +306,8 @@ export function showTT(tw, px, py) {
     }
   }
   if (TOWER_SKILLS[tw.type] && state.researchUnlocks?.tower_skills) { addTTB(a, '⚡Skill', 'ttc', true, () => { showTowerSkill(tw); hideTT(); state.ttTower = null; }); }
-  const sv = Math.floor(def.cost * 0.5);
+  const upgSpent = (TOWER_UPGS[tw.type] || []).slice(0, tw.level || 0).reduce((s, u) => s + u.cost, 0);
+  const sv = Math.floor((def.cost + upgSpent) * 0.5);
   addTTB(a, 'Sell +💰' + sv, 'ttl', true, () => {
     const hasStored = tw.type === 'stockpile' && tw.mode !== 'interface' && tw.slots?.some(s => s);
     const sellMsg = hasStored
