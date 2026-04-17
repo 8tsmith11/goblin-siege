@@ -52,7 +52,7 @@ bus.on('enemyDeath', e => {
   if (lab && state.resources) {
     const dist = Math.hypot(e.x - lab.x, e.y - lab.y);
     if (dist <= lab.obsRange) {
-      let dustYield = e.boss ? 5 : Math.ceil(rew / 4);
+      let dustYield = e.boss ? 5 : Math.floor(rew / 4);
       if (dustYield > 0) {
         const tallyStick = state.inventory?.equipped?.some(a => a?.id === 'tally_stick');
         if (tallyStick) dustYield = Math.ceil(dustYield * 1.1);
