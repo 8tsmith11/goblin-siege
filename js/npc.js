@@ -60,20 +60,22 @@ let _bubbleActive = false;
 let _bubbleQueue = [];
 let _bubbleTimer = null;
 
+let _voices = [];
+if (window.speechSynthesis) {
+  const _loadVoices = () => { _voices = window.speechSynthesis.getVoices(); };
+  _loadVoices();
+  window.speechSynthesis.addEventListener('voiceschanged', _loadVoices);
+}
+
 function _elderSpeak(text) {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const utt = new SpeechSynthesisUtterance(text);
   utt.rate = 0.68;
-  utt.pitch = 1.1;
+  utt.pitch = 0.85;
   utt.volume = 0.82;
-  // Prefer warm/soothing accents: Irish > Australian > Scottish > UK > US
-  const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find(v => /moira/i.test(v.name))
-    || voices.find(v => v.lang === 'en-IE')
-    || voices.find(v => /karen|lee/i.test(v.name))
-    || voices.find(v => v.lang === 'en-AU')
-    || voices.find(v => /fiona/i.test(v.name))
+  const voices = _voices.length ? _voices : window.speechSynthesis.getVoices();
+  const preferred = voices.find(v => /daniel|oliver|arthur|george/i.test(v.name))
     || voices.find(v => v.lang === 'en-GB')
     || voices.find(v => v.lang.startsWith('en'))
     || voices[0];
