@@ -113,38 +113,55 @@ function bfsPath(fromGx, fromGy, toGx, toGy) {
   return [];
 }
 
-// Movement with BFS water avoidance
+// Check if a straight pixel line from (x1,y1) to (x2,y2) crosses any water cell
+function lineCrossesWater(x1, y1, x2, y2, CELL) {
+  const steps = Math.max(1, Math.ceil(Math.hypot(x2 - x1, y2 - y1) / (CELL * 0.5)));
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    if (getCell(Math.floor((x1 + (x2 - x1) * t) / CELL), Math.floor((y1 + (y2 - y1) * t) / CELL))?.type === 'water') return true;
+  }
+  return false;
+}
+
+// Movement: BFS computed once per destination if water is in the way; otherwise direct
 function moveTo(mk, tx, ty) {
   const { CELL } = state;
   const dx = tx - mk.x, dy = ty - mk.y, d = Math.hypot(dx, dy);
-  const weatherMult = state.weather?.id === 'rain' ? 0.8 : 1;
-  const spd = MONKEY_SPEED * CELL * weatherMult;
-  if (d <= spd) { mk.x = tx; mk.y = ty; mk._waterPath = null; return true; }
+  const spd = MONKEY_SPEED * CELL * (state.weather?.id === 'rain' ? 0.8 : 1);
+  if (d <= spd) { mk.x = tx; mk.y = ty; mk._waterPath = null; mk._waterDst = null; return true; }
 
-  const nx = dx / d, ny = dy / d;
-  const px = mk.x + nx * spd, py = mk.y + ny * spd;
-  // Direct step clear — go straight
-  if (getCell(Math.floor(px / CELL), Math.floor(py / CELL))?.type !== 'water') {
-    mk._waterPath = null;
-    mk.x = px; mk.y = py;
-    return false;
-  }
-
-  // Blocked by water — compute or follow BFS path
-  const fromGx = Math.floor(mk.x / CELL), fromGy = Math.floor(mk.y / CELL);
-  const toGx   = Math.floor(tx   / CELL), toGy   = Math.floor(ty   / CELL);
-  if (!mk._waterPath || !mk._waterPath.length ||
-      mk._waterDstGx !== toGx || mk._waterDstGy !== toGy) {
-    mk._waterPath = bfsPath(fromGx, fromGy, toGx, toGy);
-    mk._waterDstGx = toGx; mk._waterDstGy = toGy;
-  }
+  // Follow existing BFS path without re-checking for water
   if (mk._waterPath && mk._waterPath.length) {
     const wp = mk._waterPath[0];
     const wpx = wp.x * CELL + CELL / 2, wpy = wp.y * CELL + CELL / 2;
     const wd = Math.hypot(wpx - mk.x, wpy - mk.y);
     if (wd <= spd) { mk.x = wpx; mk.y = wpy; mk._waterPath.shift(); }
     else { mk.x += (wpx - mk.x) / wd * spd; mk.y += (wpy - mk.y) / wd * spd; }
+    return false;
   }
+
+  // Check once per destination whether a BFS detour is needed
+  const dstKey = `${Math.floor(tx / CELL)},${Math.floor(ty / CELL)}`;
+  if (mk._waterDst !== dstKey) {
+    mk._waterDst = dstKey;
+    if (lineCrossesWater(mk.x, mk.y, tx, ty, CELL)) {
+      mk._waterPath = bfsPath(Math.floor(mk.x / CELL), Math.floor(mk.y / CELL),
+                               Math.floor(tx   / CELL), Math.floor(ty   / CELL));
+    }
+  }
+
+  // If a path was just computed, start following it
+  if (mk._waterPath && mk._waterPath.length) {
+    const wp = mk._waterPath[0];
+    const wpx = wp.x * CELL + CELL / 2, wpy = wp.y * CELL + CELL / 2;
+    const wd = Math.hypot(wpx - mk.x, wpy - mk.y);
+    if (wd <= spd) { mk.x = wpx; mk.y = wpy; mk._waterPath.shift(); }
+    else { mk.x += (wpx - mk.x) / wd * spd; mk.y += (wpy - mk.y) / wd * spd; }
+    return false;
+  }
+
+  // Direct movement
+  mk.x += dx / d * spd; mk.y += dy / d * spd;
   return false;
 }
 
