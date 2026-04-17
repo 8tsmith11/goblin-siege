@@ -445,12 +445,17 @@ function tickRoundRobin(mk, tw) {
       const destIdx = mk._rrDest ?? 0;
       const t = targets[destIdx];
       if (!t) { mk.st = 'idle'; return; }
-      // Auto-place consumables on path tiles if neuron_activation researched
-      if (tryAutoPlace(mk, t.x, t.y)) {
-        cfg.rrIdx = (destIdx + 1) % targets.length;
-        mk._rrDest = undefined;
-        mk.st = 'idle';
-      } else {
+      // Deploy traps/consumables on path tiles (same as courier, no research needed)
+      if (mk.carrying && AUTO_PLACE_IDS.has(mk.carrying.type) && state.pathSet?.has(`${t.x},${t.y}`)) {
+        if (state.traps?.some(tr => tr.x === t.x && tr.y === t.y)) {
+          // Trap already there — advance to next target instead of waiting
+          cfg.rrIdx = (destIdx + 1) % targets.length;
+          mk._rrDest = undefined; mk.st = 'idle'; return;
+        }
+        const placed = placeConsumable({ id: mk.carrying.type, output: 'consumable' }, t.x, t.y);
+        if (placed) { mk.carrying = null; mk.trips++; cfg.rrIdx = (destIdx + 1) % targets.length; mk._rrDest = undefined; mk.st = 'idle'; return; }
+      }
+      {
         const dropped = dropItem(t.x, t.y, mk.carrying.type);
         if (dropped) {
           mk.carrying = null;
