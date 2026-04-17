@@ -18,7 +18,7 @@ const NPC_LINES = {
     },
     {
       trigger: 'wave_prep',
-      wave: 2,
+      wave: 1,
       text: "The rocks and stumps around here — try clicking on them. They give things. I used to collect things. I don't remember why I stopped."
     },
     {
@@ -65,7 +65,7 @@ function _elderSpeak(text) {
   window.speechSynthesis.cancel();
   const utt = new SpeechSynthesisUtterance(text);
   utt.rate = 0.68;
-  utt.pitch = 0.55;
+  utt.pitch = 0.85;
   utt.volume = 0.82;
   // Prefer a calm deep English voice — UK tends to be smoother
   const voices = window.speechSynthesis.getVoices();
