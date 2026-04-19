@@ -149,9 +149,15 @@ export function render() {
         cx.strokeStyle = 'rgba(244,63,94,1)'; cx.lineWidth = 4;
         cx.strokeRect(mk.cfg.dest.x * CELL + 1, mk.cfg.dest.y * CELL + 1, CELL - 2, CELL - 2);
       }
-      if (mk.role === 'round_robin' && mk.cfg.targets) {
-        cx.strokeStyle = 'rgba(168,85,247,1)'; cx.lineWidth = 4;
-        for (const t of mk.cfg.targets) cx.strokeRect(t.x * CELL + 1, t.y * CELL + 1, CELL - 2, CELL - 2);
+      if (mk.role === 'round_robin') {
+        if (mk.cfg.rrMode === 'froms') {
+          cx.strokeStyle = 'rgba(59,130,246,1)'; cx.lineWidth = 4;
+          for (const f of (mk.cfg.froms || [])) cx.strokeRect(f.x * CELL + 1, f.y * CELL + 1, CELL - 2, CELL - 2);
+          if (mk.cfg.dest) { cx.strokeStyle = 'rgba(244,63,94,1)'; cx.strokeRect(mk.cfg.dest.x * CELL + 1, mk.cfg.dest.y * CELL + 1, CELL - 2, CELL - 2); }
+        } else {
+          if (mk.cfg.from) { cx.strokeStyle = 'rgba(59,130,246,1)'; cx.lineWidth = 4; cx.strokeRect(mk.cfg.from.x * CELL + 1, mk.cfg.from.y * CELL + 1, CELL - 2, CELL - 2); }
+          if (mk.cfg.targets) { cx.strokeStyle = 'rgba(168,85,247,1)'; cx.lineWidth = 4; for (const t of mk.cfg.targets) cx.strokeRect(t.x * CELL + 1, t.y * CELL + 1, CELL - 2, CELL - 2); }
+        }
       }
     }
   }
@@ -240,6 +246,7 @@ export function render() {
   }
 
   // Mastery auras — second pass so they overlap neighboring towers
+  cx.save();
   towers.forEach(tw => {
     if (!tw._mastery) return;
     const px = tw.x * CELL + CELL / 2, py = tw.y * CELL + CELL / 2;
@@ -278,6 +285,7 @@ export function render() {
       }
     }
   });
+  cx.restore();
 
   // Bees
   bees.forEach(bee => {
@@ -298,11 +306,8 @@ export function render() {
       if (mk.st === 'boosting') continue;
       if (mk.role === 'harvester' && mk.cfg.harvestSrc?.isForest && mk.st === 'orbiting') continue;
       if (hutSelected) {
-        cx.save();
-        cx.beginPath(); cx.arc(mk.x, mk.y, CELL * 0.33, 0, Math.PI * 2);
-        cx.fillStyle = 'rgba(251,191,36,0.35)'; cx.fill();
+        cx.beginPath(); cx.arc(mk.x, mk.y, CELL * 0.34, 0, Math.PI * 2);
         cx.strokeStyle = 'rgba(251,191,36,0.9)'; cx.lineWidth = 2; cx.stroke();
-        cx.restore();
       }
       if (cam.zoom >= 0.75) {
         cx.font = Math.floor(CELL * 0.5) + 'px serif';
