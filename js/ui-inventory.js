@@ -56,7 +56,9 @@ function renderInventory() {
       const cell = document.createElement('div');
       cell.className = 'inv-cell equip-slot' + (item ? ' filled' : '') + (isSel ? ' sel' : '');
       if (item) {
-        cell.innerHTML = '<div class="inv-ic">' + item.icon + '</div><div class="inv-nm">' + item.name + '</div>';
+        const tipHtml = item.desc ? '<div class="inv-tip">' + item.desc + '</div>' : '';
+        const rarityHtml = item.rarity ? '<div class="inv-rarity" style="color:' + (RARITY_COLORS[item.rarity] || '#94a3b8') + '">●</div>' : '';
+        cell.innerHTML = '<div class="inv-ic">' + item.icon + '</div><div class="inv-nm">' + item.name + '</div>' + rarityHtml + tipHtml;
       } else {
         cell.innerHTML = '<div style="font-size:22px;opacity:.25">○</div><div class="inv-nm" style="color:#374151">Empty</div>';
       }
@@ -163,7 +165,37 @@ function _renderInvActions() {
   const el = document.getElementById('invActions');
   if (!el) return;
   el.innerHTML = '';
-  if (!_invSel || _invSel.source !== 'inv') return;
+  if (!_invSel) return;
+
+  // Equipped artifact selected — show desc + unequip
+  if (_invSel.source === 'equip') {
+    const item = state.inventory.equipped[_invSel.index];
+    if (!item) return;
+    if (item.desc) {
+      const desc = document.createElement('div');
+      desc.style.cssText = 'font-size:11px;color:#94a3b8;margin-bottom:8px;line-height:1.5';
+      desc.textContent = item.desc;
+      el.appendChild(desc);
+    }
+    const btn = document.createElement('button');
+    btn.className = 'inv-use-btn';
+    btn.style.cssText = 'background:#374151;color:#f87171;border-color:#4b5563';
+    btn.textContent = '↩ Unequip';
+    btn.onclick = () => {
+      const inv = state.inventory;
+      const art = inv.equipped[_invSel.index];
+      if (!art) return;
+      inv.equipped[_invSel.index] = null;
+      inv.artifacts.push(art);
+      _invSel = null;
+      renderInventory();
+      _renderInvActions();
+    };
+    el.appendChild(btn);
+    return;
+  }
+
+  if (_invSel.source !== 'inv') return;
   const inv = state.inventory;
   const item = inv[_invSel.section]?.[_invSel.index];
   if (!item) return;
