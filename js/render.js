@@ -293,9 +293,17 @@ export function render() {
   // Monkeys — hidden while boosting (monkey "disappears" into the target building)
   for (const tw of towers) {
     if (tw.type !== 'monkey' || !tw.monkeys) continue;
+    const hutSelected = tw === ttTower;
     for (const mk of tw.monkeys) {
       if (mk.st === 'boosting') continue;
       if (mk.role === 'harvester' && mk.cfg.harvestSrc?.isForest && mk.st === 'orbiting') continue;
+      if (hutSelected) {
+        cx.save();
+        cx.beginPath(); cx.arc(mk.x, mk.y, CELL * 0.33, 0, Math.PI * 2);
+        cx.fillStyle = 'rgba(251,191,36,0.35)'; cx.fill();
+        cx.strokeStyle = 'rgba(251,191,36,0.9)'; cx.lineWidth = 2; cx.stroke();
+        cx.restore();
+      }
       if (cam.zoom >= 0.75) {
         cx.font = Math.floor(CELL * 0.5) + 'px serif';
         cx.textAlign = 'center'; cx.textBaseline = 'middle';

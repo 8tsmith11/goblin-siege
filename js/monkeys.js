@@ -233,13 +233,17 @@ function findNearestStack(ox, oy, range, filter, exclude) {
   return best;
 }
 
-// Find next valid delivery target in round-robin targets array starting from startIdx
+// Find next valid delivery target in round-robin targets array starting from startIdx.
+// Trap items additionally require no existing trap on the tile.
 function nextRRTarget(targets, startIdx, filter) {
   const n = targets.length;
+  const isTrap = AUTO_PLACE_IDS.has(filter);
   for (let i = 0; i < n; i++) {
     const idx = (startIdx + i) % n;
     const t = targets[idx];
-    if (canTileAccept(t.x, t.y, filter)) return { idx, t };
+    if (!canTileAccept(t.x, t.y, filter)) continue;
+    if (isTrap && state.traps?.some(tr => tr.x === t.x && tr.y === t.y)) continue;
+    return { idx, t };
   }
   return null;
 }
@@ -370,8 +374,7 @@ function tickCourier(mk, tw) {
   } else if (mk.st === 'carrying') {
     if (moveTo(mk, mk.targetX, mk.targetY)) {
       if (mk.waitCd > 0) { mk.waitCd--; return; }
-      // Deploy traps/consumables on path tiles (courier always does this, no research needed)
-      if (mk.carrying && AUTO_PLACE_IDS.has(mk.carrying.type) && state.pathSet?.has(`${cfg.dest.x},${cfg.dest.y}`)) {
+      if (mk.carrying && AUTO_PLACE_IDS.has(mk.carrying.type) && state.researchUnlocks?.monkey_auto_place && state.pathSet?.has(`${cfg.dest.x},${cfg.dest.y}`)) {
         if (state.traps?.some(t => t.x === cfg.dest.x && t.y === cfg.dest.y)) {
           mk.waitCd = 60; return; // trap already there — wait for it to be consumed
         }
@@ -394,7 +397,7 @@ function tickCourier(mk, tw) {
 function _rrDeliver(mk, cfg, dx, dy, idxKey, listKey) {
   const list = cfg[listKey] || [];
   const idx = mk._rrDest ?? 0;
-  if (mk.carrying && AUTO_PLACE_IDS.has(mk.carrying.type) && state.pathSet?.has(`${dx},${dy}`)) {
+  if (mk.carrying && AUTO_PLACE_IDS.has(mk.carrying.type) && state.researchUnlocks?.monkey_auto_place && state.pathSet?.has(`${dx},${dy}`)) {
     if (state.traps?.some(tr => tr.x === dx && tr.y === dy)) {
       cfg[idxKey] = (idx + 1) % Math.max(1, list.length);
       mk._rrDest = undefined; mk.st = 'idle'; return;
@@ -454,14 +457,22 @@ function tickRoundRobin(mk, tw) {
       if (moveTo(mk, mk.targetX, mk.targetY)) {
         const item = _tryPickup(src, cfg.filter);
         if (item) { mk.carrying = item; mk.st = 'idle'; }
-        else { mk.waitCd = 30; mk.st = 'at_from'; }
+        else {
+          // Source empty — immediately try next from
+          cfg.rrFromIdx = ((cfg.rrFromIdx || 0) + 1) % froms.length;
+          mk.st = 'idle';
+        }
       }
     } else if (mk.st === 'at_from') {
       _orbitTile(mk, sc.x, sc.y);
       if (mk.waitCd > 0) { mk.waitCd--; return; }
       const item = _tryPickup(src, cfg.filter);
       if (item) { mk.carrying = item; mk.st = 'idle'; }
-      else mk.waitCd = 30;
+      else {
+        // Source still empty — advance to next from
+        cfg.rrFromIdx = ((cfg.rrFromIdx || 0) + 1) % froms.length;
+        mk.st = 'idle';
+      }
     } else if (mk.st === 'carrying') {
       if (mk.waitCd > 0) { mk.waitCd--; return; }
       if (moveTo(mk, mk.targetX, mk.targetY)) {
@@ -481,13 +492,24 @@ function tickRoundRobin(mk, tw) {
     if (!valid.length) { tickIdle(mk, tw); return; }
   }
 
+  // Helper: orbit the "from" tile or the hut while waiting
+  const _waitNear = () => {
+    if (cfg.from && inRange(tw, cfg.from.x, cfg.from.y)) {
+      const c = cellCenter(cfg.from.x, cfg.from.y); _orbitTile(mk, c.x, c.y);
+    } else { tickIdle(mk, tw); }
+  };
+
   if (mk.st === 'idle') {
     if (mk.carrying) {
       const result = nextRRTarget(targets, cfg.rrIdx || 0, mk.carrying.type);
-      if (!result) { tickIdle(mk, tw); return; }
+      if (!result) { _waitNear(); return; } // nowhere to deliver — wait at from
       mk._rrDest = result.idx;
       const c = cellCenter(result.t.x, result.t.y);
       mk.targetX = c.x; mk.targetY = c.y; mk.st = 'carrying'; return;
+    }
+    // Before picking up a trap item, confirm at least one target has room
+    if (cfg.filter && AUTO_PLACE_IDS.has(cfg.filter)) {
+      if (!nextRRTarget(targets, cfg.rrIdx || 0, cfg.filter)) { _waitNear(); return; }
     }
     if (cfg.from && inRange(tw, cfg.from.x, cfg.from.y)) {
       const c = cellCenter(cfg.from.x, cfg.from.y);
