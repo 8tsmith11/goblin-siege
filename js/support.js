@@ -81,7 +81,7 @@ export function updateClown() {
 
     cl.cd = cl.reverseCD; sfxClown();
     spawnParticles(particles, getCenter(cl.x, CELL), getCenter(cl.y, CELL), cl.jesterPriv ? 20 : 8, { spreadX: 4, spreadY: 4, life: 20, clr: '#f472b6', sz: 3 });
-    mkF(getCenter(cl.x, CELL), getCenter(cl.y, CELL), cl.jesterPriv ? '🤡 SWAP!' : '🤡 REVERSE!', '#f472b6');
+    mkF(getCenter(cl.x, CELL), getCenter(cl.y, CELL), cl.jesterPriv ? '🤡 REVERSE + SWAP!' : '🤡 REVERSE!', '#f472b6');
   });
 }
 
