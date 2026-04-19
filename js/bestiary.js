@@ -55,7 +55,7 @@ export const BESTIARY = {
     stats: ""
   },
   fog: {
-    name: "Considerate Fog", icon: "🌫️", cls: "🔴 Hostile — BOSS", clr: "#ef4444", boss: true,
+    name: "Considerate Fog", icon: "🌫️", cls: "🟣 Unknown", clr: "#a855f7", boss: true,
     desc: "There is no beast. There is fog. The fog is the boss. I cannot describe this further without sounding unstable. Recommendation: build Watchtowers. Trust your towers to fire at what you cannot see. I am aware of the irony.",
     stats: ""
   },
