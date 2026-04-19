@@ -250,5 +250,20 @@ export function renderStacks() {
       }
     }
   }
+
+  // Ground loot — glowing pickups (blueprints, artifacts, charms)
+  if (state.groundLoot?.length) {
+    const pulse = 0.6 + Math.sin(state.ticks * 0.08) * 0.4;
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.font = Math.floor(CELL * 0.6) + 'px serif';
+    for (const loot of state.groundLoot) {
+      const wx = loot.x * CELL + CELL / 2, wy = loot.y * CELL + CELL / 2;
+      const grad = cx.createRadialGradient(wx, wy, 0, wx, wy, CELL * 0.65);
+      grad.addColorStop(0, 'rgba(253,230,138,' + (0.55 * pulse).toFixed(2) + ')');
+      grad.addColorStop(1, 'rgba(253,230,138,0)');
+      cx.fillStyle = grad; cx.beginPath(); cx.arc(wx, wy, CELL * 0.65, 0, Math.PI * 2); cx.fill();
+      cx.fillText(loot.item.icon || '🎁', wx, wy);
+    }
+  }
 }
 

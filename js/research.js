@@ -68,20 +68,41 @@ export function checkGamePrereq(node) {
   return true;
 }
 
+function _resolveSlot(slot) {
+  if (slot.selects === 'wave10Blueprint_counterpart') {
+    const bpTower = state.worldGenChoices?.wave10Blueprint;
+    return VARIABLE_RESEARCH.find(n => slot.nodes.includes(n.id) && n.unlocks !== bpTower);
+  }
+  return null;
+}
+
 export function buildResearchGraph() {
-  // Exclude hidden/trigger nodes from normal random pool; include them separately if triggered
-  const nonHidden = VARIABLE_RESEARCH.filter(n => !n.hidden);
-  const pool = [...nonHidden].sort(() => Math.random() - 0.5);
-  const picked = pool.slice(0, 4 + (Math.random() < 0.5 ? 0 : 1));
   const bpTower = state.worldGenChoices?.wave10Blueprint;
+
+  // Process slot nodes — mutually exclusive groups; always include exactly one per slot
+  const slotNodeIds = new Set();
   const nodes = {};
+  for (const slot of (RESEARCH_JSON?.slotNodes || [])) {
+    for (const id of slot.nodes) slotNodeIds.add(id);
+    const def = _resolveSlot(slot);
+    if (def) nodes[def.id] = { ...def, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
+  }
+
+  // Fixed research (skip if unlocked via blueprint drop or covered by a slot)
   for (const [id, def] of Object.entries(FIXED_RESEARCH)) {
-    if (bpTower && def.unlocks === bpTower) continue; // this tower comes via wave-10 blueprint drop
+    if (bpTower && def.unlocks === bpTower) continue;
+    if (slotNodeIds.has(id)) continue;
     nodes[id] = { ...def, id, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
   }
+
+  // Random variable nodes — exclude hidden, slot nodes, and bp-tower's own node
+  const nonHidden = VARIABLE_RESEARCH.filter(n => !n.hidden && !slotNodeIds.has(n.id) && n.unlocks !== bpTower);
+  const pool = [...nonHidden].sort(() => Math.random() - 0.5);
+  const picked = pool.slice(0, 4 + (Math.random() < 0.5 ? 0 : 1));
   for (const def of picked) {
     nodes[def.id] = { ...def, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
   }
+
   // Add triggered hidden nodes if conditions are met
   for (const def of VARIABLE_RESEARCH.filter(n => n.hidden)) {
     if (def.trigger === 'frequency_played' && state.frequencyPlayed) {

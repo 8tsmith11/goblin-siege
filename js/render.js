@@ -287,7 +287,7 @@ export function render() {
     if (ticks % 4 === 0) state.particles.push({ x: bee.x, y: bee.y, vx: 0, vy: 0, life: 8, clr: '#fbbf2444', sz: 1.5 });
   });
 
-  // Stacks (rendered above towers)
+  // Stacks (rendered above towers) + ground loot
   renderStacks();
 
   // Monkeys — hidden while boosting (monkey "disappears" into the target building)

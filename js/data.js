@@ -1,5 +1,5 @@
 export const TD = {
-  squirrel: { name:'Thoughtful Squirrel', icon:'🐿️', clr:'#8b5cf6', cost:40,  resCost:{stone:5},         dmg:8,  range:3.2, rate:50, pClr:'#a78bfa', pSpd:4,   splash:0,   slow:0,  target:'weakest', cat:'tower', desc:'Long range · targets weakest enemy' },
+  squirrel: { name:'Thoughtful Squirrel', icon:'🐿️', clr:'#8b5cf6', cost:40,  resCost:{stone:5},         dmg:10, range:3.2, rate:44, pClr:'#a78bfa', pSpd:4,   splash:0,   slow:0,  target:'weakest', cat:'tower', desc:'Long range · targets weakest enemy' },
   lion:     { name:'Rash Lion',           icon:'🦁',  clr:'#ef4444', cost:60,  resCost:{wood:4},          dmg:15, range:2.0, rate:25, pClr:'#f87171', pSpd:6,   splash:0,   slow:0,  target:'first',   cat:'tower', desc:'Very fast · high single-target DPS' },
   penguin:  { name:'Ambitious Penguin',   icon:'🐧',  clr:'#06b6d4', cost:55,  resCost:{stone:3},         dmg:5,  range:2.8, rate:35, pClr:'#67e8f9', pSpd:3,   splash:0,   slow:.4, target:'first',   cat:'tower', desc:'Slows enemies on hit' },
   lab:      { name:'Lab',                icon:'🧪', clr:'#a78bfa', cost:80, resCost:{stone:10}, cat:'support', obsRange: 3, desc:'Gathers Dust 🔮 from enemies slain within 3 tiles · Available at Wave 5' },
@@ -63,9 +63,9 @@ export const TOWER_SKILLS = {
   clown: {
     A: { name:'Wide Act',           desc:'Reverses 2 enemies at once, +0.5 range',              excludes:'B', cost:{dust:25,gold:50},  owned:false,            apply:tw=>{ tw.reverseCount=2; tw.reverseRange+=0.5; } },
     B: { name:'Pratfall',           desc:'Reversed target also stunned 10 ticks',               excludes:'A', cost:{dust:25,gold:50},  owned:false,            apply:tw=>{ tw.reverseStun=true; } },
-    C: { name:"Jester's Privilege", desc:'Swaps the frontmost and backmost enemy with dramatic confetti', excludes:'D', cost:{dust:50,gold:100}, owned:false, req:'any', apply:tw=>{ tw.jesterPriv=true; } },
+    C: { name:'Extended Range',     desc:'+1.5 reverse range',                                   excludes:'D', cost:{dust:50,gold:100}, owned:false, req:'any', apply:tw=>{ tw.reverseRange+=1.5; } },
     D: { name:'Grand Finale',       desc:'Reverse duration x2',                                  excludes:'C', cost:{dust:50,gold:100}, owned:false, req:'any', apply:tw=>{ tw.reverseDur=Math.round(tw.reverseDur*2); } },
-    E: { name:'Mastery',            desc:'Jester\'s Privilege now swaps ANY two enemies on the entire map. +1 range, −30% CD.', cost:{dust:60}, owned:false, req:'either_cd', apply:tw=>{ tw.reverseRange+=1; tw.reverseCD=Math.max(40,Math.round(tw.reverseCD*0.7)); tw.jesterGlobal=true; tw._mastery=true; } },
+    E: { name:"Mastery: Jester's Privilege", desc:'Swaps the strongest and weakest enemy in range by HP. +1 range, −30% CD. Purple aura.', cost:{dust:60}, owned:false, req:'either_cd', apply:tw=>{ tw.reverseRange+=1; tw.reverseCD=Math.max(40,Math.round(tw.reverseCD*0.7)); tw.jesterPriv=true; tw._mastery=true; } },
   },
   heron: {
     A: { name:'Storm Chain',   desc:'Chain to 5 targets',                excludes:'B', cost:{dust:25,gold:50},  owned:false,              apply:tw=>{ tw.chain=5; } },
@@ -91,11 +91,11 @@ export const ETYPES = {
 // Per-level stats for the Hoard Pile (tw.level 0 = Level 1, etc.)
 // income = base + floor(stored × m)  |  decay = max(1, floor(stored × 0.1))
 export const HOARD_LEVELS = [
-  { cap: 20, m: 1.5, base: 0 }, // level 1
-  { cap: 30, m: 2.0, base: 0 }, // level 2
-  { cap: 40, m: 2.5, base: 0 }, // level 3
-  { cap: 50, m: 3.0, base: 0 }, // level 4
-  { cap: 60, m: 3.5, base: 0 }, // level 5
+  { cap: 20, m: 1.0, base: 0 }, // level 1
+  { cap: 30, m: 1.4, base: 0 }, // level 2
+  { cap: 40, m: 1.8, base: 0 }, // level 3
+  { cap: 50, m: 2.2, base: 0 }, // level 4
+  { cap: 60, m: 2.6, base: 0 }, // level 5
 ];
 
 // Gold + resource cost to upgrade hoard from level N to N+1

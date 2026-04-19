@@ -56,13 +56,13 @@ export function updateClown() {
       if (cl.reverseStun) tgt.stunned = Math.max(tgt.stunned, 10);
     });
 
-    // Jester's Privilege: jesterGlobal (Mastery) picks from entire map, otherwise within range
+    // Jester's Privilege (Mastery): swaps strongest and weakest enemy in range by current HP
     if (cl.jesterPriv) {
-      const pool = cl.jesterGlobal ? state.enemies.filter(e => !e.dead && !e.boss) : inR.filter(e => !e.boss);
-      const all = pool;
-      if (all.length >= 2) {
-        const front = all.reduce((a, b) => a.pi > b.pi ? a : b);
-        const back  = all.reduce((a, b) => a.pi < b.pi ? a : b);
+      const pool = inR.filter(e => !e.boss);
+      if (pool.length >= 2) {
+        const strongest = pool.reduce((a, b) => a.hp > b.hp ? a : b);
+        const weakest   = pool.reduce((a, b) => a.hp < b.hp ? a : b);
+        const front = strongest, back = weakest;
         if (front !== back) {
           // spawn huge confetti bursts at both positions + midpoint
           const mx = (front.x + back.x) / 2, my = (front.y + back.y) / 2;

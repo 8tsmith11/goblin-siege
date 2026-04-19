@@ -68,7 +68,6 @@ export function showTowerSkill(tw) {
         if (sk.cost.dust) state.resources.dust = (state.resources.dust || 0) - sk.cost.dust;
         if (sk.cost.gold) state.gold -= sk.cost.gold;
         tw.ownedSkills[k] = true;
-        sk.owned = true;
         sk.apply(tw);
       });
       showTowerSkill(tw);

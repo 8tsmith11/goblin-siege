@@ -1,7 +1,7 @@
 'use strict';
 import { state, _ΨΔ, clampCam, minZoom, getCell, setCell } from './main.js';
 import { iA, sfxPlace, sfxLizard, speak } from './audio.js';
-import { TD, TOWER_SKILLS } from './data.js';
+import { TD } from './data.js';
 import { spawnBees } from './support.js';
 import { canPlace, invalidateBg } from './render.js';
 import { showTT, hideTT, showTip, showBanner, panelU, hudU, mkGain, addToInventory } from './ui.js';
@@ -72,6 +72,18 @@ function handleNodeInteraction(c) {
   return false;
 }
 
+function handleGroundLoot(c) {
+  const idx = (state.groundLoot || []).findIndex(l => l.x === c.x && l.y === c.y);
+  if (idx === -1) return false;
+  const loot = state.groundLoot.splice(idx, 1)[0];
+  if (loot.item.unlocks) state.unlockedTowers.add(loot.item.unlocks);
+  addToInventory(loot.section, loot.item);
+  mkGain(c.x * state.CELL + state.CELL / 2, c.y * state.CELL + state.CELL / 2, loot.item.icon || '🎁', 1, '#fde68a');
+  showBanner((loot.item.name || 'Item') + ' collected!');
+  hudU(); panelU();
+  return true;
+}
+
 function tryPlaceTower(c, ex) {
   if (ex || !canPlace(c.x, c.y)) {
     state.sel = null; hideTT(); state.ttTower = null; panelU();
@@ -133,9 +145,6 @@ function tryPlaceTower(c, ex) {
         mk.y = hcy + Math.sin(mk.patrolAngle) * state.CELL * 0.6;
       });
     }
-    // Apply any already-owned skills for this tower type
-    const _tree = TOWER_SKILLS[tw.type];
-    if (_tree) { for (const sk of Object.values(_tree)) { if (sk.owned) sk.apply(tw); } }
     state.towers.push(tw);
     const tc = getCell(c.x, c.y); tc.type = 'tower'; tc.content = tw;
     state.bSen.add(tw.type);
@@ -302,6 +311,7 @@ function handleTap(e) {
   }
 
   if (!state.sel) {
+    if (handleGroundLoot(c)) return;
     if (handleStackInteraction(c, e)) return;
     if (handleNodeInteraction(c)) return;
   }

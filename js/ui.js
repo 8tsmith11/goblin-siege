@@ -48,7 +48,7 @@ export function hudU() {
 }
 
 // ── Overlays & Banners ────────────────────────────────────────────────────────
-export function showOv(t, d, b, go, fn, cancelFn) {
+export function showOv(t, d, b, go, fn, cancelFn, cancelText) {
   document.getElementById('oT').textContent = t;
   document.getElementById('oD').innerHTML = d;
   document.getElementById('oS').textContent = go ? 'Wave ' + state.wave + ' · Gold ' + state.gold : '';
@@ -58,6 +58,7 @@ export function showOv(t, d, b, go, fn, cancelFn) {
   const cancel = document.getElementById('oCancelBtn');
   if (cancel) {
     cancel.style.display = cancelFn ? '' : 'none';
+    cancel.textContent = cancelText ?? 'Cancel';
     cancel.onclick = cancelFn ?? null;
   }
   document.getElementById('ov').classList.remove('hid');

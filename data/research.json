@@ -274,7 +274,7 @@
       "desc": "Bonds with a vicious lizard that haunts the stone walls.",
       "tooltip": "Unlocks the Lizard tower, a close-range area-damage attacker.",
       "x": 1320,
-      "y": 840
+      "y": 720
     },
     {
       "id": "entertainment",
@@ -287,12 +287,12 @@
       "waves": 3,
       "unlocks": "clown",
       "prereqs": [
-        "pattern_rec"
+        "structural"
       ],
       "desc": "A charismatic performer who disorients enemy formations.",
       "tooltip": "Unlocks the Clown support, which periodically reverses enemy movement direction.",
-      "x": 360,
-      "y": 0
+      "x": 1320,
+      "y": 720
     },
     {
       "id": "crude_optics",
@@ -419,6 +419,12 @@
       "trigger": "frequency_played",
       "x": 240,
       "y": 600
+    }
+  ],
+  "slotNodes": [
+    {
+      "nodes": ["reptilian", "entertainment"],
+      "selects": "wave10Blueprint_counterpart"
     }
   ]
 }

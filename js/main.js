@@ -32,19 +32,19 @@ bus.on('enemyDeath', e => {
     const inv = state.inventory;
     const owned = new Set([...inv.artifacts.map(a => a?.id), ...inv.equipped.map(a => a?.id)].filter(Boolean));
     if (!owned.has('heralds_horn')) {
-      addToInventory('artifacts', { ...hornArt, cdWavesLeft: 0 });
+      dropLoot(e.x, e.y, 'artifacts', { ...hornArt, cdWavesLeft: 0 });
       mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '📯', 1, '#f59e0b');
-      addFeed('herald', "📯 Herald's Horn recovered — equip it to receive early boss warnings!");
+      addFeed('herald', "📯 Herald's Horn landed on the field — pick it up!");
     }
     // Also drop a relocation charm
-    addToInventory('consumables', { id: 'relocation_charm', icon: '✨', name: 'Relocation Charm', desc: 'Move any tower to a new valid tile, preserving all upgrades.' });
-    addFeed('herald', '✨ Relocation Charm found!');
+    dropLoot(e.x, e.y, 'consumables', { id: 'relocation_charm', icon: '✨', name: 'Relocation Charm', desc: 'Move any tower to a new valid tile, preserving all upgrades.' });
+    addFeed('herald', '✨ Relocation Charm dropped — pick it up!');
   }
   // Regular bosses: 50% chance of relocation charm
   if (e.boss && !e.herald && Math.random() < 0.5) {
-    addToInventory('consumables', { id: 'relocation_charm', icon: '✨', name: 'Relocation Charm', desc: 'Move any tower to a new valid tile, preserving all upgrades.' });
+    dropLoot(e.x, e.y, 'consumables', { id: 'relocation_charm', icon: '✨', name: 'Relocation Charm', desc: 'Move any tower to a new valid tile, preserving all upgrades.' });
     mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '✨', 1, '#a855f7');
-    addFeed('boss', '✨ Relocation Charm dropped!');
+    addFeed('boss', '✨ Relocation Charm dropped — pick it up!');
   }
 
   // Dust Collection (Lab)
@@ -61,15 +61,14 @@ bus.on('enemyDeath', e => {
       }
     }
   }
-  // Wave 10 boss: drop blueprint
+  // Wave 10 boss: drop blueprint on the ground
   if (e.boss && state.wave === 10 && state.worldGenChoices?.wave10Blueprint) {
     const bpType = state.worldGenChoices.wave10Blueprint;
     const bpDef = TD[bpType];
     if (bpDef) {
-      state.unlockedTowers.add(bpType);
-      addToInventory('blueprints', { id: bpType + '_bp', icon: '🟦', bpOverlay: bpDef.icon, name: bpDef.name + ' Blueprint', unlocks: bpType });
+      dropLoot(e.x, e.y, 'blueprints', { id: bpType + '_bp', icon: '🟦', bpOverlay: bpDef.icon, name: bpDef.name + ' Blueprint', unlocks: bpType });
       mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '🟦', 1, '#3b82f6');
-      addFeed('boss', '🟦 ' + bpDef.name + ' Blueprint recovered!');
+      addFeed('boss', '🟦 ' + bpDef.name + ' Blueprint dropped — pick it up!');
     }
   }
 });
@@ -128,6 +127,7 @@ export const state = {
   npcs: [], firedTriggerLines: new Set(),
   weather: { id: 'clear', wavesLeft: 1 },
   fogWave: false, fogStartTick: 0,
+  groundLoot: [],
   heraldWarn: null, hasHeraldHorn: false,
   pip: null,
   research: null, researchUnlocks: {},
@@ -295,7 +295,14 @@ function update() {
   if (state.lives <= 0) {
     state.lives = 0; state.gameOver = true;
     _φ = false;
-    showOv('💀 Game Over', 'Survived ' + state.wave + ' waves!', 'Retry', true); return;
+    const _hasSv = hasSave();
+    const _showDeath = () => showOv('💀 Game Over', 'Survived ' + state.wave + ' waves!', 'Restart Run', true,
+      () => showOv('Restart run?', 'All progress will be lost.', 'Confirm Restart', false,
+        () => { resetGame(); startGame(); }, _showDeath, 'Go Back'),
+      _hasSv ? () => { loadGame(); hideOv(); startPrep(); } : null,
+      _hasSv ? 'Retry Wave' : null
+    );
+    _showDeath(); return;
   }
 
   // Wave complete
@@ -339,8 +346,12 @@ function update() {
       const _owned = new Set([..._inv.artifacts.map(a => a?.id), ..._inv.equipped.map(a => a?.id)].filter(Boolean));
       const _avail = ARTIFACTS.filter(a => !_owned.has(a.id));
       const art = _avail.length ? _avail[Math.floor(Math.random() * _avail.length)] : null;
-      if (art) addToInventory('artifacts', { ...art, cdWavesLeft: 0 });
-      addFeed('boss', art ? '🌫️ Fog cleared — artifact recovered at the gate.' : '🌫️ Fog cleared.');
+      if (art) {
+        const exit = state.path[state.path.length - 1];
+        if (exit) dropLoot(exit.x, exit.y, 'artifacts', { ...art, cdWavesLeft: 0 });
+        else addToInventory('artifacts', { ...art, cdWavesLeft: 0 });
+      }
+      addFeed('boss', art ? '🌫️ Fog cleared — artifact landed at the gate. Pick it up!' : '🌫️ Fog cleared.');
     }
     // Decrement active artifact cooldowns
     if (state.inventory?.equipped) {
@@ -396,6 +407,10 @@ function update() {
 }
 
 // updateProjectiles removed to projectiles.js
+
+export function dropLoot(x, y, section, item) {
+  state.groundLoot.push({ x, y, section, item });
+}
 
 /* ═══ Game flow ═══ */
 export function startGame() {
@@ -457,7 +472,7 @@ export function resetGame() {
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
     gameOver: false, started: false, pathReady: false, paused: false, sel: null, ttTower: null,
-    nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, fogWave: false, fogStartTick: 0, heraldWarn: null, hasHeraldHorn: false, pip: null, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin']), bSen: new Set(['sleepy_door']), age: 'stone',
+    nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, fogWave: false, fogStartTick: 0, groundLoot: [], heraldWarn: null, hasHeraldHorn: false, pip: null, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin']), bSen: new Set(['sleepy_door']), age: 'stone',
     traps: [],
     inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} },
     worldGenChoices: {}, totalGoblinsKilled: 0, totalGoldEarned: 0,
