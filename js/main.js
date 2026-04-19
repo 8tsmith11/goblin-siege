@@ -127,7 +127,6 @@ export const state = {
   npcs: [], firedTriggerLines: new Set(),
   weather: { id: 'clear', wavesLeft: 1 },
   fogWave: false, fogStartTick: 0,
-  groundLoot: [],
   heraldWarn: null, hasHeraldHorn: false,
   pip: null,
   research: null, researchUnlocks: {},
@@ -409,7 +408,18 @@ function update() {
 // updateProjectiles removed to projectiles.js
 
 export function dropLoot(x, y, section, item) {
-  state.groundLoot.push({ x, y, section, item });
+  x = Math.max(0, Math.min(state.COLS - 1, Math.round(x)));
+  y = Math.max(0, Math.min(state.ROWS - 1, Math.round(y)));
+  const cell = getCell(x, y);
+  if (!cell) return;
+  if (!cell.stacks) cell.stacks = [null, null, null, null];
+  // Find an empty slot; if full, evict a non-bossLoot stack
+  let slot = cell.stacks.findIndex(s => !s);
+  if (slot === -1) {
+    slot = cell.stacks.findIndex(s => !s?.bossLoot);
+    if (slot === -1) slot = 0; // all boss loot — overwrite slot 0
+  }
+  cell.stacks[slot] = { bossLoot: true, section, item, count: 1 };
 }
 
 /* ═══ Game flow ═══ */
@@ -472,7 +482,7 @@ export function resetGame() {
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
     gameOver: false, started: false, pathReady: false, paused: false, sel: null, ttTower: null,
-    nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, fogWave: false, fogStartTick: 0, groundLoot: [], heraldWarn: null, hasHeraldHorn: false, pip: null, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin']), bSen: new Set(['sleepy_door']), age: 'stone',
+    nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, fogWave: false, fogStartTick: 0, heraldWarn: null, hasHeraldHorn: false, pip: null, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin']), bSen: new Set(['sleepy_door']), age: 'stone',
     traps: [],
     inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} },
     worldGenChoices: {}, totalGoblinsKilled: 0, totalGoldEarned: 0,
