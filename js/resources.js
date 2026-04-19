@@ -230,6 +230,7 @@ export function renderStacks() {
         const basey = r * CELL + slots[i].dy * CELL;
 
         if (stack.bossLoot) {
+          cx.save();
           const pulse = 0.55 + Math.sin(state.ticks * 0.08) * 0.45;
           const grad = cx.createRadialGradient(basex, basey, 0, basex, basey, CELL * 0.45);
           grad.addColorStop(0, 'rgba(253,230,138,' + (pulse * 0.7).toFixed(2) + ')');
@@ -250,6 +251,7 @@ export function renderStacks() {
             cx.font = Math.round(CELL * 0.38) + 'px serif';
             cx.fillText(stack.item.icon || '🎁', basex, basey);
           }
+          cx.restore();
           continue;
         }
 
