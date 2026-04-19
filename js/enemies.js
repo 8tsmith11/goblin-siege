@@ -21,7 +21,7 @@ export function genWave(w) {
   // Wave 5: Proud Herald — special boss, announces itself
   if (w === 5) {
     const heraldHP = Math.floor(bHP * 6 + w * 50);
-    state.bSen.add('boss');
+    state.bSen.add('herald');
     q.push({
       tp: 'boss', hp: heraldHP, mhp: heraldHP,
       spd: bSpd * 0.35, sz: 0.65, rew: 40, clr: '#f59e0b', em: '📯', drops: [],
@@ -39,6 +39,7 @@ export function genWave(w) {
   if (w === 15) {
     state.fogWave = true;
     state.fogStartTick = state.ticks;
+    state.bSen.add('fog');
     const avail = ['normal','fast','tank','berserker','shaman','stealth','healer','swarm','shield'];
     const cnt = 28;
     for (let i = 0; i < cnt; i++) {
