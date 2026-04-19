@@ -35,12 +35,13 @@ export function showTowerSkill(tw) {
   const maxLvl = MAX_LEVEL[tw.type] ?? 5;
   for (const [k, sk] of Object.entries(tree)) {
     const owned = !!tw.ownedSkills[k];
-    const masteryLocked = sk.req === 'either_cd' && !owned && (
-      (!tw.ownedSkills['C'] && !tw.ownedSkills['D']) || (tw.level || 0) < maxLvl
-    );
+    if (sk.req === 'either_cd') {
+      if (!tw.ownedSkills['C'] && !tw.ownedSkills['D']) continue;
+      if ((tw.level || 0) < maxLvl) continue; // mastery needs max level
+    }
     const isBlocked = sk.excludes && !!tw.ownedSkills[sk.excludes];
     const needsReq = sk.req === 'any' && !Object.entries(tree).some(([k2]) => k2 !== 'C' && k2 !== 'D' && k2 !== 'E' && tw.ownedSkills[k2]);
-    const affordable = !isBlocked && !needsReq && !masteryLocked && !owned &&
+    const affordable = !isBlocked && !needsReq && !owned &&
       (state.resources?.dust || 0) >= (sk.cost.dust || 0) && state.gold >= (sk.cost.gold || 0);
     const b = document.createElement('div');
     const isMastery = k === 'E';
@@ -53,10 +54,7 @@ export function showTowerSkill(tw) {
     } else {
       b.className = 'skb' + (owned ? ' owned' : isBlocked ? ' blocked' : affordable ? '' : ' locked');
     }
-    const masteryReqStr = masteryLocked
-      ? ((!tw.ownedSkills['C'] && !tw.ownedSkills['D']) ? 'Requires C or D' : 'Requires max level')
-      : null;
-    const costStr = owned ? 'Owned' : isBlocked ? 'Blocked' : masteryReqStr ?? ('🔮' + (sk.cost.dust || 0) + (sk.cost.gold ? ' 💰' + sk.cost.gold : ''));
+    const costStr = owned ? 'Owned' : isBlocked ? 'Blocked' : '🔮' + (sk.cost.dust || 0) + (sk.cost.gold ? ' 💰' + sk.cost.gold : '');
     const label = isMastery
       ? '<div class="skn" style="color:#f59e0b;font-size:11px">⭐ ' + (owned ? '✅ ' : '') + sk.name + '</div>'
       : '<div class="skn">[' + k + '] ' + (owned ? '✅ ' : '') + sk.name + '</div>';
