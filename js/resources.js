@@ -226,17 +226,41 @@ export function renderStacks() {
       for (let i = 0; i < 4; i++) {
         const stack = cell.stacks[i];
         if (!stack) continue;
-        const icon = RTYPES[stack.type]?.icon ?? _itemRegistry[stack.type]?.icon ?? '❓';
         const basex = c * CELL + slots[i].dx * CELL;
         const basey = r * CELL + slots[i].dy * CELL;
-        
+
+        if (stack.bossLoot) {
+          const pulse = 0.55 + Math.sin(state.ticks * 0.08) * 0.45;
+          const grad = cx.createRadialGradient(basex, basey, 0, basex, basey, CELL * 0.45);
+          grad.addColorStop(0, 'rgba(253,230,138,' + (pulse * 0.7).toFixed(2) + ')');
+          grad.addColorStop(1, 'rgba(253,230,138,0)');
+          cx.fillStyle = grad;
+          cx.beginPath(); cx.arc(basex, basey, CELL * 0.45, 0, Math.PI * 2); cx.fill();
+
+          const isBp = stack.section === 'blueprints';
+          if (isBp) {
+            const bsz = Math.round(CELL * 0.38);
+            cx.fillStyle = '#1d4ed8';
+            cx.beginPath();
+            cx.roundRect(basex - bsz * 0.6, basey - bsz * 0.6, bsz * 1.2, bsz * 1.2, 3);
+            cx.fill();
+            cx.font = Math.round(CELL * 0.28) + 'px serif';
+            cx.fillText(stack.item.bpOverlay || stack.item.icon || '🎁', basex, basey);
+          } else {
+            cx.font = Math.round(CELL * 0.38) + 'px serif';
+            cx.fillText(stack.item.icon || '🎁', basex, basey);
+          }
+          continue;
+        }
+
+        const icon = RTYPES[stack.type]?.icon ?? _itemRegistry[stack.type]?.icon ?? '❓';
         cx.save();
         cx.translate(basex, basey);
         const sc = 1 + Math.min(stack.count, 20) * 0.02;
         cx.scale(sc, sc);
         cx.fillText(icon, 0, 0);
         cx.restore();
-        
+
         if (stack.count > 1) {
           cx.save();
           cx.font = '900 ' + Math.floor(CELL * 0.18) + 'px sans-serif';
@@ -251,19 +275,5 @@ export function renderStacks() {
     }
   }
 
-  // Ground loot — glowing pickups (blueprints, artifacts, charms)
-  if (state.groundLoot?.length) {
-    const pulse = 0.6 + Math.sin(state.ticks * 0.08) * 0.4;
-    cx.textAlign = 'center'; cx.textBaseline = 'middle';
-    cx.font = Math.floor(CELL * 0.6) + 'px serif';
-    for (const loot of state.groundLoot) {
-      const wx = loot.x * CELL + CELL / 2, wy = loot.y * CELL + CELL / 2;
-      const grad = cx.createRadialGradient(wx, wy, 0, wx, wy, CELL * 0.65);
-      grad.addColorStop(0, 'rgba(253,230,138,' + (0.55 * pulse).toFixed(2) + ')');
-      grad.addColorStop(1, 'rgba(253,230,138,0)');
-      cx.fillStyle = grad; cx.beginPath(); cx.arc(wx, wy, CELL * 0.65, 0, Math.PI * 2); cx.fill();
-      cx.fillText(loot.item.bpOverlay || loot.item.icon || '🎁', wx, wy);
-    }
-  }
 }
 

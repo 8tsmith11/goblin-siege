@@ -52,6 +52,7 @@ export function updateWeather() {
   if (!filled.length) return;
   const idx = filled[Math.floor(Math.random() * filled.length)];
   const s = cell.stacks[idx];
+  if (s.bossLoot) return;
   const remove = 1 + Math.floor(Math.random() * Math.min(3, s.count));
   s.count -= remove;
   if (s.count <= 0) cell.stacks[idx] = null;

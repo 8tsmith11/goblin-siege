@@ -45,7 +45,7 @@ export function updateClown() {
   const CONFETTI = ['#f472b6','#facc15','#34d399','#60a5fa','#f87171','#a78bfa'];
   towers.filter(tw => tw.type === 'clown').forEach(cl => {
     if (cl.cd > 0) { cl.cd--; return; }
-    const inR = getEnemiesInRadius(grid, cl.x, cl.y, cl.reverseRange).filter(e => !e.reversed && !e.boss);
+    const inR = getEnemiesInRadius(grid, cl.x, cl.y, cl.reverseRange).filter(e => !e.reversed && !e.boss && (e.type !== 'stealth' || cl.seeInvis));
     if (!inR.length) return;
 
     const sorted = [...inR].sort((a, b) => b.pi - a.pi);
