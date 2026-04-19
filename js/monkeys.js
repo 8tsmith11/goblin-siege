@@ -446,33 +446,43 @@ function tickRoundRobin(mk, tw) {
     const src = froms[cfg.rrFromIdx || 0];
     const sc = cellCenter(src.x, src.y);
 
+    // Find a from that actually has items; if none do, idle at hut
+    function _findReadyFrom() {
+      const n = froms.length;
+      for (let i = 0; i < n; i++) {
+        const idx = ((cfg.rrFromIdx || 0) + i) % n;
+        const f = froms[idx];
+        const cell = getCell(f.x, f.y);
+        const hasItem = isStorageStockpile(f.x, f.y)
+          ? cell?.content?.slots?.some(s => s && s.count > 0 && (!cfg.filter || s.type === cfg.filter))
+          : cell?.stacks?.some(s => s && (!cfg.filter || s.type === cfg.filter));
+        if (hasItem) { cfg.rrFromIdx = idx; return froms[idx]; }
+      }
+      return null;
+    }
+
     if (mk.st === 'idle') {
       if (mk.carrying) {
         const dc = cellCenter(cfg.dest.x, cfg.dest.y);
         mk.targetX = dc.x; mk.targetY = dc.y; mk._rrDest = 0; mk.st = 'carrying';
       } else {
-        mk.targetX = sc.x; mk.targetY = sc.y; mk.st = 'moving';
+        const ready = _findReadyFrom();
+        if (!ready) { tickIdle(mk, tw); return; }
+        const rc = cellCenter(ready.x, ready.y);
+        mk.targetX = rc.x; mk.targetY = rc.y; mk.st = 'moving';
       }
     } else if (mk.st === 'moving') {
       if (moveTo(mk, mk.targetX, mk.targetY)) {
         const item = _tryPickup(src, cfg.filter);
         if (item) { mk.carrying = item; mk.st = 'idle'; }
-        else {
-          // Source empty — immediately try next from
-          cfg.rrFromIdx = ((cfg.rrFromIdx || 0) + 1) % froms.length;
-          mk.st = 'idle';
-        }
+        else { mk.st = 'idle'; } // will re-check all froms next tick
       }
     } else if (mk.st === 'at_from') {
       _orbitTile(mk, sc.x, sc.y);
       if (mk.waitCd > 0) { mk.waitCd--; return; }
       const item = _tryPickup(src, cfg.filter);
       if (item) { mk.carrying = item; mk.st = 'idle'; }
-      else {
-        // Source still empty — advance to next from
-        cfg.rrFromIdx = ((cfg.rrFromIdx || 0) + 1) % froms.length;
-        mk.st = 'idle';
-      }
+      else { mk.st = 'idle'; }
     } else if (mk.st === 'carrying') {
       if (mk.waitCd > 0) { mk.waitCd--; return; }
       if (moveTo(mk, mk.targetX, mk.targetY)) {
