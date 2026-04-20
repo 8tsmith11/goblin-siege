@@ -149,8 +149,8 @@ export function render() {
       cx.setTransform(1, 0, 0, 1, 0, 0);
       
       const radScale = cam.zoom;
-      const oX = cam.panX * cam.zoom * 0.35;
-      const oY = cam.panY * cam.zoom * 0.35;
+      const oX = cam.panX * cam.zoom;
+      const oY = cam.panY * cam.zoom;
 
       for (const f of _fogW) {
         f.x += f.vx; f.y += f.vy;
