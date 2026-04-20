@@ -94,6 +94,16 @@ export function buildPath() {
   const cl = [state.path[0]];
   for (let i = 1; i < state.path.length; i++) { if (state.path[i].x !== state.path[i-1].x || state.path[i].y !== state.path[i-1].y) cl.push(state.path[i]); }
   state.path = cl.filter(p => p.x >= PAD && p.x < COLS - PAD && p.y >= PAD && p.y < ROWS - PAD);
+  
+  if (state.path.length > 0) {
+    const start = state.path[0];
+    const extension = [];
+    for (let x = start.x - 1; x >= 0; x--) {
+      extension.push({ x, y: start.y });
+    }
+    state.path = [...extension.reverse(), ...state.path];
+  }
+
   state.pathSet.clear();
   state.path.forEach(p => { state.pathSet.add(p.x + ',' + p.y); state.grid[p.y][p.x].type = 'path'; });
 }

@@ -20,8 +20,8 @@ function _ensureFog(W, H) {
       x: Math.random() * W,
       y: Math.random() * H,
       r: 90 + Math.random() * 130,
-      vx: 0.15 + Math.random() * 0.25,
-      vy: (Math.random() - 0.5) * 0.08,
+      vx: 0.25 + Math.random() * 0.35,
+      vy: (Math.random() - 0.5) * 0.12,
     });
   }
 }
@@ -124,6 +124,60 @@ export function render() {
   
   if (!bgCache && state.pathReady && CELL > 0) updateBgCache();
   if (bgCache) cx.drawImage(bgCache, 0, 0);
+
+  // Infinite OOB Foggy Forest bounds
+  if (_imgForest.complete && _imgForest.naturalWidth) {
+    const gw = COLS * CELL, gh = ROWS * CELL;
+    const vL = cam.panX, vT = cam.panY, vR = cam.panX + W / cam.zoom, vB = cam.panY + H / cam.zoom;
+    
+    // Quick bounds check if ANY of the viewport is outside the game grid
+    if (vL < 0 || vT < 0 || vR > gw || vB > gh) {
+      cx.save();
+      // Create a geometric inverted mask over the game grid
+      cx.beginPath();
+      cx.rect(vL, vT, vR - vL, vB - vT);
+      cx.rect(0, 0, gw, gh);
+      cx.clip("evenodd");
+      
+      // Draw base repeating forest
+      cx.fillStyle = cx.createPattern(_imgForest, 'repeat');
+      cx.fillRect(vL, vT, vR - vL, vB - vT);
+
+      // Transition to screen space for fog, but factor in camera zoom/pan for infinite dimensionality
+      _ensureFog(W, H);
+      cx.save();
+      cx.setTransform(1, 0, 0, 1, 0, 0);
+      
+      const radScale = cam.zoom;
+      const oX = cam.panX * cam.zoom * 0.35;
+      const oY = cam.panY * cam.zoom * 0.35;
+
+      for (const f of _fogW) {
+        f.x += f.vx; f.y += f.vy;
+        const bnd = f.r * 4;
+        if (f.x - bnd > W) { f.x = -bnd; f.y = Math.random() * H; }
+        if (f.y < -bnd) f.y = H + bnd;
+        if (f.y > H + bnd) f.y = -bnd;
+        
+        let dx = (f.x - oX) % (W + bnd);
+        if (dx < -bnd) dx += (W + bnd);
+        let dy = (f.y - oY) % (H + bnd);
+        if (dy < -bnd) dy += (H + bnd);
+        
+        const rad = Math.max(1, f.r * radScale * 1.3);
+        const g = cx.createRadialGradient(dx, dy, 0, dx, dy, rad);
+        g.addColorStop(0, 'rgba(210,220,230,0.20)');
+        g.addColorStop(1, 'rgba(210,220,230,0)');
+        cx.fillStyle = g;
+        cx.beginPath(); cx.arc(dx, dy, rad, 0, Math.PI * 2); cx.fill();
+      }
+      cx.fillStyle = 'rgba(190,205,220,0.25)'; // Light wash base
+      cx.fillRect(0, 0, W, H);
+      cx.restore();
+      
+      cx.restore();
+    }
+  }
 
   // Monkey hut tile highlights
   if (ttTower?.type === 'monkey' && ttTower.monkeys) {
