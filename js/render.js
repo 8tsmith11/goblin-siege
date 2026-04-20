@@ -26,6 +26,22 @@ function _ensureFog(W, H) {
   }
 }
 
+// ─── OOB forest fog (world-space, follows camera) ────────────────────────────
+const _fogOob = [];
+function _ensureFogOob(vL, vT, vR, vB) {
+  if (_fogOob.length) return;
+  const vW = vR - vL, vH = vB - vT;
+  for (let i = 0; i < 32; i++) {
+    _fogOob.push({
+      x: vL + Math.random() * vW,
+      y: vT + Math.random() * vH,
+      r: 90 + Math.random() * 130,
+      vx: 0.25 + Math.random() * 0.35,
+      vy: (Math.random() - 0.5) * 0.12,
+    });
+  }
+}
+
 const _imgPath = new Image(); _imgPath.src = 'assets/tiles/path.png';
 const _imgGrassL = new Image(); _imgGrassL.src = 'assets/tiles/lightgrass.png';
 const _imgGrassD = new Image(); _imgGrassD.src = 'assets/tiles/darkgrass.png';
@@ -143,37 +159,22 @@ export function render() {
       cx.fillStyle = cx.createPattern(_imgForest, 'repeat');
       cx.fillRect(vL, vT, vR - vL, vB - vT);
 
-      // Transition to screen space for fog, but factor in camera zoom/pan for infinite dimensionality
-      _ensureFog(W, H);
-      cx.save();
-      cx.setTransform(1, 0, 0, 1, 0, 0);
-      
-      const radScale = cam.zoom;
-      const oX = cam.panX * cam.zoom;
-      const oY = cam.panY * cam.zoom;
-
-      for (const f of _fogW) {
+      // World-space fog wisps — rendered under camera transform, naturally follow pan/zoom
+      _ensureFogOob(vL, vT, vR, vB);
+      for (const f of _fogOob) {
         f.x += f.vx; f.y += f.vy;
         const bnd = f.r * 4;
-        if (f.x - bnd > W) { f.x = -bnd; f.y = Math.random() * H; }
-        if (f.y < -bnd) f.y = H + bnd;
-        if (f.y > H + bnd) f.y = -bnd;
-        
-        let dx = (f.x - oX) % (W + bnd);
-        if (dx < -bnd) dx += (W + bnd);
-        let dy = (f.y - oY) % (H + bnd);
-        if (dy < -bnd) dy += (H + bnd);
-        
-        const rad = Math.max(1, f.r * radScale * 1.3);
-        const g = cx.createRadialGradient(dx, dy, 0, dx, dy, rad);
+        if (f.x - bnd > vR) { f.x = vL - bnd; f.y = vT + Math.random() * (vB - vT); }
+        if (f.y < vT - bnd) f.y = vB + bnd;
+        if (f.y > vB + bnd) f.y = vT - bnd;
+        const g = cx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r);
         g.addColorStop(0, 'rgba(210,220,230,0.20)');
         g.addColorStop(1, 'rgba(210,220,230,0)');
         cx.fillStyle = g;
-        cx.beginPath(); cx.arc(dx, dy, rad, 0, Math.PI * 2); cx.fill();
+        cx.beginPath(); cx.arc(f.x, f.y, f.r, 0, Math.PI * 2); cx.fill();
       }
-      cx.fillStyle = 'rgba(190,205,220,0.25)'; // Light wash base
-      cx.fillRect(0, 0, W, H);
-      cx.restore();
+      cx.fillStyle = 'rgba(190,205,220,0.25)';
+      cx.fillRect(vL, vT, vR - vL, vB - vT);
       
       cx.restore();
     }

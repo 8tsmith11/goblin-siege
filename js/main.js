@@ -185,8 +185,8 @@ export function clampCam() {
   const viewW = W / cam.zoom, viewH = H / cam.zoom;
   
   if (state.cam.panX === undefined) {
-    state.cam.panX = 6 * CELL;
-    state.cam.panY = 6 * CELL;
+    state.cam.panX = -Math.floor((viewW - worldW) / 2);
+    state.cam.panY = -Math.floor((viewH - worldH) / 2);
   }
   
   cam.panX = viewW >= worldW ? -(viewW - worldW) / 2 : Math.max(0, Math.min(cam.panX, worldW - viewW));
