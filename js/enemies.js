@@ -19,7 +19,7 @@ export function mkE(et, bHP, bSpd) {
 }
 
 const BOSS_WAVES = new Set([5, 11, 17, 25, 30, 36, 50]);
-function isBossWave(w) { return BOSS_WAVES.has(w) || (w > 50 && w % 5 === 0); }
+export function isBossWave(w) { return BOSS_WAVES.has(w) || (w > 50 && w % 5 === 0); }
 
 export function genWave(w) {
   const q = [], isBoss = isBossWave(w);

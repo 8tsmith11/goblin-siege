@@ -34,17 +34,17 @@ bus.on('enemyDeath', e => {
     if (!owned.has('heralds_horn')) {
       dropLoot(e.x, e.y, 'artifacts', { ...hornArt, cdWavesLeft: 0 });
       mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '📯', 1, '#f59e0b');
-      addFeed('herald', "📯 Herald's Horn landed on the field — pick it up!");
+
     }
     // Also drop a relocation charm
     dropLoot(e.x, e.y, 'consumables', { id: 'relocation_charm', icon: '✨', name: 'Relocation Charm', desc: 'Move any tower to a new valid tile, preserving all upgrades.' });
-    addFeed('herald', '✨ Relocation Charm dropped — pick it up!');
+
   }
   // Regular bosses: 50% chance of relocation charm
   if (e.boss && !e.herald && Math.random() < 0.5) {
     dropLoot(e.x, e.y, 'consumables', { id: 'relocation_charm', icon: '✨', name: 'Relocation Charm', desc: 'Move any tower to a new valid tile, preserving all upgrades.' });
     mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '✨', 1, '#a855f7');
-    addFeed('boss', '✨ Relocation Charm dropped — pick it up!');
+
   }
 
   // Dust Collection (Lab)
@@ -96,7 +96,6 @@ bus.on('enemyDeath', e => {
     if (bpDef) {
       dropLoot(e.x, e.y, 'blueprints', { id: bpType + '_bp', icon: '🟦', bpOverlay: bpDef.icon, name: bpDef.name + ' Blueprint', unlocks: bpType });
       mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '🟦', 1, '#3b82f6');
-      addFeed('boss', '🟦 ' + bpDef.name + ' Blueprint dropped — pick it up!');
     }
   }
 });
@@ -105,7 +104,7 @@ import { tickCraft, updateTraps, cleanupBarricades } from './craft.js';
 import { addFeed, clearFeed } from './feed.js';
 import { getScribeEntry } from './bestiary.js';
 import { TOWER_SKILLS, HOARD_LEVELS, TD } from './data.js';
-import { updateEnemies, genWave, mkE } from './enemies.js';
+import { updateEnemies, genWave, mkE, isBossWave } from './enemies.js';
 import { updateTowers } from './towers.js';
 import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser } from './support.js';
 import { updateMonkeys } from './monkeys.js';
@@ -414,15 +413,12 @@ function update() {
     // Herald / Horn warning — announce upcoming boss wave during prep
     const _nextW = state.wave + 1;
     const _isHeraldNext = _nextW === 5;
-    const _isBossNext = _nextW % 5 === 0 && _nextW > 5 && _nextW !== 15;
+    const _isBossNext = isBossWave(_nextW) && _nextW !== 5 && _nextW !== 15;
     const _hornEquipped = state.inventory?.equipped?.some(a => a?.id === 'heralds_horn');
     if (_isHeraldNext || (_isBossNext && _hornEquipped)) {
       const _warnTxt = _isHeraldNext ? '📯 The Proud Herald Approaches' : '👑 Boss Wave ' + _nextW + ' Approaches';
       const _warnSub = _isHeraldNext ? 'Prepare for Wave ' + _nextW : 'A powerful foe comes next wave';
       state.heraldWarn = { tick: state.ticks, text: _warnTxt, sub: _warnSub };
-      addFeed(_isHeraldNext ? 'herald' : 'boss', _isHeraldNext
-        ? '📯 The Proud Herald announces its arrival — prepare for Wave 5!'
-        : '👑 Boss Wave ' + _nextW + ' approaches next wave!');
     }
     hudU(); panelU();
     return;
@@ -473,7 +469,6 @@ export function startWave() {
   // Unlock lab at wave 8
   if (state.wave >= 8 && !state.unlockedTowers.has('lab')) {
     state.unlockedTowers.add('lab');
-    addFeed('system', '🧪 The Lab is now available to build.');
     showBanner('🧪 Lab Unlocked');
   }
   state.spawnQueue = genWave(state.wave); // may set state.fogWave for wave 15
@@ -485,10 +480,9 @@ export function startWave() {
     sfxBoss();
   } else {
     const heraldWave = state.spawnQueue.some(e => e.herald);
-    const boss = state.wave % 5 === 0 && state.wave > 0;
+    const boss = isBossWave(state.wave) && state.wave !== 5 && state.wave !== 15;
     if (heraldWave) {
       showBanner('📯 Proud Herald');
-      addFeed('herald', '📯 The Proud Herald arrives at Wave 5!');
       sfxBoss();
     } else {
       showBanner(boss ? '👑 BOSS W' + state.wave : '⚔️ Wave ' + state.wave);
