@@ -26,7 +26,8 @@ function buildAvail(w) {
   if (w >= 4)  a.push('fast');
   if (w >= 6)  a.push('tank');
   if (w >= 8)  a.push('berserker');
-  if (w >= 12) a.push('swarm', 'shield');
+  if (w >= 12) a.push('swarm');
+  if (w >= 18) a.push('shield');
   if (w >= 18) a.push('shaman');
   if (w >= 19) a.push('geologist');
   if (w >= 21) a.push('healer');
@@ -127,15 +128,24 @@ export function updateEnemies() {
       e.x += e.explodeVX; e.y += e.explodeVY;
       e.explodeDist -= Math.hypot(e.explodeVX, e.explodeVY);
       if (e.explodeDist <= 0) {
-        // Find nearest path tile
+        // Find nearest path tile and walk there instead of teleporting
         let bestPi = 0, bestDist = Infinity;
         for (let i = 0; i < path.length; i++) {
           const d = Math.hypot(path[i].x - e.x, path[i].y - e.y);
           if (d < bestDist) { bestDist = d; bestPi = i; }
         }
-        e.pi = bestPi; e.x = path[bestPi].x; e.y = path[bestPi].y;
-        e.gMode = 'on_path';
+        e._pathTarget = bestPi;
+        e.gMode = 'walking_to_path';
       }
+      if (grid.length > 0) addToCell(grid, e);
+      continue;
+    }
+    if (e.spiderling && e.gMode === 'walking_to_path') {
+      const tgt = path[e._pathTarget];
+      const dx = tgt.x - e.x, dy = tgt.y - e.y, d = Math.hypot(dx, dy);
+      const sp = e.spd * 0.04;
+      if (d < sp + 0.01) { e.x = tgt.x; e.y = tgt.y; e.pi = e._pathTarget; e.gMode = 'on_path'; }
+      else { e.x += dx / d * sp; e.y += dy / d * sp; }
       if (grid.length > 0) addToCell(grid, e);
       continue;
     }
@@ -203,41 +213,50 @@ function geologistBfs(fromX, fromY, toX, toY) {
   return [];
 }
 
-function stealFromTile(e, tx, ty) {
+// Steal one item from the tile. Returns true if something was taken.
+function stealOneItem(e, tx, ty) {
   const cell = getCell(tx, ty);
-  if (!cell) return;
-  const maxSteal = e.gMaxSteal || 5;
-  // Steal from ground stacks
+  if (!cell) return false;
+  // Ground stacks first
   if (cell.stacks) {
-    for (let i = 0; i < cell.stacks.length && e.stolen.length < maxSteal; i++) {
+    for (let i = 0; i < cell.stacks.length; i++) {
       const s = cell.stacks[i];
       if (!s || s.bossLoot) continue;
       e.stolen.push({ type: s.type || (s.section === 'artifacts' ? '_artifact' : '_item'), item: s });
       cell.stacks[i] = null;
+      return true;
     }
   }
-  // Steal from building on this tile
-  if (e.stolen.length < maxSteal) {
-    const tw = state.towers.find(t => Math.round(t.x) === tx && Math.round(t.y) === ty);
-    if (tw) {
-      if (tw.type === 'hoard' && tw.stored > 0) {
-        const take = Math.min(tw.stored, maxSteal - e.stolen.length);
-        tw.stored -= take;
-        for (let i = 0; i < take; i++) e.stolen.push({ type: 'resource', label: 'hoard' });
-      } else if (tw.type === 'workbench' && tw.inv) {
-        for (const [res, amt] of Object.entries(tw.inv)) {
-          if (e.stolen.length >= maxSteal) break;
-          if (amt > 0) { tw.inv[res]--; e.stolen.push({ type: res }); }
-        }
-      } else if (tw.type === 'lab') {
-        const dustAmt = Math.min(state.resources.dust || 0, maxSteal - e.stolen.length);
-        if (dustAmt > 0) {
-          state.resources.dust -= dustAmt;
-          for (let i = 0; i < dustAmt; i++) e.stolen.push({ type: 'dust' });
-        }
+  // Building on this tile
+  const tw = state.towers.find(t => Math.round(t.x) === tx && Math.round(t.y) === ty);
+  if (tw) {
+    if (tw.type === 'hoard' && tw.stored > 0) {
+      tw.stored--;
+      e.stolen.push({ type: 'resource', label: 'hoard' });
+      return true;
+    } else if (tw.type === 'workbench' && tw.inv) {
+      for (const [res, amt] of Object.entries(tw.inv)) {
+        if (amt > 0) { tw.inv[res]--; e.stolen.push({ type: res }); return true; }
       }
+    } else if (tw.type === 'lab' && (state.resources.dust || 0) > 0) {
+      state.resources.dust--;
+      e.stolen.push({ type: 'dust' });
+      return true;
     }
   }
+  return false;
+}
+
+function _startRetracing(e, path) {
+  let bestPi = e.pi, bestDist = Infinity;
+  for (let i = 0; i < path.length; i++) {
+    const d = Math.hypot(path[i].x - e.x, path[i].y - e.y);
+    if (d < bestDist) { bestDist = d; bestPi = i; }
+  }
+  e.gReturnTile = { x: path[bestPi].x, y: path[bestPi].y, pi: bestPi };
+  e.gPath = geologistBfs(Math.round(e.x), Math.round(e.y), path[bestPi].x, path[bestPi].y);
+  e._stealCD = undefined;
+  e.gMode = 'retracing';
 }
 
 function updateGeologist(e, path, CELL) {
@@ -273,16 +292,16 @@ function updateGeologist(e, path, CELL) {
     else { e.x += dx / d * SPD; e.y += dy / d * SPD; }
     if (e.gPath.length === 0) e.gMode = 'stealing';
   } else if (e.gMode === 'stealing') {
-    stealFromTile(e, Math.round(e.x), Math.round(e.y));
-    // Find nearest path tile to return to
-    let bestPi = e.pi, bestDist = Infinity;
-    for (let i = 0; i < path.length; i++) {
-      const d = Math.hypot(path[i].x - e.x, path[i].y - e.y);
-      if (d < bestDist) { bestDist = d; bestPi = i; }
+    if (!e._stealCD) e._stealCD = 0;
+    if (e._stealCD > 0) { e._stealCD--; return; }
+    const tx = Math.round(e.x), ty = Math.round(e.y);
+    const didSteal = stealOneItem(e, tx, ty);
+    if (didSteal) {
+      e._stealCD = 60;
+      if (e.stolen.length >= e.gMaxSteal) _startRetracing(e, path);
+    } else {
+      _startRetracing(e, path);
     }
-    e.gReturnTile = { x: path[bestPi].x, y: path[bestPi].y, pi: bestPi };
-    e.gPath = geologistBfs(Math.round(e.x), Math.round(e.y), path[bestPi].x, path[bestPi].y);
-    e.gMode = 'retracing';
   } else if (e.gMode === 'retracing') {
     if (!e.gPath || e.gPath.length === 0) {
       if (e.gReturnTile) { e.x = e.gReturnTile.x; e.y = e.gReturnTile.y; e.pi = e.gReturnTile.pi; }

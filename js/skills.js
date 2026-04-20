@@ -83,12 +83,12 @@ function _drawNode(ctx, k, sk, tw, isSelected) {
   ctx.stroke();
   ctx.restore();
 
-  // Label: skill key or star
+  // Label: skill icon or star for mastery
   ctx.fillStyle = isMastery ? (ns === 'owned' ? '#f59e0b' : '#78580a') : textClrs[ns];
   ctx.font = `bold ${isMastery ? '16px' : '14px'} sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(isMastery ? '⭐' : k, pos.x, pos.y);
+  ctx.fillText(isMastery ? '⭐' : (sk.icon || k), pos.x, pos.y);
 
   // Owned checkmark overlay
   if (ns === 'owned') {
@@ -108,16 +108,30 @@ function _renderSkCanvas(tw) {
   const owned = _ownedSet(tw);
 
   // Edges first (behind nodes)
-  const hasAB = Object.keys(owned).some(k => k !== 'C' && k !== 'D' && k !== 'E');
-  if (hasAB) {
-    const hasCOrD = owned['C'] || owned['D'];
-    _drawEdge(ctx, SK_NODES.A, SK_NODES.C, !!owned.A);
-    _drawEdge(ctx, SK_NODES.A, SK_NODES.D, !!owned.A);
-    _drawEdge(ctx, SK_NODES.B, SK_NODES.C, !!owned.B);
-    _drawEdge(ctx, SK_NODES.B, SK_NODES.D, !!owned.B);
-    if (hasCOrD && _nodeVisible('E', tree, tw)) {
-      _drawEdge(ctx, SK_NODES.C, SK_NODES.E, !!owned.C);
-      _drawEdge(ctx, SK_NODES.D, SK_NODES.E, !!owned.D);
+  // Tier 1 → Tier 2: only show edges from owned A or B; show all dim before either is chosen
+  const ownedA = !!owned.A, ownedB = !!owned.B;
+  const ownedC = !!owned.C, ownedD = !!owned.D;
+  if (!ownedA && !ownedB) {
+    _drawEdge(ctx, SK_NODES.A, SK_NODES.C, false);
+    _drawEdge(ctx, SK_NODES.A, SK_NODES.D, false);
+    _drawEdge(ctx, SK_NODES.B, SK_NODES.C, false);
+    _drawEdge(ctx, SK_NODES.B, SK_NODES.D, false);
+  } else if (ownedA) {
+    _drawEdge(ctx, SK_NODES.A, SK_NODES.C, true);
+    _drawEdge(ctx, SK_NODES.A, SK_NODES.D, true);
+  } else {
+    _drawEdge(ctx, SK_NODES.B, SK_NODES.C, true);
+    _drawEdge(ctx, SK_NODES.B, SK_NODES.D, true);
+  }
+  // Tier 2 → Mastery
+  if (_nodeVisible('E', tree, tw)) {
+    if (!ownedC && !ownedD) {
+      _drawEdge(ctx, SK_NODES.C, SK_NODES.E, false);
+      _drawEdge(ctx, SK_NODES.D, SK_NODES.E, false);
+    } else if (ownedC) {
+      _drawEdge(ctx, SK_NODES.C, SK_NODES.E, true);
+    } else {
+      _drawEdge(ctx, SK_NODES.D, SK_NODES.E, true);
     }
   }
 
@@ -135,10 +149,12 @@ function _renderInfo(tw, k) {
   const sk = tree[k];
   const ns = _nodeState(k, sk, tw);
   const owned = _ownedSet(tw);
-  const costStr = owned[k] ? '✅ Owned' : ns === 'blocked' ? '🚫 Blocked (chose ' + sk.excludes + ')' : ns === 'locked' ? '🔒 Not available yet' : `🔮${sk.cost?.dust||0}${sk.cost?.gold ? ' 💰'+sk.cost.gold : ''}`;
+  const tree2 = TOWER_SKILLS[tw.type];
+  const excIcon = sk.excludes ? (tree2?.[sk.excludes]?.icon || sk.excludes) : '';
+  const costStr = owned[k] ? '✅ Owned' : ns === 'blocked' ? '🚫 Blocked (chose ' + excIcon + ')' : ns === 'locked' ? '🔒 Not available yet' : `🔮${sk.cost?.dust||0}${sk.cost?.gold ? ' 💰'+sk.cost.gold : ''}`;
   const canBuy = ns === 'available';
   info.innerHTML = `
-    <div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:2px">[${k === 'E' ? '⭐' : k}] ${sk.name}</div>
+    <div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:2px">${k === 'E' ? '⭐' : (sk.icon || k)} ${sk.name}</div>
     <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">${sk.desc}</div>
     <div style="font-size:11px;color:${ns==='owned'?'#22c55e':ns==='blocked'?'#f87171':'#64748b'}">${costStr}</div>
     ${canBuy ? `<button id="skBuyBtn" style="margin-top:6px;padding:3px 10px;background:#1a0a40;border:1px solid #7c3aed;border-radius:4px;color:#a78bfa;cursor:pointer;font-size:11px">Buy</button>` : ''}

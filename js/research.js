@@ -94,7 +94,6 @@ export function buildResearchGraph() {
     const candidates = VARIABLE_RESEARCH.filter(n => n.pool === poolId && !n.hidden);
     let picks;
     if (poolId === 'parity_1') {
-      // Keep existing parity: always pick the counterpart of the blueprint tower
       picks = candidates.filter(n => n.unlocks !== bpTower);
       picks = picks.length ? [picks[Math.floor(Math.random() * picks.length)]] : [];
     } else {
@@ -102,10 +101,12 @@ export function buildResearchGraph() {
       picks = shuffled.slice(0, poolCfg.size || 1);
     }
     const positions = poolCfg.positions || [];
+    // Use stable slot IDs so pool positions are constant between runs; content varies
     picks.forEach((def, i) => {
+      const slotId = `pool_${poolId}_${i}`;
       const pos = positions[i] || {};
-      nodes[def.id] = { ...def, ...pos, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
-      usedIds.add(def.id);
+      nodes[slotId] = { ...def, id: slotId, _sourceId: def.id, ...pos, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
+      usedIds.add(slotId);
     });
   }
 

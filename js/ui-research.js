@@ -283,12 +283,16 @@ function setResView(view) {
   _resView = view;
   const cv = document.getElementById('resCv');
   const tr = document.getElementById('resTranslations');
-  const webBtn = document.getElementById('resWebBtn');
-  const transBtn = document.getElementById('resTransBtn');
   if (cv) cv.style.display = view === 'web' ? '' : 'none';
   if (tr) { tr.style.display = view === 'translations' ? '' : 'none'; if (view === 'translations') renderTranslations(); }
-  if (webBtn) webBtn.style.fontWeight = view === 'web' ? '800' : '';
-  if (transBtn) transBtn.style.fontWeight = view === 'translations' ? '800' : '';
+  // Update tab highlight styles
+  for (const [id, active] of [['resWebBtn', view === 'web'], ['resTransBtn', view === 'translations']]) {
+    const btn = document.getElementById(id);
+    if (!btn) continue;
+    btn.style.color = active ? '#c4b5fd' : '#64748b';
+    btn.style.borderBottom = active ? '2px solid #a78bfa' : '2px solid transparent';
+    btn.style.background = active ? 'rgba(124,58,237,0.15)' : 'transparent';
+  }
 }
 
 export function showResearch() {
@@ -303,7 +307,7 @@ export function showResearch() {
   const devUnlockBtn = document.getElementById('resDevUnlockBtn');
   if (devUnlockBtn) devUnlockBtn.style.display = state._devMode ? '' : 'none';
   const transBtn = document.getElementById('resTransBtn');
-  if (transBtn) transBtn.style.display = state.patternRecDone ? '' : 'none';
+  if (transBtn) transBtn.style.display = state.patternRecDone ? 'flex' : 'none';
   setResView(_resView);
   if (_resView === 'web') requestAnimationFrame(fitResCv);
 }
@@ -465,22 +469,27 @@ export function initResearchUI() {
 
   const resHeader = document.getElementById('resH');
   if (resHeader) {
-    // Web / Translations tab buttons
-    const webBtn = document.createElement('button');
-    webBtn.id = 'resWebBtn';
-    webBtn.textContent = '🔬';
-    webBtn.title = 'Research Web';
-    Object.assign(webBtn.style, { background:'transparent', color:'#a78bfa', border:'none', cursor:'pointer', fontSize:'16px', fontWeight:'800' });
-    webBtn.onclick = () => setResView('web');
-    resHeader.insertBefore(webBtn, resHeader.firstChild);
+    // Replace h2 with evenly-split section tab headings
+    const h2 = resHeader.querySelector('h2');
+    const tabBar = document.createElement('div');
+    tabBar.style.cssText = 'display:flex;flex:1;height:100%;align-self:stretch;margin:-10px 8px -10px -16px';
 
-    const transBtn = document.createElement('button');
-    transBtn.id = 'resTransBtn';
-    transBtn.textContent = '📜';
-    transBtn.title = 'Goblin Translations';
-    transBtn.style.cssText = 'display:none;background:transparent;color:#a78bfa;border:none;cursor:pointer;font-size:16px;margin-left:2px';
-    transBtn.onclick = () => setResView('translations');
-    resHeader.insertBefore(transBtn, resHeader.children[1]);
+    const makeTab = (id, icon, label, view) => {
+      const btn = document.createElement('button');
+      btn.id = id;
+      btn.style.cssText = 'flex:1;background:transparent;border:none;border-bottom:2px solid transparent;color:#64748b;cursor:pointer;padding:0 8px;font-size:13px;font-weight:700;font-family:MedievalSharp,cursive;display:flex;align-items:center;justify-content:center;gap:6px;transition:color .15s,border-color .15s,background .15s';
+      btn.innerHTML = `<span style="font-size:15px">${icon}</span><span>${label}</span>`;
+      btn.onclick = () => setResView(view);
+      tabBar.appendChild(btn);
+      return btn;
+    };
+
+    makeTab('resWebBtn', '🔬', 'Research Web', 'web');
+    const transTab = makeTab('resTransBtn', '📜', 'Goblin Translations', 'translations');
+    transTab.style.display = 'none';
+
+    if (h2) h2.replaceWith(tabBar);
+    else resHeader.prepend(tabBar);
 
     // Dev: Unlock All button
     const devUnlockBtn = document.createElement('button');
@@ -494,17 +503,18 @@ export function initResearchUI() {
     });
     devUnlockBtn.onclick = () => {
       if (!state.research) return;
-      // Unlock all fixed nodes
-      for (const [id, def] of Object.entries(FIXED_RESEARCH)) {
-        if (!state.research[id]) state.research[id] = { ...def, id, status:'locked', wavesLeft:0, wavesTotal:def.waves };
-        state.research[id].status = 'complete'; state.research[id].wavesLeft = 0;
-        applyUnlock(state.research[id]);
+      // Unlock nodes in the graph (they appear and are complete)
+      for (const node of Object.values(state.research)) {
+        node.status = 'complete'; node.wavesLeft = 0;
+        applyUnlock(node);
       }
-      // Unlock all variable nodes (even those not in this run)
+      // Apply effects of all fixed/variable nodes NOT in the graph (no graph entry added)
+      const inGraph = new Set(Object.values(state.research).map(n => n._sourceId || n.id));
+      for (const [id, def] of Object.entries(FIXED_RESEARCH)) {
+        if (!inGraph.has(id)) applyUnlock({ ...def, id });
+      }
       for (const def of VARIABLE_RESEARCH) {
-        if (!state.research[def.id]) state.research[def.id] = { ...def, status:'locked', wavesLeft:0, wavesTotal:def.waves };
-        state.research[def.id].status = 'complete'; state.research[def.id].wavesLeft = 0;
-        applyUnlock(state.research[def.id]);
+        if (!inGraph.has(def.id)) applyUnlock({ ...def });
       }
       _rPos = null;
       refreshStatuses(state.research);
