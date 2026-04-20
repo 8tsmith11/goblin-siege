@@ -1,11 +1,12 @@
 'use strict';
 
 export const RARITY_COLORS = {
-  common:    '#94a3b8',
-  uncommon:  '#22c55e',
-  rare:      '#3b82f6',
-  epic:      '#a855f7',
-  legendary: '#f59e0b',
+  common:      '#94a3b8',
+  uncommon:    '#22c55e',
+  rare:        '#3b82f6',
+  epic:        '#a855f7',
+  legendary:   '#f59e0b',
+  otherworldly:'#c084fc',
 };
 
 export const ARTIFACTS = [

@@ -44,18 +44,18 @@ const NPC_LINES = {
 
 export function placeNpcs() {
   const { COLS, ROWS, path } = state;
+  const PAD = 6;
   const pathEndY = path.length > 0 ? path[path.length - 1].y : -1;
-  // Right border forest tiles adjacent to the inner playfield (inner x = COLS).
-  // Skip rows adjacent to water or on the path exit row (right behind the castle).
+  // Right border forest tiles adjacent to the inner playfield
   const candidates = [];
-  for (let y = 0; y < ROWS; y++) {
+  for (let y = PAD; y < ROWS - PAD; y++) {
     if (y === pathEndY) continue;
-    if (getCell(COLS - 1, y)?.type === 'water') continue;
+    if (getCell(COLS - PAD - 1, y)?.type === 'water') continue;
     candidates.push(y);
   }
   if (candidates.length === 0) return;
   const row = candidates[Math.floor(Math.random() * candidates.length)];
-  state.npcs = [{ id: 'elderberry', icon: '🌳', img: 'elder', name: 'Elder Elderberry', x: COLS, y: row }];
+  state.npcs = [{ id: 'elderberry', icon: '🌳', img: 'elder', name: 'Elder Elderberry', x: COLS - PAD, y: row }];
 }
 
 // ─── Speech bubble ────────────────────────────────────────────────────────────

@@ -5,7 +5,7 @@ import { TD } from './data.js';
 import { spawnBees } from './support.js';
 import { canPlace, invalidateBg } from './render.js';
 import { showTT, hideTT, showTip, showBanner, panelU, hudU, mkGain, addToInventory } from './ui.js';
-import { clickNode, RTYPES } from './resources.js';
+import { clickNode, RTYPES, dropItem } from './resources.js';
 import { initMonkeys } from './monkeys.js';
 import { applyAugment, placeConsumable, RECIPES } from './craft.js';
 
@@ -44,19 +44,30 @@ function handleStackInteraction(c, e) {
     
     if (closestIndex !== -1) {
       const stack = glCell.stacks[closestIndex];
+      const px = c.x * CELL + slots[closestIndex].dx * CELL;
+      const py = c.y * CELL + slots[closestIndex].dy * CELL;
+      if (stack.bossLoot) {
+        glCell.stacks[closestIndex] = null;
+        if (stack.item.unlocks) state.unlockedTowers.add(stack.item.unlocks);
+        addToInventory(stack.section, stack.item);
+        mkGain(px, py, stack.item.bpOverlay || stack.item.icon || '🎁', 1, '#fde68a');
+        showBanner((stack.item.name || 'Item') + ' collected!');
+        hudU(); panelU();
+        return true;
+      }
       stack.count--;
       if (RTYPES[stack.type]) {
         state.resources[stack.type] = (state.resources[stack.type] || 0) + 1;
         const rt = RTYPES[stack.type];
-        mkGain(c.x * CELL + slots[closestIndex].dx * CELL, c.y * CELL + slots[closestIndex].dy * CELL, rt.icon, 1, rt.clr);
+        mkGain(px, py, rt.icon, 1, rt.clr);
         hudU();
       } else {
         const recipe = RECIPES.find(r => r.id === stack.type);
         if (recipe) {
-          if (!state.inventory) state.inventory = { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null, null, null] };
+          if (!state.inventory) state.inventory = { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} };
           const section = recipe.output === 'augment' ? 'augments' : 'consumables';
-          addToInventory(section, { id: recipe.id, name: recipe.name, icon: recipe.icon, desc: recipe.desc, output: recipe.output });
-          mkGain(c.x * CELL + slots[closestIndex].dx * CELL, c.y * CELL + slots[closestIndex].dy * CELL, recipe.icon, 1, '#a78bfa');
+          addToInventory(section, { id: recipe.id, name: recipe.name, icon: recipe.icon, desc: recipe.desc, rarity: recipe.rarity, output: recipe.output });
+          mkGain(px, py, recipe.icon, 1, '#a78bfa');
         }
       }
       if (stack.count <= 0) glCell.stacks[closestIndex] = null;
@@ -165,8 +176,8 @@ function handleTap(e) {
   const tappedCell = getCell(c.x, c.y);
   if (!tappedCell) return; // truly off-grid
   if (tappedCell.type === 'forest') {
-    // Allow forest clicks only when picking a harvest source
-    if (!(state.sel?.type === 'tile_pick' && state.sel?.field === 'harvestSrc')) return;
+    // Allow forest clicks only when picking a harvest source or clearing forest
+    if (!(state.sel?.type === 'tile_pick' && state.sel?.field === 'harvestSrc') && state.sel?.type !== 'forest_clear') return;
   }
   const ex = state.towers.find(t => t.x === c.x && t.y === c.y);
 
@@ -251,6 +262,28 @@ function handleTap(e) {
     return;
   }
 
+  // Lumber axe: click a forest tile to clear it
+  if (state.sel?.type === 'forest_clear') {
+    const { invIndex } = state.sel;
+    const fc = getCell(c.x, c.y);
+    if (!fc || fc.type !== 'forest') { showTip('Click a forest tile!'); return; }
+    fc.type = 'empty';
+    invalidateBg();
+    // Drop 3–6 wood on the newly cleared tile
+    const woodCount = 3 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < woodCount; i++) dropItem(c.x, c.y, 'wood');
+    // Consume one axe
+    const axe = state.inventory?.consumables?.[invIndex];
+    if (axe) {
+      axe.count = (axe.count || 1) - 1;
+      if (axe.count <= 0) state.inventory.consumables.splice(invIndex, 1);
+    }
+    state.sel = null;
+    showBanner('🌲 Forest cleared — ' + woodCount + ' wood collected!');
+    panelU(); hudU();
+    return;
+  }
+
   // Tile-pick mode: record clicked tile for monkey role config
   if (state.sel?.type === 'tile_pick') {
     const { monkey, hut, field } = state.sel;
@@ -259,8 +292,8 @@ function handleTap(e) {
       return;
     }
     if (field === 'harvestSrc') {
-      const isForest = c.x < 0 || c.x >= state.COLS || c.y < 0 || c.y >= state.ROWS;
-      const cellAtPos = !isForest ? getCell(c.x, c.y) : null;
+      const cellAtPos = getCell(c.x, c.y);
+      const isForest = cellAtPos?.type === 'forest';
       if (!isForest && cellAtPos?.type !== 'node') {
         showTip('Select a rock node or forest border tile!');
         return;
@@ -346,7 +379,7 @@ export function initInput() {
     const nav = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'];
     if (nav.includes(e.key)) e.preventDefault();
     if (e.key === 'Escape' && state.sel?.type === 'tile_pick') { state.sel = null; panelU(); return; }
-    if (e.key === 'Escape' && (state.sel?.type === 'augment_pick' || state.sel?.type === 'consumable_pick')) { state.sel = null; return; }
+    if (e.key === 'Escape' && (state.sel?.type === 'augment_pick' || state.sel?.type === 'consumable_pick' || state.sel?.type === 'forest_clear' || state.sel?.type === 'relocate_source' || state.sel?.type === 'relocate_dest')) { state.sel = null; return; }
     keysDown.add(e.key);
   });
   document.addEventListener('keyup', e => keysDown.delete(e.key));
@@ -372,7 +405,7 @@ export function initInput() {
       }
     }
     const c = cell(e);
-    state.gCell = (c.x >= 0 && c.x < state.COLS && c.y >= 0 && c.y < state.ROWS) ? c : null;
+    state.gCell = getCell(c.x, c.y) ? c : null;
   });
 
   cv.addEventListener('mouseup', () => { mouseDragStart = null; });
@@ -431,7 +464,7 @@ export function initInput() {
       clampCam(); state.gCell = null;
     } else if (state.sel) {
       const c = cell(e);
-      state.gCell = (c.x >= 0 && c.x < state.COLS && c.y >= 0 && c.y < state.ROWS) ? c : null;
+      state.gCell = getCell(c.x, c.y) ? c : null;
     }
   }, { passive: false });
 

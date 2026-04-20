@@ -5,6 +5,7 @@ import { dropItem, _itemRegistry } from './resources.js';
 export const RECIPES = [
   {
     id: 'sharpened_flint', name: 'Sharpened Flint', icon: '🗿',
+    rarity: 'common',
     cost: { stone: 2 }, waves: 1, output: 'augment',
     desc: '+15% damage to one tower',
     apply:   tw => { tw.dmg = Math.round(tw.dmg * 1.15); },
@@ -12,6 +13,7 @@ export const RECIPES = [
   },
   {
     id: 'polished_stone', name: 'Polished Stone', icon: '⚪',
+    rarity: 'common',
     cost: { stone: 2 }, waves: 1, output: 'augment',
     desc: '+10% range to one tower',
     apply:   tw => { tw.range = Math.round(tw.range * 1.1 * 10) / 10; },
@@ -19,6 +21,7 @@ export const RECIPES = [
   },
   {
     id: 'taut_sinew', name: 'Taut Sinew', icon: '🧵',
+    rarity: 'uncommon',
     cost: { wood: 2 }, waves: 1, output: 'augment',
     desc: '-10% cooldown to one tower',
     apply:   tw => { tw.rate = Math.max(1, Math.round(tw.rate * 0.9)); },
@@ -26,12 +29,14 @@ export const RECIPES = [
   },
   {
     id: 'stone_trap', name: 'Stone Trap', icon: '🪤',
+    rarity: 'common',
     cost: { stone: 3 }, waves: 1, output: 'consumable',
     desc: 'Place on path: instantly kills the first enemy that steps on it. Barely scratches bosses.',
     trapType: 'trap',
   },
   {
     id: 'sticky_sap', name: 'Sticky Sap', icon: '🍯',
+    rarity: 'uncommon',
     cost: { wood: 2, stone: 1 }, waves: 1, output: 'consumable',
     desc: 'Place on path: 40% slow to all enemies crossing. Lasts until worn down.',
     trapType: 'sap',
@@ -39,7 +44,7 @@ export const RECIPES = [
 ];
 
 // Register items into the shared registry so resources.js can look them up
-for (const r of RECIPES) _itemRegistry[r.id] = { icon: r.icon, name: r.name, output: r.output };
+for (const r of RECIPES) _itemRegistry[r.id] = { icon: r.icon, name: r.name, output: r.output, rarity: r.rarity, desc: r.desc };
 
 export function canAffordRecipe(recipe) {
   const res = state.resources || {};

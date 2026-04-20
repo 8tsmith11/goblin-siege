@@ -8,10 +8,10 @@ import { RECIPES } from './craft.js';
 const PIP_CONSUMABLES = [
   { id: 'stone_trap', icon: '🪤', name: 'Stone Trap', cost: 12 },
   { id: 'sticky_sap', icon: '🍯', name: 'Sticky Sap',  cost: 15 },
-].map(c => ({ ...c, desc: RECIPES.find(r => r.id === c.id)?.desc ?? '' }));
+].map(c => ({ ...c, desc: RECIPES.find(r => r.id === c.id)?.desc ?? '', rarity: RECIPES.find(r => r.id === c.id)?.rarity ?? 'common' }));
 
 const PIP_BLUEPRINTS = [
-  { id: 'bp_clam', icon: '🐚', name: 'Clam Blueprint', desc: 'Unlocks the Clam support building.', cost: 80, unlocks: 'clam', blueprint: true },
+  { id: 'bp_clam', icon: '🐚', name: 'Clam Blueprint', desc: 'Unlocks the Clam support building.', cost: 80, unlocks: 'clam', blueprint: true, rarity: 'rare' },
 ];
 
 const SELL_ITEMS = [
@@ -19,12 +19,19 @@ const SELL_ITEMS = [
   { type: 'wood',  icon: '🪵', name: 'Wood',  price: 3 },
 ];
 
+const LUMBER_AXE = {
+  id: 'lumber_axe', icon: '🪓', name: 'Lumber Axe',
+  desc: 'Click a forest tile to clear it, yielding 3–6 wood and freeing the tile for building.',
+  rarity: 'uncommon', cost: 30, toolQty: 5,
+};
+
 // ─── Stock management ─────────────────────────────────────────────────────────
 
 export function refreshPipStock() {
-  if (!state.pip) state.pip = { cStock: [], cWave: 0, bBought: {}, aSold: {} };
+  if (!state.pip) state.pip = { cStock: [], cWave: 0, bBought: {}, aSold: {}, axeQty: LUMBER_AXE.toolQty };
   if (state.pip.cWave === state.wave) return;
   state.pip.cWave = state.wave;
+  state.pip.axeQty = LUMBER_AXE.toolQty;
   const shuffled = [...PIP_CONSUMABLES].sort(() => Math.random() - 0.5);
   const count = Math.random() < 0.4 ? 3 : 2;
   state.pip.cStock = shuffled.slice(0, Math.min(count, shuffled.length)).map(c => ({
@@ -187,9 +194,18 @@ function renderPip() {
   sellSec.appendChild(sellGrid);
   c.appendChild(sellSec);
 
-  // Consumables
+  // Consumables (Including Lumber Axe)
   const conSec = _mkSec('🧪 Consumables');
   conSec.appendChild(_mkNote('Stock refreshes each wave'));
+  const axeQty = state.pip.axeQty ?? LUMBER_AXE.toolQty;
+  conSec.appendChild(_mkBuyRow({ ...LUMBER_AXE, qty: axeQty }, axeQty > 0, () => {
+    if (state.gold < LUMBER_AXE.cost) { showBanner('⚠️ Not enough gold'); return; }
+    _ΨΔ(() => { state.gold -= LUMBER_AXE.cost; });
+    state.pip.axeQty = (state.pip.axeQty ?? LUMBER_AXE.toolQty) - 1;
+    addToInventory('consumables', { id: LUMBER_AXE.id, icon: LUMBER_AXE.icon, name: LUMBER_AXE.name, desc: LUMBER_AXE.desc, rarity: LUMBER_AXE.rarity, output: 'consumable' });
+    renderPip(); hudU();
+  }, 'Out of stock'));
+
   const cStock = state.pip.cStock || [];
   if (cStock.length === 0) {
     conSec.appendChild(_mkEmpty('Nothing in stock.'));
@@ -199,7 +215,7 @@ function renderPip() {
         if (state.gold < item.cost) { showBanner('⚠️ Not enough gold'); return; }
         _ΨΔ(() => { state.gold -= item.cost; });
         item.qty--;
-        addToInventory('consumables', { id: item.id, icon: item.icon, name: item.name, desc: item.desc, output: 'consumable' });
+        addToInventory('consumables', { id: item.id, icon: item.icon, name: item.name, desc: item.desc, rarity: item.rarity, output: 'consumable' });
         renderPip(); hudU();
       }, 'Out of stock'));
     }
@@ -217,7 +233,7 @@ function renderPip() {
       _ΨΔ(() => { state.gold -= bp.cost; });
       state.pip.bBought[bp.id] = true;
       state.unlockedTowers.add(bp.unlocks);
-      addToInventory('blueprints', { id: bp.id, icon: '🟦', bpOverlay: bp.icon, name: bp.name, unlocks: bp.unlocks });
+      addToInventory('blueprints', { id: bp.id, icon: '🟦', bpOverlay: bp.icon, name: bp.name, unlocks: bp.unlocks, rarity: bp.rarity, desc: bp.desc });
       renderPip(); hudU(); panelU();
       showBanner('📋 ' + bp.name + ' acquired!');
     }, bought || alreadyOwned ? 'Owned' : 'Sold'));

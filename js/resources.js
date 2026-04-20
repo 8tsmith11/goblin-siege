@@ -1,5 +1,5 @@
 'use strict';
-import { state, PAD, getCell } from './main.js';
+import { state, getCell } from './main.js';
 import { sfxMine } from './audio.js';
 import { mkGain, hudU, addToInventory } from './ui.js';
 import { HOARD_LEVELS } from './data.js';
@@ -40,8 +40,9 @@ export function placeNodes() {
   const nodes = [];
   for (const [type, nt] of Object.entries(NTYPES)) {
     const grass = [];
-    for (let y = 0; y < ROWS; y++) {
-      for (let x = 0; x < COLS; x++) {
+    const PAD = 6;
+    for (let y = PAD; y < ROWS - PAD; y++) {
+      for (let x = PAD; x < COLS - PAD; x++) {
         const k = x + ',' + y;
         if (!pathSet.has(k) && !used.has(k) && getCell(x, y)?.type === 'empty') grass.push({ x, y });
       }
@@ -149,7 +150,7 @@ export function dropItem(cx, cy, type) {
         // Crafted items go to player inventory
         const def = getItemDef(type);
         const section = _itemRegistry[type]?.output === 'consumable' ? 'consumables' : 'augments';
-        addToInventory(section, { id: type, name: def.name, icon: def.icon });
+        addToInventory(section, { id: type, name: def.name, icon: def.icon, rarity: def.rarity, desc: def.desc });
         mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, def.icon, 1, '#6ee7b7');
       } else {
         state.resources[type] = (state.resources[type] || 0) + 1;

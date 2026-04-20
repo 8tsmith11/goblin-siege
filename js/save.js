@@ -82,7 +82,6 @@ function _build() {
     _prd: state.patternRecDone || false,
     _trs: state.translationStep || 0,
     _trwc: state._translationWaveCount || 0,
-    _gl: state.groundLoot || [],
   };
 }
 
@@ -173,7 +172,6 @@ function _apply(d) {
   state.patternRecDone = d._prd || false;
   state.translationStep = d._trs || 0;
   state._translationWaveCount = d._trwc || 0;
-  state.groundLoot = d._gl || [];
   state.sel = null; state.ttTower = null; state.gameOver = false;
   state.started = true; state.wave = d._w; state.phase = 'idle';
   state.ticks = 0; state.prepTicks = 0;

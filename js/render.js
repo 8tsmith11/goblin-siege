@@ -1,5 +1,5 @@
 'use strict';
-import { state, PAD, WORLD_COLS, WORLD_ROWS, getCell } from './main.js';
+import { state, WORLD_COLS, WORLD_ROWS, getCell } from './main.js';
 import { TD } from './data.js';
 import { renderNodes, renderStacks, RTYPES, getItemDef } from './resources.js';
 
@@ -47,20 +47,19 @@ export function canPlace(cx2, cy2) {
 let bgCache = null;
 
 function updateBgCache() {
-  const { CELL, path, grid } = state;
-  const TCOLS = WORLD_COLS + 2 * PAD, TROWS = WORLD_ROWS + 2 * PAD;
+  const { CELL, path, grid, COLS, ROWS } = state;
   if (!grid || !grid.length) return;
   if (!bgCache) bgCache = document.createElement('canvas');
-  bgCache.width = TCOLS * CELL;
-  bgCache.height = TROWS * CELL;
+  bgCache.width = COLS * CELL;
+  bgCache.height = ROWS * CELL;
   const bcx = bgCache.getContext('2d');
 
   const grassReady = _imgGrassL.complete && _imgGrassL.naturalWidth && _imgGrassD.complete && _imgGrassD.naturalWidth;
   const forestReady = _imgForest.complete && _imgForest.naturalWidth;
 
   // Draw every cell in the full grid — forest cells get the forest tile, others get grass/water.
-  for (let r = 0; r < TROWS; r++) {
-    for (let c = 0; c < TCOLS; c++) {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
       const bx = c * CELL, by = r * CELL;
       const cellType = grid[r]?.[c]?.type;
       if (cellType === 'forest') {
@@ -87,9 +86,9 @@ function updateBgCache() {
     }
   }
 
-  // Path (inner coords shifted by PAD → full-grid pixel coords)
+  // Path (pixel coords)
   path.forEach(p => {
-    const bx = (p.x + PAD) * CELL, by = (p.y + PAD) * CELL;
+    const bx = p.x * CELL, by = p.y * CELL;
     if (_imgPath.complete && _imgPath.naturalWidth) bcx.drawImage(_imgPath, bx, by, CELL, CELL);
     else { bcx.fillStyle = '#3a2518'; bcx.fillRect(bx, by, CELL, CELL); }
   });
@@ -98,15 +97,15 @@ function updateBgCache() {
   if (path.length > 0) {
     const end = path[path.length - 1];
     bcx.fillStyle = '#3a2518';
-    for (let x = end.x + PAD + 1; x < TCOLS; x++) {
-      const bx = x * CELL, by = (end.y + PAD) * CELL;
+    for (let x = end.x + 1; x < COLS; x++) {
+      const bx = x * CELL, by = end.y * CELL;
       if (_imgPath.complete && _imgPath.naturalWidth) bcx.drawImage(_imgPath, bx, by, CELL, CELL);
       else bcx.fillRect(bx, by, CELL, CELL);
     }
   }
 
   if (path.length > 2) {
-    const sx = (path[0].x + PAD) * CELL, sy = (path[0].y + PAD) * CELL;
+    const sx = path[0].x * CELL, sy = path[0].y * CELL;
     bcx.fillStyle = 'rgba(34,197,94,.12)'; bcx.fillRect(sx, sy, CELL, CELL);
     bcx.font = Math.floor(CELL * 0.4) + 'px serif'; bcx.textAlign = 'center'; bcx.textBaseline = 'middle';
     bcx.fillStyle = '#22c55e77'; bcx.fillText('▶', sx + CELL / 2, sy + CELL / 2);
@@ -124,7 +123,7 @@ export function render() {
   cx.setTransform(cam.zoom, 0, 0, cam.zoom, -cam.panX * cam.zoom, -cam.panY * cam.zoom);
   
   if (!bgCache && state.pathReady && CELL > 0) updateBgCache();
-  if (bgCache) cx.drawImage(bgCache, -PAD * CELL, -PAD * CELL);
+  if (bgCache) cx.drawImage(bgCache, 0, 0);
 
   // Monkey hut tile highlights
   if (ttTower?.type === 'monkey' && ttTower.monkeys) {
@@ -389,6 +388,23 @@ export function render() {
     cx.globalAlpha = 1;
   }
 
+  // Lumber axe forest-clear preview
+  if (sel?.type === 'forest_clear' && gCell) {
+    const fc = getCell(gCell.x, gCell.y);
+    const isForest = fc?.type === 'forest';
+    const gx = gCell.x * CELL, gy = gCell.y * CELL, gpx = gx + CELL / 2, gpy = gy + CELL / 2;
+    cx.globalAlpha = isForest ? 0.7 : 0.2;
+    cx.fillStyle = isForest ? 'rgba(34,197,94,.15)' : 'rgba(239,68,68,.15)';
+    cx.fillRect(gx, gy, CELL, CELL);
+    cx.strokeStyle = isForest ? '#22c55e' : '#ef4444';
+    cx.lineWidth = 2; cx.setLineDash([4, 3]);
+    cx.strokeRect(gx + 1, gy + 1, CELL - 2, CELL - 2);
+    cx.setLineDash([]);
+    cx.font = Math.floor(CELL * 0.45) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.fillText('🪓', gpx, gpy);
+    cx.globalAlpha = 1;
+  }
+
   // Augment placement preview
   if (sel?.type === 'augment_pick' && gCell) {
     const tw2 = towers.find(t => t.x === gCell.x && t.y === gCell.y);
@@ -400,7 +416,7 @@ export function render() {
   }
 
   // Ghost placement preview
-  if (sel && sel.type !== 'spell' && sel.type !== 'consumable_pick' && sel.type !== 'augment_pick' && sel.type !== 'relocate_source' && sel.type !== 'relocate_dest' && gCell) {
+  if (sel && sel.type !== 'spell' && sel.type !== 'consumable_pick' && sel.type !== 'augment_pick' && sel.type !== 'relocate_source' && sel.type !== 'relocate_dest' && sel.type !== 'forest_clear' && gCell) {
     const gx = gCell.x * CELL, gy = gCell.y * CELL, gpx = gx + CELL / 2, gpy = gy + CELL / 2;
     const ok = canPlace(gCell.x, gCell.y);
     // Range preview

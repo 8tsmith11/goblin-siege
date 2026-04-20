@@ -95,15 +95,12 @@ import { refreshPipStock, syncPipBtn, updatePipPanel, initPipUI } from './ui-pip
 import { syncInvBtn, addToInventory } from './ui-inventory.js';
 
 export const VERSION = 'v1.8';
-export const WORLD_COLS = 20;
-export const WORLD_ROWS = 12;
-export const PAD = 6; // forest border width in tiles
+export const WORLD_COLS = 32;
+export const WORLD_ROWS = 24;
 
-// Unified grid accessors — inner game coords (0-based) map to the full grid via PAD offset.
-// Use these everywhere instead of state.grid[y + PAD][x + PAD].
-export function getCell(x, y) { return state.grid[y + PAD]?.[x + PAD] ?? null; }
+export function getCell(x, y) { return state.grid[y]?.[x] ?? null; }
 export function setCell(x, y, updates) {
-  const cell = state.grid[y + PAD]?.[x + PAD];
+  const cell = state.grid[y]?.[x];
   if (cell) Object.assign(cell, updates);
 }
 
@@ -140,7 +137,7 @@ export const state = {
   gameOver: false, started: false,
   ttTower: null,
   W: 0, H: 0, CELL: 0, COLS: 0, ROWS: 0, pathReady: false,
-  cam: { panX: 0, panY: 0, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
+  cam: { panX: undefined, panY: undefined, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
   cv: null, cx: null,
   path: [], pathSet: new Set(), grid: [],
   gCell: null,
@@ -170,10 +167,10 @@ export function measure() {
   const oldW = state.W, oldH = state.H, oldCELL = state.CELL;
   state.W = cv.width = gc.clientWidth - (document.getElementById('feed')?.offsetWidth || 0);
   state.H = cv.height = gc.clientHeight - (hud.offsetHeight || 0) - (bp.offsetHeight || 0);
+  state.CELL = Math.floor(Math.min(state.W / 20, state.H / 12));
+  if (state.CELL < 18) state.CELL = 18;
   state.COLS = WORLD_COLS;
   state.ROWS = WORLD_ROWS;
-  state.CELL = Math.floor(Math.min(state.W / WORLD_COLS, state.H / WORLD_ROWS));
-  if (state.CELL < 18) state.CELL = 18;
   if (oldCELL > 0 && state.CELL !== oldCELL) {
     const ratio = state.CELL / oldCELL;
     state.cam.panX *= ratio;
@@ -184,11 +181,16 @@ export function measure() {
 
 export function clampCam() {
   const { cam, CELL, W, H } = state;
-  const worldW = WORLD_COLS * CELL, worldH = WORLD_ROWS * CELL;
-  const pad = PAD * CELL;
+  const worldW = state.COLS * CELL, worldH = state.ROWS * CELL;
   const viewW = W / cam.zoom, viewH = H / cam.zoom;
-  cam.panX = viewW >= worldW ? -(viewW - worldW) / 2 : Math.max(-pad, Math.min(cam.panX, worldW + pad - viewW));
-  cam.panY = viewH >= worldH ? -(viewH - worldH) / 2 : Math.max(-pad, Math.min(cam.panY, worldH + pad - viewH));
+  
+  if (state.cam.panX === undefined) {
+    state.cam.panX = 6 * CELL;
+    state.cam.panY = 6 * CELL;
+  }
+  
+  cam.panX = viewW >= worldW ? -(viewW - worldW) / 2 : Math.max(0, Math.min(cam.panX, worldW - viewW));
+  cam.panY = viewH >= worldH ? -(viewH - worldH) / 2 : Math.max(0, Math.min(cam.panY, worldH - viewH));
 }
 
 export function minZoom() {
@@ -487,7 +489,7 @@ export function resetGame() {
     inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} },
     worldGenChoices: {}, totalGoblinsKilled: 0, totalGoldEarned: 0,
     frequencyPlayed: false, patternRecDone: false, translationStep: 0, _translationWaveCount: 0,
-    cam: { panX: 0, panY: 0, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
+    cam: { panX: undefined, panY: undefined, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
     _Σ: 0, _Ω: 0,
   });
 

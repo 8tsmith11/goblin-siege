@@ -27,6 +27,11 @@ export function syncInvBtn() {
   btn.style.display = hasAnything ? '' : 'none';
 }
 
+function _applyRarityStyle(cell, rarity) {
+  if (!rarity) return;
+  cell.dataset.rarity = rarity;
+}
+
 function renderInventory() {
   const c = document.getElementById('invC');
   if (!c) return;
@@ -50,15 +55,17 @@ function renderInventory() {
     const eqGrid = document.createElement('div');
     eqGrid.className = 'inv-grid';
     eqGrid.style.marginBottom = '12px';
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < inv.equipped.length; i++) {
       const item = inv.equipped[i];
       const isSel = _invSel?.source === 'equip' && _invSel?.index === i;
       const cell = document.createElement('div');
       cell.className = 'inv-cell equip-slot' + (item ? ' filled' : '') + (isSel ? ' sel' : '');
       if (item) {
-        const tipHtml = item.desc ? '<div class="inv-tip">' + item.desc + '</div>' : '';
-        const rarityHtml = item.rarity ? '<div class="inv-rarity" style="color:' + (RARITY_COLORS[item.rarity] || '#94a3b8') + '">●</div>' : '';
-        cell.innerHTML = '<div class="inv-ic">' + item.icon + '</div><div class="inv-nm">' + item.name + '</div>' + rarityHtml + tipHtml;
+        _applyRarityStyle(cell, item.rarity);
+        cell.dataset.tipName = item.name;
+        if (item.rarity) cell.dataset.tipRarity = item.rarity;
+        if (item.desc) cell.dataset.tipDesc = item.desc;
+        cell.innerHTML = '<div class="inv-ic">' + item.icon + '</div><div class="inv-nm">' + item.name + '</div>';
       } else {
         cell.innerHTML = '<div style="font-size:22px;opacity:.25">○</div><div class="inv-nm" style="color:#374151">Empty</div>';
       }
@@ -149,15 +156,15 @@ function renderInventory() {
 function _mkInvCell(item, selected) {
   const cell = document.createElement('div');
   cell.className = 'inv-cell' + (selected ? ' sel' : '');
-  const countBadge = (item.count && item.count > 1) ? '<div class="inv-cnt">x' + item.count + '</div>' : '';
-  const rarityBadge = item.rarity
-    ? '<div class="inv-rarity" style="color:' + (RARITY_COLORS[item.rarity] || '#94a3b8') + '">●</div>'
-    : '';
+  if (item.rarity) _applyRarityStyle(cell, item.rarity);
+  cell.dataset.tipName = item.name;
+  if (item.rarity) cell.dataset.tipRarity = item.rarity;
+  if (item.desc) cell.dataset.tipDesc = item.desc;
+  const countBadge = (item.count && item.count > 1) ? '<div class="inv-cnt">×' + item.count + '</div>' : '';
   const iconHtml = item.bpOverlay
     ? '<div class="inv-ic pip-bp-ic"><span class="pip-bp-base">' + item.icon + '</span><span class="pip-bp-overlay">' + item.bpOverlay + '</span></div>'
     : '<div class="inv-ic">' + item.icon + '</div>';
-  const tipHtml = item.desc ? '<div class="inv-tip">' + item.desc + '</div>' : '';
-  cell.innerHTML = iconHtml + '<div class="inv-nm">' + item.name + '</div>' + countBadge + rarityBadge + tipHtml;
+  cell.innerHTML = iconHtml + '<div class="inv-nm">' + item.name + '</div>' + countBadge;
   return cell;
 }
 
@@ -167,7 +174,6 @@ function _renderInvActions() {
   el.innerHTML = '';
   if (!_invSel) return;
 
-  // Equipped artifact selected — show desc + unequip
   if (_invSel.source === 'equip') {
     const item = state.inventory.equipped[_invSel.index];
     if (!item) return;
@@ -216,7 +222,22 @@ function _renderInvActions() {
     el.appendChild(btn);
   } else if (_invSel.section === 'consumables') {
     const it = state.inventory.consumables[_invSel.index];
-    if (it?.id === 'relocation_charm') {
+    if (it?.id === 'lumber_axe' || it?.id === 'axe' || (it?.name || '').includes('Lumber Axe')) {
+      const btn = document.createElement('button');
+      btn.className = 'inv-use-btn inv-use-con';
+      btn.textContent = '🪓 Use';
+      btn.onclick = () => {
+        const i = _invSel.index;
+        const item = state.inventory.consumables[i];
+        if (!item) return;
+        document.getElementById('invP')?.classList.remove('sh');
+        _invSel = null;
+        syncPause();
+        state.sel = { type: 'forest_clear', invIndex: i };
+        showTip('Click a forest tile to clear it');
+      };
+      el.appendChild(btn);
+    } else if (it?.id === 'relocation_charm') {
       const btn = document.createElement('button');
       btn.className = 'inv-use-btn inv-use-con';
       btn.textContent = '🏗️ Move Tower';
@@ -244,7 +265,9 @@ function _renderInvActions() {
         _invSel = null;
         syncPause();
         state.sel = { type: 'consumable_pick', item: { ...item }, index: i };
-        showTip('Click a path tile to use the consumable');
+        
+        const isPath = item?.id?.includes('trap') || item?.id?.includes('sap');
+        showTip(isPath ? 'Click a path tile to place ' + item.name : 'Click a valid tile to use ' + item.name);
       };
       el.appendChild(btn);
     }
@@ -253,7 +276,6 @@ function _renderInvActions() {
 
 function _invClickItem(section, index) {
   if (section !== 'artifacts') {
-    // If a tower is waiting for an augment, apply immediately on click
     if (_augTarget && section === 'augments') {
       const it = state.inventory.augments[index];
       if (!it) return;
@@ -276,6 +298,7 @@ function _invClickItem(section, index) {
     _renderInvActions();
     return;
   }
+  // Artifacts: clicking an inv artifact when an equip slot is selected → equip it
   if (_invSel?.source === 'equip') {
     const eqIdx = _invSel.index;
     const inv = state.inventory;
@@ -300,6 +323,7 @@ function _invClickItem(section, index) {
 function _invClickEquip(slotIndex) {
   const inv = state.inventory;
   if (_invSel?.source === 'inv' && _invSel?.section === 'artifacts') {
+    // Equip artifact from inventory into this slot
     const artIdx = _invSel.index;
     const artifact = inv.artifacts[artIdx];
     const was = inv.equipped[slotIndex];
@@ -311,8 +335,15 @@ function _invClickEquip(slotIndex) {
     }
     _invSel = null;
   } else if (_invSel?.source === 'equip' && _invSel?.index === slotIndex) {
+    // Clicking the already-selected equip slot → unequip to inventory
+    const art = inv.equipped[slotIndex];
+    if (art) {
+      inv.equipped[slotIndex] = null;
+      inv.artifacts.push(art);
+    }
     _invSel = null;
   } else if (_invSel?.source === 'equip') {
+    // Swap between equip slots
     const other = _invSel.index;
     [inv.equipped[slotIndex], inv.equipped[other]] = [inv.equipped[other], inv.equipped[slotIndex]];
     _invSel = null;
@@ -322,6 +353,7 @@ function _invClickEquip(slotIndex) {
     }
   }
   renderInventory();
+  _renderInvActions();
 }
 
 function _activateArtifact(art) {
@@ -363,6 +395,48 @@ export function initInventoryUI() {
     _invSel = null;
     _augTarget = null;
     syncPause();
+  });
+
+  // JS tooltip: positioned relative to #invP to avoid overflow-y clipping
+  const invP = document.getElementById('invP');
+  const invC = document.getElementById('invC');
+  if (!invP || !invC) return;
+
+  const tip = document.createElement('div');
+  tip.id = 'invTooltip';
+  invP.appendChild(tip);
+
+  invC.addEventListener('mouseover', e => {
+    const cell = e.target.closest('[data-tip-name]');
+    if (!cell) { tip.style.display = 'none'; return; }
+    const name = cell.dataset.tipName;
+    const rarity = cell.dataset.tipRarity;
+    const desc = cell.dataset.tipDesc;
+    const rarColor = rarity ? (RARITY_COLORS[rarity] || '#94a3b8') : null;
+
+    let html = '<div class="itip-name">' + name + '</div>';
+    if (rarity) html += '<div class="itip-rarity" style="color:' + rarColor + '">◆ ' + rarity.charAt(0).toUpperCase() + rarity.slice(1) + '</div>';
+    if (desc) html += '<div class="itip-desc">' + desc + '</div>';
+    tip.innerHTML = html;
+    tip.style.display = 'block';
+
+    // Position relative to invP, above the cell
+    const pRect = invP.getBoundingClientRect();
+    const cRect = cell.getBoundingClientRect();
+    const tipH = tip.offsetHeight;
+    const tipW = tip.offsetWidth;
+
+    let tipTop = cRect.top - pRect.top - tipH - 8;
+    if (tipTop < 4) tipTop = cRect.bottom - pRect.top + 8;
+    let tipLeft = cRect.left - pRect.left;
+    tipLeft = Math.max(6, Math.min(tipLeft, pRect.width - tipW - 6));
+
+    tip.style.top = tipTop + 'px';
+    tip.style.left = tipLeft + 'px';
+  });
+
+  invC.addEventListener('mouseout', e => {
+    if (!e.relatedTarget?.closest?.('[data-tip-name]')) tip.style.display = 'none';
   });
 }
 
