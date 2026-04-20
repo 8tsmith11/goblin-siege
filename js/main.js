@@ -73,8 +73,8 @@ bus.on('enemyDeath', e => {
       }
     }
   }
-  // Spider: spawn 5-10 spiderlings
-  if (e.em === '🕷️') {
+  // Spider: spawn 5-10 spiderlings (only from parent, not from spiderlings)
+  if (e.em === '🕷️' && !e.spiderling) {
     const bHP = 50 + 2 * state.wave + 0.03 * state.wave * state.wave;
     const spEt = { em:'🕷️', hpM:0.15, spdM:1.8, sz:.16, rew:0, clr:'#c4b5fd', drops:[] };
     const count = 5 + Math.floor(Math.random() * 6);

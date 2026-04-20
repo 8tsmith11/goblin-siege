@@ -213,36 +213,46 @@ function geologistBfs(fromX, fromY, toX, toY) {
   return [];
 }
 
-// Steal one item from the tile. Returns true if something was taken.
-function stealOneItem(e, tx, ty) {
+// Instantly grab all ground stacks from a tile.
+function _stealGroundItems(e, tx, ty) {
   const cell = getCell(tx, ty);
-  if (!cell) return false;
-  // Ground stacks first
-  if (cell.stacks) {
-    for (let i = 0; i < cell.stacks.length; i++) {
-      const s = cell.stacks[i];
-      if (!s || s.bossLoot) continue;
-      e.stolen.push({ type: s.type || (s.section === 'artifacts' ? '_artifact' : '_item'), item: s });
-      cell.stacks[i] = null;
-      return true;
+  if (!cell?.stacks) return;
+  for (let i = 0; i < cell.stacks.length; i++) {
+    const s = cell.stacks[i];
+    if (!s || s.bossLoot || e.stolen.length >= e.gMaxSteal) continue;
+    e.stolen.push({ type: s.type || (s.section === 'artifacts' ? '_artifact' : '_item'), item: s });
+    cell.stacks[i] = null;
+  }
+}
+
+// Returns true if a lootable tower exists at this tile.
+function _hasTowerLoot(tx, ty) {
+  const tw = state.towers.find(t => Math.round(t.x) === tx && Math.round(t.y) === ty);
+  if (!tw) return false;
+  if (tw.type === 'hoard') return (tw.stored || 0) > 0;
+  if (tw.type === 'workbench' && tw.inv) return Object.values(tw.inv).some(v => v > 0);
+  if (tw.type === 'lab') return (state.resources.dust || 0) > 0;
+  return false;
+}
+
+// Steal one item from a tower at tile. Returns true if taken.
+function _stealFromTower(e, tx, ty) {
+  const tw = state.towers.find(t => Math.round(t.x) === tx && Math.round(t.y) === ty);
+  if (!tw) return false;
+  if (tw.type === 'hoard' && tw.stored > 0) {
+    tw.stored--;
+    e.stolen.push({ type: 'resource', label: 'hoard' });
+    return true;
+  }
+  if (tw.type === 'workbench' && tw.inv) {
+    for (const [res, amt] of Object.entries(tw.inv)) {
+      if (amt > 0) { tw.inv[res]--; e.stolen.push({ type: res }); return true; }
     }
   }
-  // Building on this tile
-  const tw = state.towers.find(t => Math.round(t.x) === tx && Math.round(t.y) === ty);
-  if (tw) {
-    if (tw.type === 'hoard' && tw.stored > 0) {
-      tw.stored--;
-      e.stolen.push({ type: 'resource', label: 'hoard' });
-      return true;
-    } else if (tw.type === 'workbench' && tw.inv) {
-      for (const [res, amt] of Object.entries(tw.inv)) {
-        if (amt > 0) { tw.inv[res]--; e.stolen.push({ type: res }); return true; }
-      }
-    } else if (tw.type === 'lab' && (state.resources.dust || 0) > 0) {
-      state.resources.dust--;
-      e.stolen.push({ type: 'dust' });
-      return true;
-    }
+  if (tw.type === 'lab' && (state.resources.dust || 0) > 0) {
+    state.resources.dust--;
+    e.stolen.push({ type: 'dust' });
+    return true;
   }
   return false;
 }
@@ -256,32 +266,35 @@ function _startRetracing(e, path) {
   e.gReturnTile = { x: path[bestPi].x, y: path[bestPi].y, pi: bestPi };
   e.gPath = geologistBfs(Math.round(e.x), Math.round(e.y), path[bestPi].x, path[bestPi].y);
   e._stealCD = undefined;
+  e._stealInit = undefined;
   e.gMode = 'retracing';
 }
 
 function updateGeologist(e, path, CELL) {
   const SPD = 0.04 * (e.spd || 0.8);
   if (e.gMode === 'walking') {
-    // Check current tile and immediately adjacent (above/below in random order) for items
     const tx = Math.round(e.x), ty = Math.round(e.y);
-    const checks = Math.random() < 0.5 ? [[tx, ty-1],[tx, ty+1]] : [[tx, ty+1],[tx, ty-1]];
-    checks.unshift([tx, ty]);
+    // Check current tile + all 4 cardinal neighbours
+    const checks = [[tx, ty], [tx, ty-1], [tx, ty+1], [tx-1, ty], [tx+1, ty]];
     let found = false;
     for (const [cx, cy] of checks) {
       const cell = getCell(cx, cy);
       if (!cell) continue;
-      const hasTowerLoot = state.towers.some(t => Math.round(t.x) === cx && Math.round(t.y) === cy &&
-        (t.type === 'hoard' || t.type === 'workbench' || t.type === 'lab'));
       const hasStacks = cell.stacks?.some(s => s && !s.bossLoot);
-      if (hasStacks || hasTowerLoot) {
-        e.gTarget = { x: cx, y: cy };
-        e.gMode = 'detouring';
-        e.gPath = geologistBfs(Math.round(e.x), Math.round(e.y), cx, cy);
-        found = true; break;
-      }
+      if (!hasStacks && !_hasTowerLoot(cx, cy)) continue;
+      // Don't target a tile another geologist is already heading to
+      const claimed = state.enemies.some(o =>
+        o !== e && !o.dead && (o.gMode === 'detouring' || o.gMode === 'stealing') &&
+        o.gTarget && Math.round(o.gTarget.x) === cx && Math.round(o.gTarget.y) === cy
+      );
+      if (claimed) continue;
+      e.gTarget = { x: cx, y: cy };
+      e.gMode = 'detouring';
+      e.gPath = geologistBfs(tx, ty, cx, cy);
+      found = true; break;
     }
     if (!found) {
-      if (e.pi >= path.length - 1) { e.dead = true; return; } // reached end, no items found — no lives
+      if (e.pi >= path.length - 1) { e.dead = true; return; }
       moveEnemy(e, path);
     }
   } else if (e.gMode === 'detouring') {
@@ -292,13 +305,23 @@ function updateGeologist(e, path, CELL) {
     else { e.x += dx / d * SPD; e.y += dy / d * SPD; }
     if (e.gPath.length === 0) e.gMode = 'stealing';
   } else if (e.gMode === 'stealing') {
-    if (!e._stealCD) e._stealCD = 0;
-    if (e._stealCD > 0) { e._stealCD--; return; }
     const tx = Math.round(e.x), ty = Math.round(e.y);
-    const didSteal = stealOneItem(e, tx, ty);
+    // On arrival: instantly grab all ground items, then rate-limit tower steals
+    if (!e._stealInit) {
+      e._stealInit = true;
+      _stealGroundItems(e, tx, ty);
+      e._stealCD = 0;
+      if (e.stolen.length >= e.gMaxSteal || !_hasTowerLoot(tx, ty)) {
+        _startRetracing(e, path); return;
+      }
+    }
+    if (e._stealCD > 0) { e._stealCD--; return; }
+    const didSteal = _stealFromTower(e, tx, ty);
     if (didSteal) {
+      if (e.stolen.length >= e.gMaxSteal || !_hasTowerLoot(tx, ty)) {
+        _startRetracing(e, path); return;
+      }
       e._stealCD = 60;
-      if (e.stolen.length >= e.gMaxSteal) _startRetracing(e, path);
     } else {
       _startRetracing(e, path);
     }
