@@ -178,7 +178,21 @@ export function showTT(tw, px, py) {
     const sel = tw.selectedRecipe ? RECIPES.find(r => r.id === tw.selectedRecipe)?.name || '?' : null;
     s = (qi ? 'Crafting: ' + qi : sel ? 'Ready: ' + sel : 'Idle — select recipe');
   }
-  else { s = 'DMG:' + tw.dmg + ' RNG:' + tw.range?.toFixed(1) + ' CD:' + tw.rate; if (tw.slow > 0) s += ' Slow:' + Math.floor(tw.slow * 100) + '%'; if (tw.splash > 0) s += ' Spl:' + tw.splash.toFixed(1); if (tw.pierce) s += ' Prc:' + tw.pierce; if (tw.chain) s += ' Chn:' + tw.chain; if (tw._buffed) s += ' 🐚'; }
+  else {
+    let rateBoost = tw._warmBoost ?? 1;
+    if (state.inventory?.equipped?.some(a => a?.id === 'warm_pebble')) {
+      const lab = state.towers?.find(t => t.type === 'lab');
+      if (lab && Math.abs(tw.x - lab.x) <= 1 && Math.abs(tw.y - lab.y) <= 1) rateBoost = Math.min(rateBoost, 0.9);
+    }
+    const effRate = rateBoost < 0.99 ? Math.round(tw.rate * rateBoost) : tw.rate;
+    const cdStr = rateBoost < 0.99 ? effRate + '↓' : tw.rate;
+    s = 'DMG:' + tw.dmg + ' RNG:' + tw.range?.toFixed(1) + ' CD:' + cdStr;
+    if (tw.slow > 0) s += ' Slow:' + Math.floor(tw.slow * 100) + '%';
+    if (tw.splash > 0) s += ' Spl:' + tw.splash.toFixed(1);
+    if (tw.pierce) s += ' Prc:' + tw.pierce;
+    if (tw.chain) s += ' Chn:' + tw.chain;
+    if (tw._buffed) s += ' 🐚';
+  }
   document.getElementById('ttS').textContent = s;
 
   const a = document.getElementById('ttA'); a.innerHTML = '';
@@ -233,6 +247,16 @@ export function showTT(tw, px, py) {
   if (tw.type === 'stockpile') buildStockpileTT(tw, a);
   if (tw.type === 'lab') {
     addTTB(a, 'Lab', 'tts2', !!state.research, () => { hideTT(); state.ttTower = null; showResearch(); });
+    const labAugs = tw.augments || [];
+    if (labAugs.length > 0) {
+      addTTB(a, '🔧 ' + labAugs[0].icon + ' ' + labAugs[0].name + ' ✕', 'tts2', true, () => {
+        const removed = removeAugment(tw, 0);
+        if (removed) { addToInventory('augments', { id: removed.id, icon: removed.icon, name: removed.name }); refreshTT(tw); }
+      });
+    } else {
+      const hasLabAug = state.inventory?.augments?.some(a => a?.id === 'insightful_lens');
+      if (hasLabAug) addTTB(a, '🔧 + Augment', 'tts2', true, () => openInventoryForAugment(tw, () => refreshTT(tw)));
+    }
   }
   if (tw.type === 'monkey') buildMonkeyTT(tw, a);
   if (tw.type === 'workbench') {
