@@ -61,6 +61,34 @@ bus.on('enemyDeath', e => {
       }
     }
   }
+  // Geologist: drop stolen items (33% each, no dust)
+  if (e.em === '💎' && e.stolen?.length && e.gMode !== 'leaving') {
+    const cx = Math.max(0, Math.min(state.COLS - 1, Math.round(e.x)));
+    const cy = Math.max(0, Math.min(state.ROWS - 1, Math.round(e.y)));
+    for (const s of e.stolen) {
+      if (s.type === 'dust') continue;
+      if (Math.random() < 0.33) {
+        if (s.item?.section) dropLoot(cx, cy, s.item.section, s.item.item);
+        else if (s.type && s.type !== 'resource' && s.type !== '_artifact') dropItem(cx, cy, s.type);
+      }
+    }
+  }
+  // Spider: spawn 5-10 spiderlings
+  if (e.em === '🕷️') {
+    const bHP = 50 + 2 * state.wave + 0.03 * state.wave * state.wave;
+    const spEt = { em:'🔴', hpM:0.15, spdM:1.8, sz:.16, rew:0, clr:'#c4b5fd', drops:[] };
+    const count = 5 + Math.floor(Math.random() * 6);
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 0.6;
+      const sp = mkE(spEt, bHP, 0.5);
+      sp.spiderling = true; sp.gMode = 'exploding';
+      sp.explodeVX = Math.cos(angle) * 0.06;
+      sp.explodeVY = Math.sin(angle) * 0.06;
+      sp.explodeDist = 2 + Math.random() * 3; // 2–5 tiles (random per spiderling)
+      sp.x = e.x; sp.y = e.y; sp.pi = e.pi;
+      state.enemies.push(sp);
+    }
+  }
   // Wave 10 boss: drop blueprint on the ground
   if (e.boss && state.wave === 10 && state.worldGenChoices?.wave10Blueprint) {
     const bpType = state.worldGenChoices.wave10Blueprint;
@@ -77,7 +105,7 @@ import { tickCraft, updateTraps, cleanupBarricades } from './craft.js';
 import { addFeed, clearFeed } from './feed.js';
 import { getScribeEntry } from './bestiary.js';
 import { TOWER_SKILLS, HOARD_LEVELS, TD } from './data.js';
-import { updateEnemies, genWave } from './enemies.js';
+import { updateEnemies, genWave, mkE } from './enemies.js';
 import { updateTowers } from './towers.js';
 import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser } from './support.js';
 import { updateMonkeys } from './monkeys.js';
@@ -484,7 +512,7 @@ export function resetGame() {
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
     gameOver: false, started: false, pathReady: false, paused: false, sel: null, ttTower: null,
-    nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, fogWave: false, fogStartTick: 0, heraldWarn: null, hasHeraldHorn: false, pip: null, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin']), bSen: new Set(['sleepy_door']), age: 'stone',
+    nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, fogWave: false, fogStartTick: 0, heraldWarn: null, hasHeraldHorn: false, pip: null, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin']), bSen: new Set(['sleepy_door']), age: 'stone', weightOfBones: false,
     traps: [],
     inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} },
     worldGenChoices: {}, totalGoblinsKilled: 0, totalGoldEarned: 0,
@@ -501,8 +529,13 @@ export function resetGame() {
 }
 
 /* ═══ Loop ═══ */
-let lastP = 0;
-function loop() {
+const TICK_MS = 1000 / 60;
+let lastP = 0, _lastTime = 0, _accum = 0;
+function loop(timestamp) {
+  const now = typeof timestamp === 'number' ? timestamp : performance.now();
+  const dt = Math.min(now - (_lastTime || now), 50); // clamp spike frames
+  _lastTime = now;
+  _accum += dt;
   if (measure()) invalidateBg();
   updateCameraKeys();
   const cam = state.cam;
@@ -512,7 +545,8 @@ function loop() {
     cam.panY = cam.focalY - cam.focalSy / cam.zoom;
     clampCam();
   }
-  update(); render(); updateNpcBubble();
+  while (_accum >= TICK_MS) { update(); _accum -= TICK_MS; }
+  render(); updateNpcBubble();
   if (state.ticks - lastP > 10) { panelU(); lastP = state.ticks; }
   requestAnimationFrame(loop);
 }

@@ -1,6 +1,6 @@
 'use strict';
 import { state, _ΨΔ } from './main.js';
-import { showTip, syncPause } from './ui.js';
+import { showTip, syncPause, panelU } from './ui.js';
 import { RARITY_COLORS } from './artifacts.js';
 import { applyAugment } from './craft.js';
 import { sfxFreeze } from './audio.js';
@@ -458,4 +458,5 @@ export function addToInventory(section, item) {
   if (!inv.seenSections) inv.seenSections = {};
   inv.seenSections[section] = true;
   syncInvBtn();
+  if (section === 'consumables') panelU();
 }

@@ -5,7 +5,7 @@ export const TD = {
   lab:      { name:'Lab',                icon:'🧪', clr:'#a78bfa', cost:80, resCost:{stone:10}, cat:'support', obsRange: 3, desc:'Gathers Dust 🔮 from enemies slain within 3 tiles · Available at Wave 5' },
   hoard:    { name:'Hoard Pile',         icon:'🏺', clr:'#10b981', cost:60, cat:'support', desc:'Deposit resources to earn gold each wave. The pile decays slowly — boost with a monkey to slow the loss.' },
   fish:     { name:'Arrogant Fish',       icon:'🐟',  clr:'#f59e0b', cost:75,  resCost:{wood:2},          dmg:12, range:2.5, rate:60, pClr:'#fcd34d', pSpd:3.5, splash:1.2, slow:0,  target:'first',   cat:'tower', desc:'Splash damage · hits nearby enemies' },
-  seahorse: { name:'Insightful Seahorse', icon:'🦑',  clr:'#ec4899', cost:65,  resCost:{stone:2},         dmg:6,  range:3.5, rate:40, pClr:'#f472b6', pSpd:3,   splash:0,   slow:0,  target:'strongest',pierce:3, cat:'tower', desc:'Piercing shots · passes through enemies' },
+  seahorse: { name:'Insightful Seahorse', icon:'🦑',  clr:'#ec4899', cost:65,  resCost:{stone:2},         dmg:6,  range:3.5, rate:40, pClr:'#f472b6', pSpd:3,   splash:0,   slow:0,  target:'strongest',pierce:3, cat:'tower', seeInvis:true, invisPriority:true, desc:'Piercing shots · targets stealth enemies' },
   lizard:   { name:'Abhorrent Lizard',    icon:'🦎',  clr:'#84cc16', cost:85,  resCost:{wood:3},          dmg:45, range:2.5, rate:65, pClr:'#a3e635', pSpd:5,   splash:1.0, slow:0,  target:'first',   speedUp:true, voiceLine:"I DESPISE YOU ALL!", cat:'tower', desc:'Massive damage · splash · speeds up enemies' },
   heron:    { name:'Clever Heron',        icon:'🦩',  clr:'#6366f1', cost:70,  resCost:{stone:2,wood:2},  dmg:10, range:3.0, rate:45, pClr:'#818cf8', pSpd:4,   splash:0,   slow:0,  target:'last',    chain:3, cat:'tower', desc:'Chain lightning · hits up to 3 targets' },
   clam:     { name:'Intuitive Clam',     icon:'🐚', clr:'#14b8a6', cost:80,  resCost:{stone:3},         cat:'support', buffRange:2,  buffDmg:1.5, buffRate:.85, buffDesc:'+50% DMG, -15% CD to nearby', desc:'Buffs nearby towers: +50% DMG, -15% cooldown' },
@@ -15,6 +15,7 @@ export const TD = {
   stockpile:{ name:'Stockpile',          icon:'📦', clr:'#d97706', cost:50, resCost:{ wood:6 }, cat:'support', desc:'Interface between ground items and your inventory. Monkeys deposit/withdraw here.' },
   workbench:{ name:'Workbench',          icon:'🛠️', clr:'#a16207', cost:80, resCost:{ wood:10, stone:5 }, cat:'support', desc:'Crafts augments and consumables over waves' },
   robot:    { name:'AI Agent',           icon:'🤖', clr:'#38bdf8', cost:110, cat:'support', autoSpell:true, reqAge: 'iron', desc:'Automatically casts spells during waves' },
+  campfire: { name:'Warm Campfire',      icon:'🔥', clr:'#f97316', cost:50,  resCost:{wood:4}, cat:'support', warmRange:1.5, warmRate:0.8, desc:'Boosts fire rate of adjacent towers by 20%' },
 };
 
 export const TOWER_SKILLS = {
@@ -49,7 +50,7 @@ export const TOWER_SKILLS = {
   seahorse: {
     A: { name:'Trident',     desc:'Pierce +4',                           excludes:'B', cost:{dust:25,gold:50},  owned:false,              apply:tw=>{ tw.pierce+=4; } },
     B: { name:'Ink Cloud',   desc:'Hits blind enemies (-50% spd)',        excludes:'A', cost:{dust:25,gold:50},  owned:false,              apply:tw=>{ tw.blind=true; } },
-    C: { name:'Deep Insight',desc:'Reveal+target stealth, +2 range',     excludes:'D', cost:{dust:50,gold:100}, owned:false, req:'any',   apply:tw=>{ tw.range+=2; tw.seeInvis=true; } },
+    C: { name:'Aura of Clarity',desc:'Adjacent towers can target stealth enemies, +2 range', excludes:'D', cost:{dust:50,gold:100}, owned:false, req:'any', apply:tw=>{ tw.range+=2; tw.auraInvis=true; } },
     D: { name:'Void Trap',   desc:'Shots stun enemies 20 ticks',         excludes:'C', cost:{dust:50,gold:100}, owned:false, req:'any',   apply:tw=>{ tw.stun=20; } },
     E: { name:'Mastery',     desc:'+25% DMG, range, and rate. Purple aura.', cost:{dust:60}, owned:false, req:'either_cd', apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.25); tw.range=Math.round(tw.range*1.25*10)/10; tw.rate=Math.max(1,Math.round(tw.rate*0.8)); tw._mastery=true; } },
   },
@@ -85,7 +86,9 @@ export const ETYPES = {
   stealth: { hpM:.6,  spdM:1.4, sz:.22, rew:1,  clr:'#64748b', em:'👤', drops: [{ type: 'wood', chance: 0.15 }] },
   healer:  { hpM:.8,  spdM:.8,  sz:.30, rew:1,  clr:'#22d3ee', em:'💚', drops: [{ type: 'wood', chance: 0.13 }] },
   swarm:   { hpM:.18, spdM:1.7, sz:.18, rew:1,  clr:'#a3e635', em:'🐜', drops: [] },
-  shield:  { hpM:2,   spdM:.7,  sz:.40, rew:3,  clr:'#3b82f6', em:'🛡️', drops: [{ type: 'stone', chance: 0.16 }] },
+  shield:    { hpM:2,   spdM:.7,  sz:.40, rew:3,  clr:'#3b82f6', em:'🛡️', drops: [{ type: 'stone', chance: 0.16 }] },
+  geologist: { hpM:2.0, spdM:1.6, sz:.30, rew:1,  clr:'#a78bfa', em:'💎',  drops: [], noLives: true },
+  spider:    { hpM:1.4, spdM:0.9, sz:.35, rew:2,  clr:'#8b5cf6', em:'🕷️', drops: [] },
 };
 
 // Per-level stats for the Hoard Pile (tw.level 0 = Level 1, etc.)

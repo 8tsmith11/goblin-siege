@@ -55,6 +55,8 @@ export const UNLOCK_DESC = {
   'hoard':              'Hoard Pile unlocked',
   'tower_skills':       'Tower skill upgrades unlocked',
   'workbench':          'Workbench available',
+  'seahorse_aura_auto': 'Seahorse auto-aura (2-tile invis detection)',
+  'insightful_lens_augment': 'Insightful Lens augment for Lab',
 };
 
 // Evaluate a game-state prerequisite string against current state.
@@ -78,29 +80,42 @@ function _resolveSlot(slot) {
 
 export function buildResearchGraph() {
   const bpTower = state.worldGenChoices?.wave10Blueprint;
-
-  // Process slot nodes — mutually exclusive groups; always include exactly one per slot
-  const slotNodeIds = new Set();
   const nodes = {};
-  for (const slot of (RESEARCH_JSON?.slotNodes || [])) {
-    for (const id of slot.nodes) slotNodeIds.add(id);
-    const def = _resolveSlot(slot);
-    if (def) nodes[def.id] = { ...def, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
-  }
+  const usedIds = new Set();
 
-  // Fixed research (skip if unlocked via blueprint drop or covered by a slot)
+  // Fixed research (skip if unlocked via blueprint drop)
   for (const [id, def] of Object.entries(FIXED_RESEARCH)) {
     if (bpTower && def.unlocks === bpTower) continue;
-    if (slotNodeIds.has(id)) continue;
     nodes[id] = { ...def, id, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
   }
 
-  // Random variable nodes — exclude hidden, slot nodes, and bp-tower's own node
-  const nonHidden = VARIABLE_RESEARCH.filter(n => !n.hidden && !slotNodeIds.has(n.id) && n.unlocks !== bpTower);
-  const pool = [...nonHidden].sort(() => Math.random() - 0.5);
-  const picked = pool.slice(0, 4 + (Math.random() < 0.5 ? 0 : 1));
-  for (const def of picked) {
-    nodes[def.id] = { ...def, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
+  const pools = RESEARCH_JSON?.pools || {};
+  for (const [poolId, poolCfg] of Object.entries(pools)) {
+    const candidates = VARIABLE_RESEARCH.filter(n => n.pool === poolId && !n.hidden);
+    let picks;
+    if (poolId === 'parity_1') {
+      // Keep existing parity: always pick the counterpart of the blueprint tower
+      picks = candidates.filter(n => n.unlocks !== bpTower);
+      picks = picks.length ? [picks[Math.floor(Math.random() * picks.length)]] : [];
+    } else {
+      const shuffled = [...candidates].sort(() => Math.random() - 0.5);
+      picks = shuffled.slice(0, poolCfg.size || 1);
+    }
+    const positions = poolCfg.positions || [];
+    picks.forEach((def, i) => {
+      const pos = positions[i] || {};
+      nodes[def.id] = { ...def, ...pos, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
+      usedIds.add(def.id);
+    });
+  }
+
+  // General pool nodes without explicit pool field (legacy fallback - none expected)
+  const nonPooled = VARIABLE_RESEARCH.filter(n => !n.pool && !n.hidden && n.unlocks !== bpTower);
+  if (nonPooled.length) {
+    const picked = [...nonPooled].sort(() => Math.random() - 0.5).slice(0, 3);
+    for (const def of picked) {
+      nodes[def.id] = { ...def, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
+    }
   }
 
   // Add triggered hidden nodes if conditions are met
@@ -217,6 +232,18 @@ export function applyUnlock(node) {
       state.researchUnlocks.tower_skills = true;
       break;
     }
+    case 'tower_campfire': {
+      state.unlockedTowers?.add('campfire');
+      break;
+    }
+    case 'seahorse_aura_auto': {
+      state.researchUnlocks.seahorse_aura_auto = true;
+      break;
+    }
+    case 'insightful_lens_augment': {
+      import('./ui-inventory.js').then(m => m.addToInventory('augments', { id: 'insightful_lens', icon: '🔭', name: 'Insightful Lens', desc: 'Apply to a Lab to let all towers in its radius target stealth enemies.', count: 1 }));
+      break;
+    }
   }
   // Handle patternRecDone for translation system
   if (node.id === 'pattern_rec') state.patternRecDone = true;
@@ -239,8 +266,11 @@ export function layoutNodes(nodes, W = 520, H = 280) {
 
   for (const id of Object.keys(nodes)) {
     const p = posFromJSON(id);
-    if (p && p.x !== undefined && p.y !== undefined) {
-      positions[id] = p;
+    const node = nodes[id];
+    const px = (p?.x !== undefined ? p.x : node?.x);
+    const py = (p?.y !== undefined ? p.y : node?.y);
+    if (px !== undefined && py !== undefined) {
+      positions[id] = { x: px, y: py };
     } else {
       noPos.push(id);
     }

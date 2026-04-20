@@ -113,6 +113,14 @@ export function tickCraft() {
 
 // Apply an augment item to a tower. Returns true on success.
 export function applyAugment(item, tower) {
+  // Special augment: Insightful Lens — Lab only
+  if (item.id === 'insightful_lens') {
+    if (tower.type !== 'lab') return false;
+    tower.insightfulLens = true;
+    if (!tower.augments) tower.augments = [];
+    tower.augments.push({ id: item.id, name: item.name, icon: item.icon });
+    return true;
+  }
   const recipe = RECIPES.find(r => r.id === item.id);
   if (!recipe?.apply) return false;
   const slots = (tower.level || 0) >= 5 ? 2 : (tower.level || 0) >= 3 ? 1 : 0;

@@ -32,11 +32,48 @@ function spawnProjectile(tw, tgt, def, isFrenzySecondary = false) {
 
 export function updateTowers() {
   const { towers, projectiles, ticks, wave, CELL, particles, grid } = state;
+
+  // Clear per-frame derived flags
+  towers.forEach(tw => { tw._auraInvisActive = false; tw._labInvisActive = false; tw._warmBoost = 1; });
+
+  // Campfire: boost fire rate of towers within warmRange
+  towers.filter(tw => tw.type === 'campfire').forEach(cf => {
+    const wr = cf.warmRange || 1.5;
+    towers.forEach(tw2 => {
+      if (tw2 === cf || TD[tw2.type]?.cat !== 'tower') return;
+      if (Math.hypot(tw2.x - cf.x, tw2.y - cf.y) <= wr) tw2._warmBoost = cf.warmRate ?? 0.8;
+    });
+  });
+
+  // Seahorse aura: adjacent towers (1 tile, 8-dir) gain seeInvis
+  towers.filter(tw => tw.type === 'seahorse' && tw.auraInvis).forEach(sh => {
+    towers.forEach(tw2 => {
+      if (tw2 === sh) return;
+      if (Math.abs(tw2.x - sh.x) <= 1 && Math.abs(tw2.y - sh.y) <= 1) tw2._auraInvisActive = true;
+    });
+  });
+  // Seahorse aura auto (from research): 2-tile radius, no skill needed
+  if (state.researchUnlocks?.seahorse_aura_auto) {
+    towers.filter(tw => tw.type === 'seahorse').forEach(sh => {
+      towers.forEach(tw2 => {
+        if (tw2 === sh) return;
+        if (Math.hypot(tw2.x - sh.x, tw2.y - sh.y) <= 2) tw2._auraInvisActive = true;
+      });
+    });
+  }
+
+  // Insightful Lens (lab augment): towers in lab obsRange get labInvis
+  towers.filter(tw => tw.type === 'lab' && tw.insightfulLens).forEach(lab => {
+    towers.forEach(tw2 => {
+      if (Math.hypot(tw2.x - lab.x, tw2.y - lab.y) <= (lab.obsRange || 3)) tw2._labInvisActive = true;
+    });
+  });
+
   towers.forEach(tw => {
     if (tw.type === 'factory' || TD[tw.type]?.cat !== 'tower') return;
     if (tw.disabled && tw.disabledWave === wave) return;
     if (tw.cd > 0) { tw.cd -= (tw._rateBuff < 1 ? 1.2 : 1); return; }
-    
+
     const def = TD[tw.type];
     // Warm Pebble: towers adjacent to Lab fire 10% faster
     let warmPebbleBoost = 1;
@@ -44,11 +81,19 @@ export function updateTowers() {
       const lab = towers.find(t => t.type === 'lab');
       if (lab && Math.abs(tw.x - lab.x) <= 1 && Math.abs(tw.y - lab.y) <= 1) warmPebbleBoost = 0.9;
     }
+    warmPebbleBoost = Math.min(warmPebbleBoost, tw._warmBoost ?? 1);
+    const canSeeInvis = tw.seeInvis || tw._auraInvisActive || tw._labInvisActive;
     const effectiveRange = state.fogWave ? Math.max(1, tw.range * 0.55) : tw.range;
-    const vis = getEnemiesInRadius(grid, tw.x, tw.y, effectiveRange, true, tw.seeInvis);
+    const vis = getEnemiesInRadius(grid, tw.x, tw.y, effectiveRange, true, canSeeInvis);
     if (!vis.length) return;
-    
-    const tgt = findTarget(vis, def.target);
+
+    // invisPriority: prefer stealth enemies first
+    let tgtPool = vis;
+    if (def.invisPriority) {
+      const invisible = vis.filter(e => e.stealth);
+      if (invisible.length) tgtPool = invisible;
+    }
+    const tgt = findTarget(tgtPool, def.target);
     
     projectiles.push(spawnProjectile(tw, tgt, def, false));
     sfxShoot(); tw.cd = Math.round(def.rate * warmPebbleBoost);

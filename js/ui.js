@@ -79,7 +79,6 @@ export function showBL(t) {
   const b = document.getElementById('bL'); b.textContent = '\"' + t + '\"'; b.classList.add('sh');
   import('./audio.js').then(m => m.speak(t));
   setTimeout(() => b.classList.remove('sh'), 3000);
-  addFeed('boss_quote', '\u201c' + t + '\u201d');
 }
 
 export function showLedger() {

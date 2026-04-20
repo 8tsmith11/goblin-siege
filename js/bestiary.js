@@ -1,3 +1,18 @@
+export const TRANSLATIONS = [
+  '"Do not go past the red stone."',
+  '"The hum means the tall ones are near."',
+  '"Three clicks: move. Four clicks: run."',
+  '"Leave food by the water. They remember."',
+  '"The crown does not protect you."',
+  '"Some of us do not want to be here either."',
+  '"What is a wall to someone with nothing to lose?"',
+  '"They built this path. Not for us."',
+  '"We are not the first wave."',
+  '"The fog remembers everyone who passed through."',
+  '"Tell the hatchlings the door was already open."',
+  '"We were supposed to arrive at dawn."',
+];
+
 export const BESTIARY = {
   // Stone Age Enemies
   normal: { 
@@ -99,6 +114,17 @@ export const BESTIARY = {
     stats: ""
   },
   
+  geologist: {
+    name: "Fascinated Geologist", icon: "💎", cls: "🟡 Neutral", clr: "#a78bfa",
+    desc: "It does not attack. It does not appear to notice us at all. It walks with purpose — stopping at interesting tiles, pocketing whatever it finds with an air of professional detachment. Our best attempts at communication have produced only a faint gemstone-clinking sound. It is unclear whether it understands it is on a battlefield. It takes what it finds. It leaves from where it came. It has never been observed to deal damage to the walls. Some staff have started calling it 'the collector'. The name has stuck.",
+    stats: "HP: High | Speed: Fast | Reward: 1g | Deals 0 lives"
+  },
+  spider: {
+    name: "Yearning Spider", icon: "🕷️", cls: "🔴 Hostile", clr: "#8b5cf6",
+    desc: "Large, slow, and quiet. It moves with an odd deliberateness — not threatening, but focused, as if it has somewhere important to be. When killed, it does something extraordinary: the body ruptures and smaller, frantic versions scatter outward. They quickly orient themselves and resume the path, sometimes at a more advanced point than the original. Research has not determined what they 'yearn' for. The scribe insists the name is correct.",
+    stats: "HP: Above Average | Speed: Moderate | Reward: 2g | Spawns spiderlings on death"
+  },
+
   // Mystery Door
   sleepy_door: {
     name: "???", icon: "🚪", cls: "🟣 Unknown", clr: "#a855f7",
@@ -147,6 +173,8 @@ export function getScribeLogs(state) {
   if (w >= 20) logs.push({ w: 'Wave 20', t: `The Ledger appeared. The number was ${(state._kills||0)}. I wrote it down.` });
   if (w >= 22) logs.push({ w: 'Wave 22', t: "New material on the surface. They can't use it yet. They will." });
   if (w >= 25) logs.push({ w: 'Wave 25', t: "The age is ending. Whatever comes next will be louder. It's always louder." });
+  if (w >= 39) logs.push({ w: 'Wave 39', t: "They are coming for the stones. All of them, this time." });
+  if (w >= 40) logs.push({ w: 'Wave 40', t: "Every last one. Collectors, to the core. The Weight of Bones." });
 
   if (logs.length === 0) return "";
   

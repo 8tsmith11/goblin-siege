@@ -1,7 +1,8 @@
 'use strict';
 import { state } from './main.js';
-import { canAfford, spendResources, layoutNodes, UNLOCK_DESC, checkGamePrereq, applyUnlock, refreshStatuses, RESEARCH_JSON } from './research.js';
+import { canAfford, spendResources, layoutNodes, UNLOCK_DESC, checkGamePrereq, applyUnlock, refreshStatuses, RESEARCH_JSON, FIXED_RESEARCH, VARIABLE_RESEARCH } from './research.js';
 import { hudU, syncPause } from './ui.js';
+import { TRANSLATIONS } from './bestiary.js';
 
 const RES_ICONS = { dust: '🔮', stone: '🪨', wood: '🪵', flint: '🗿' };
 const NODE_R = 22;
@@ -9,6 +10,7 @@ let _rPos = null;
 const _rCam = { panX: 0, panY: 0, zoom: 1 };
 const R_ZOOM_MIN = 0.4, R_ZOOM_MAX = 3;
 let _openNodeId = null;
+let _resView = 'web'; // 'web' | 'translations'
 
 const RES_GRID_STEP = () => RESEARCH_JSON?.gridStep ?? 120;
 
@@ -266,6 +268,29 @@ function fitResCv() {
   renderResearch();
 }
 
+function renderTranslations() {
+  const el = document.getElementById('resTranslations');
+  if (!el) return;
+  const step = Math.min(state.translationStep || 0, TRANSLATIONS.length);
+  const entries = TRANSLATIONS.slice(0, step).reverse();
+  el.innerHTML = `<div style="padding:20px;font-family:'Courier New',monospace;font-size:14px;color:#c4b5fd;max-height:60vh;overflow-y:auto">
+    <div style="font-size:15px;font-weight:800;color:#a78bfa;margin-bottom:16px">📜 Goblin Translations — Observation Log</div>
+    ${entries.length ? entries.map((t, i) => `<div style="font-style:italic;padding:8px 0;border-bottom:1px solid rgba(168,85,247,.2)">Step ${step - i}: ${t}</div>`).join('') : '<div style="color:#6b7280;font-style:italic">No translations recorded yet.</div>'}
+  </div>`;
+}
+
+function setResView(view) {
+  _resView = view;
+  const cv = document.getElementById('resCv');
+  const tr = document.getElementById('resTranslations');
+  const webBtn = document.getElementById('resWebBtn');
+  const transBtn = document.getElementById('resTransBtn');
+  if (cv) cv.style.display = view === 'web' ? '' : 'none';
+  if (tr) { tr.style.display = view === 'translations' ? '' : 'none'; if (view === 'translations') renderTranslations(); }
+  if (webBtn) webBtn.style.fontWeight = view === 'web' ? '800' : '';
+  if (transBtn) transBtn.style.fontWeight = view === 'translations' ? '800' : '';
+}
+
 export function showResearch() {
   const p = document.getElementById('resP');
   if (!p) return;
@@ -275,7 +300,12 @@ export function showResearch() {
   hideResTip();
   const saveBtn = document.getElementById('resSaveBtn');
   if (saveBtn) saveBtn.style.display = state._devMode ? '' : 'none';
-  requestAnimationFrame(fitResCv);
+  const devUnlockBtn = document.getElementById('resDevUnlockBtn');
+  if (devUnlockBtn) devUnlockBtn.style.display = state._devMode ? '' : 'none';
+  const transBtn = document.getElementById('resTransBtn');
+  if (transBtn) transBtn.style.display = state.patternRecDone ? '' : 'none';
+  setResView(_resView);
+  if (_resView === 'web') requestAnimationFrame(fitResCv);
 }
 
 export function refreshResearch() {
@@ -424,8 +454,64 @@ export function initResearchUI() {
     }
   }, true);
 
+  // Create translations view container (inserted after canvas)
+  const cv2 = document.getElementById('resCv');
+  if (cv2 && !document.getElementById('resTranslations')) {
+    const trDiv = document.createElement('div');
+    trDiv.id = 'resTranslations';
+    trDiv.style.cssText = 'display:none;flex:1;overflow:hidden';
+    cv2.parentElement.insertBefore(trDiv, cv2.nextSibling);
+  }
+
   const resHeader = document.getElementById('resH');
   if (resHeader) {
+    // Web / Translations tab buttons
+    const webBtn = document.createElement('button');
+    webBtn.id = 'resWebBtn';
+    webBtn.textContent = '🔬';
+    webBtn.title = 'Research Web';
+    Object.assign(webBtn.style, { background:'transparent', color:'#a78bfa', border:'none', cursor:'pointer', fontSize:'16px', fontWeight:'800' });
+    webBtn.onclick = () => setResView('web');
+    resHeader.insertBefore(webBtn, resHeader.firstChild);
+
+    const transBtn = document.createElement('button');
+    transBtn.id = 'resTransBtn';
+    transBtn.textContent = '📜';
+    transBtn.title = 'Goblin Translations';
+    transBtn.style.cssText = 'display:none;background:transparent;color:#a78bfa;border:none;cursor:pointer;font-size:16px;margin-left:2px';
+    transBtn.onclick = () => setResView('translations');
+    resHeader.insertBefore(transBtn, resHeader.children[1]);
+
+    // Dev: Unlock All button
+    const devUnlockBtn = document.createElement('button');
+    devUnlockBtn.id = 'resDevUnlockBtn';
+    devUnlockBtn.textContent = '🔓 Unlock All';
+    devUnlockBtn.title = 'Dev: mark all research as complete';
+    Object.assign(devUnlockBtn.style, {
+      display: 'none', marginLeft: '8px', background: '#374151', color: '#34d399',
+      border: '1px solid #34d399', padding: '2px 7px', cursor: 'pointer',
+      fontSize: '12px', borderRadius: '3px',
+    });
+    devUnlockBtn.onclick = () => {
+      if (!state.research) return;
+      // Unlock all fixed nodes
+      for (const [id, def] of Object.entries(FIXED_RESEARCH)) {
+        if (!state.research[id]) state.research[id] = { ...def, id, status:'locked', wavesLeft:0, wavesTotal:def.waves };
+        state.research[id].status = 'complete'; state.research[id].wavesLeft = 0;
+        applyUnlock(state.research[id]);
+      }
+      // Unlock all variable nodes (even those not in this run)
+      for (const def of VARIABLE_RESEARCH) {
+        if (!state.research[def.id]) state.research[def.id] = { ...def, status:'locked', wavesLeft:0, wavesTotal:def.waves };
+        state.research[def.id].status = 'complete'; state.research[def.id].wavesLeft = 0;
+        applyUnlock(state.research[def.id]);
+      }
+      _rPos = null;
+      refreshStatuses(state.research);
+      fitResCv();
+    };
+    resHeader.appendChild(devUnlockBtn);
+
     const saveBtn = document.createElement('button');
     saveBtn.id = 'resSaveBtn';
     saveBtn.textContent = '💾';

@@ -11,7 +11,7 @@ const PIP_CONSUMABLES = [
 ].map(c => ({ ...c, desc: RECIPES.find(r => r.id === c.id)?.desc ?? '', rarity: RECIPES.find(r => r.id === c.id)?.rarity ?? 'common' }));
 
 const PIP_BLUEPRINTS = [
-  { id: 'bp_clam', icon: '🐚', name: 'Clam Blueprint', desc: 'Unlocks the Clam support building.', cost: 80, unlocks: 'clam', blueprint: true, rarity: 'rare' },
+  { id: 'bp_clam', icon: '🐚', name: 'Clam Blueprint', desc: 'Unlocks the Clam support building.', cost: 200, unlocks: 'clam', blueprint: true, rarity: 'rare' },
 ];
 
 const SELL_ITEMS = [

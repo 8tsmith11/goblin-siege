@@ -1,20 +1,6 @@
 'use strict';
 import { state, _ΨΔ, getCell } from './main.js';
-
-const TRANSLATIONS = [
-  '"Do not go past the red stone."',
-  '"The hum means the tall ones are near."',
-  '"Three clicks: move. Four clicks: run."',
-  '"Leave food by the water. They remember."',
-  '"The crown does not protect you."',
-  '"Some of us do not want to be here either."',
-  '"What is a wall to someone with nothing to lose?"',
-  '"They built this path. Not for us."',
-  '"We are not the first wave."',
-  '"The fog remembers everyone who passed through."',
-  '"Tell the hatchlings the door was already open."',
-  '"We were supposed to arrive at dawn."',
-];
+import { TRANSLATIONS } from './bestiary.js';
 
 function _showObsLog() {
   const el = document.getElementById('obsLogP');
@@ -246,10 +232,7 @@ export function showTT(tw, px, py) {
   }
   if (tw.type === 'stockpile') buildStockpileTT(tw, a);
   if (tw.type === 'lab') {
-    addTTB(a, '🔬 Research', 'tts2', !!state.research, () => { hideTT(); state.ttTower = null; showResearch(); });
-    if (state.patternRecDone) {
-      addTTB(a, '📜 Goblin Translations', 'tts2', true, () => _showObsLog());
-    }
+    addTTB(a, 'Lab', 'tts2', !!state.research, () => { hideTT(); state.ttTower = null; showResearch(); });
   }
   if (tw.type === 'monkey') buildMonkeyTT(tw, a);
   if (tw.type === 'workbench') {

@@ -242,160 +242,132 @@
   "variable": [
     {
       "id": "beekeeping",
+      "pool": "general",
       "name": "Apiculture",
       "icon": "🐝",
-      "cost": {
-        "dust": 20,
-        "wood": 15
-      },
+      "cost": { "dust": 20, "wood": 15 },
       "waves": 2,
       "unlocks": "beehive",
-      "prereqs": [
-        "basic_obs"
-      ],
+      "prereqs": ["basic_obs"],
       "desc": "Cultivates hives whose swarms harry goblin raiders.",
-      "tooltip": "Unlocks the Beehive building, which sends bees to sting and slow nearby enemies.",
-      "x": 1200,
-      "y": 720
+      "tooltip": "Unlocks the Beehive building, which sends bees to sting and slow nearby enemies."
     },
     {
       "id": "reptilian",
+      "pool": "parity_1",
       "name": "Reptilian Lore",
       "icon": "🦎",
-      "cost": {
-        "dust": 30,
-        "stone": 20
-      },
+      "cost": { "dust": 30, "stone": 20 },
       "waves": 3,
       "unlocks": "lizard",
-      "prereqs": [
-        "structural"
-      ],
+      "prereqs": ["structural"],
       "desc": "Bonds with a vicious lizard that haunts the stone walls.",
-      "tooltip": "Unlocks the Lizard tower, a close-range area-damage attacker.",
-      "x": 1320,
-      "y": 720
+      "tooltip": "Unlocks the Lizard tower, a close-range area-damage attacker."
     },
     {
       "id": "entertainment",
+      "pool": "parity_1",
       "name": "Magnificent Show",
       "icon": "🤡",
-      "cost": {
-        "dust": 25,
-        "stone": 10
-      },
+      "cost": { "dust": 25, "stone": 10 },
       "waves": 3,
       "unlocks": "clown",
-      "prereqs": [
-        "structural"
-      ],
+      "prereqs": ["structural"],
       "desc": "A charismatic performer who disorients enemy formations.",
-      "tooltip": "Unlocks the Clown support, which periodically reverses enemy movement direction.",
-      "x": 1320,
-      "y": 720
+      "tooltip": "Unlocks the Clown support, which periodically reverses enemy movement direction."
     },
     {
       "id": "crude_optics",
+      "pool": "general",
       "name": "Crude Optics",
       "icon": "🔭",
-      "cost": {
-        "dust": 20,
-        "flint": 3
-      },
+      "cost": { "dust": 20, "stone": 3 },
       "waves": 2,
       "unlocks": "lab_radius_+2",
-      "prereqs": [
-        "basic_obs"
-      ],
+      "prereqs": ["basic_obs"],
       "desc": "Grinds rough lenses that dramatically extend Lab range.",
-      "tooltip": "Expands the Lab's observation radius by 2 tiles.",
-      "x": 0,
-      "y": 360
+      "tooltip": "Expands the Lab's observation radius by 2 tiles."
     },
     {
       "id": "neuron_activation",
+      "pool": "general",
       "name": "Neuron Activation",
       "icon": "🧠",
-      "cost": {
-        "dust": 30,
-        "wood": 10
-      },
+      "cost": { "dust": 30, "wood": 10 },
       "waves": 3,
       "unlocks": "monkey_auto_place",
-      "prereqs": [
-        "monkey_logistics"
-      ],
+      "prereqs": ["monkey_logistics"],
       "desc": "Monkeys learn to recognize and deploy path items autonomously.",
-      "tooltip": "Courier and Round Robin monkeys automatically place consumable traps/sap when delivering to a path tile.",
-      "x": 480,
-      "y": 480
+      "tooltip": "Courier and Round Robin monkeys automatically place consumable traps/sap when delivering to a path tile."
     },
     {
       "id": "bonfire",
+      "pool": "general",
       "name": "Bonfire Theory",
       "icon": "🔥",
-      "cost": {
-        "dust": 20,
-        "wood": 8
-      },
+      "cost": { "dust": 20, "wood": 8 },
       "waves": 2,
       "unlocks": "tower_campfire",
-      "prereqs": [
-        "basic_obs"
-      ],
+      "prereqs": ["basic_obs"],
       "desc": "Studies the morale effect of light and warmth on defenders.",
-      "tooltip": "Unlocks the Campfire tower, which buffs the fire rate of adjacent towers.",
-      "x": 120,
-      "y": 480
+      "tooltip": "Unlocks the Campfire tower, which buffs the fire rate of adjacent towers."
     },
     {
       "id": "cartography",
+      "pool": "general",
       "name": "Prim. Cartography",
       "icon": "🗺️",
-      "cost": {
-        "dust": 25,
-        "flint": 5
-      },
+      "cost": { "dust": 25, "stone": 5 },
       "waves": 3,
       "unlocks": "reveal_5_tiles",
-      "prereqs": [
-        "basic_obs"
-      ],
+      "prereqs": ["basic_obs"],
       "desc": "Charts the surrounding terrain to expose hidden routes.",
-      "tooltip": "Immediately reveals 5 random map tiles, potentially uncovering resource nodes.",
-      "x": 0,
-      "y": 480
+      "tooltip": "Immediately reveals 5 random map tiles, potentially uncovering resource nodes."
     },
     {
       "id": "fermentation",
+      "pool": "general",
       "name": "Fermentation",
       "icon": "🍺",
-      "cost": {
-        "dust": 15,
-        "wood": 5
-      },
+      "cost": { "dust": 15, "wood": 5 },
       "waves": 2,
       "unlocks": "consumable_ale",
-      "prereqs": [
-        "basic_obs"
-      ],
+      "prereqs": ["basic_obs"],
       "desc": "Brews a potent ale to bolster defenders between waves.",
-      "tooltip": "Unlocks a consumable Ale item that temporarily boosts gold income.",
-      "x": 0,
-      "y": 600
+      "tooltip": "Unlocks a consumable Ale item that temporarily boosts gold income."
+    },
+    {
+      "id": "insightful_seahorse",
+      "pool": "parity_2",
+      "name": "Insightful Seahorse",
+      "icon": "🦑",
+      "cost": { "dust": 30, "stone": 10 },
+      "waves": 3,
+      "unlocks": "seahorse_aura_auto",
+      "prereqs": ["aquatic"],
+      "desc": "Deep studies of the seahorse reveal an innate clarity field.",
+      "tooltip": "Seahorse towers automatically grant stealth-detection to all towers within 2 tiles (no skill required)."
+    },
+    {
+      "id": "insightful_lens",
+      "pool": "parity_2",
+      "name": "Insightful Lens",
+      "icon": "🔭",
+      "cost": { "dust": 30, "stone": 10 },
+      "waves": 3,
+      "unlocks": "insightful_lens_augment",
+      "prereqs": ["aquatic"],
+      "desc": "A lens that reveals the unseen, mounted to the Lab's observation tower.",
+      "tooltip": "Adds the Insightful Lens augment to your inventory — apply it to a Lab to let all towers in its radius target stealth enemies."
     },
     {
       "id": "tremor_study",
       "name": "Tremor Analysis",
       "icon": "🌋",
-      "cost": {
-        "dust": 15
-      },
+      "cost": { "dust": 15 },
       "waves": 2,
       "unlocks": "lore_tremor",
-      "prereqs": [
-        "basic_obs"
-      ],
+      "prereqs": ["basic_obs"],
       "desc": "Documents the rumbling patterns beneath the settlement.",
       "tooltip": "Unlocks a secret lore entry about the tremors in the Bestiary.",
       "hidden": true,
@@ -407,9 +379,7 @@
       "id": "acoustic_anomaly",
       "name": "Acoustic Anomaly",
       "icon": "〰️",
-      "cost": {
-        "dust": 20
-      },
+      "cost": { "dust": 20 },
       "waves": 2,
       "unlocks": "lab_radius_+1",
       "prereqs": [],
@@ -421,10 +391,22 @@
       "y": 600
     }
   ],
-  "slotNodes": [
-    {
-      "nodes": ["reptilian", "entertainment"],
-      "selects": "wave10Blueprint_counterpart"
+  "pools": {
+    "parity_1": {
+      "size": 1,
+      "positions": [{"x": 1320, "y": 720}]
+    },
+    "parity_2": {
+      "size": 1,
+      "positions": [{"x": 1440, "y": 600}]
+    },
+    "general": {
+      "size": 3,
+      "positions": [
+        {"x": 1200, "y": 720},
+        {"x": 120, "y": 480},
+        {"x": 0, "y": 360}
+      ]
     }
-  ]
+  }
 }
