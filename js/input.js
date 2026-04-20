@@ -177,10 +177,7 @@ function handleTap(e) {
   if (!tappedCell) return; // truly off-grid
   if (tappedCell.type === 'forest') {
     // Allow forest clicks only when picking a harvest source or clearing forest
-    if (!(state.sel?.type === 'tile_pick' && state.sel?.field === 'harvestSrc') && state.sel?.type !== 'forest_clear') {
-      showBanner('Safeguard Blocked! Mode: ' + (state.sel?.type || 'none'));
-      return;
-    }
+    if (!(state.sel?.type === 'tile_pick' && state.sel?.field === 'harvestSrc') && state.sel?.type !== 'forest_clear') return;
   }
   const ex = state.towers.find(t => t.x === c.x && t.y === c.y);
 
@@ -270,8 +267,17 @@ function handleTap(e) {
   if (state.sel?.type === 'forest_clear') {
     const { invIndex } = state.sel;
     const fc = getCell(c.x, c.y);
-    if (!fc) { showBanner('Axe: Clicked off grid!'); return; }
-    if (fc.type !== 'forest') { showBanner('Axe: Not a forest tile! Found: ' + fc.type); return; }
+    if (!fc || fc.type !== 'forest') { showTip('Click a forest tile!'); return; }
+    
+    const isCleared = (gx, gy) => {
+      const cell = getCell(gx, gy);
+      return cell && cell.type !== 'forest';
+    };
+
+    if (!isCleared(c.x - 1, c.y) && !isCleared(c.x + 1, c.y) && !isCleared(c.x, c.y - 1) && !isCleared(c.x, c.y + 1)) {
+      showTip('Must chop adjacent to a cleared tile!');
+      return;
+    }
     fc.type = 'empty';
     invalidateBg();
     // Drop 3–6 wood on the newly cleared tile
