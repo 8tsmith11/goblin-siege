@@ -381,7 +381,7 @@ export function render() {
   if (sel?.type === 'consumable_pick' && gCell) {
     const gx = gCell.x * CELL, gy = gCell.y * CELL, gpx = gx + CELL / 2, gpy = gy + CELL / 2;
     const onPath = state.pathSet?.has(gCell.x + ',' + gCell.y);
-    cx.globalAlpha = onPath ? 0.6 : 0.2;
+    cx.globalAlpha = onPath ? 1.0 : 0.6;
     cx.fillStyle = onPath ? '#ffffff11' : '#ff000022'; cx.fillRect(gx, gy, CELL, CELL);
     cx.font = Math.floor(CELL * 0.45) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
     cx.fillText(sel.item?.icon || '?', gpx, gpy);
@@ -393,7 +393,7 @@ export function render() {
     const fc = getCell(gCell.x, gCell.y);
     const isForest = fc?.type === 'forest';
     const gx = gCell.x * CELL, gy = gCell.y * CELL, gpx = gx + CELL / 2, gpy = gy + CELL / 2;
-    cx.globalAlpha = isForest ? 0.7 : 0.2;
+    cx.globalAlpha = isForest ? 1.0 : 0.6;
     cx.fillStyle = isForest ? 'rgba(34,197,94,.15)' : 'rgba(239,68,68,.15)';
     cx.fillRect(gx, gy, CELL, CELL);
     cx.strokeStyle = isForest ? '#22c55e' : '#ef4444';
@@ -430,7 +430,7 @@ export function render() {
         cx.lineWidth = 1; cx.stroke();
       }
     }
-    cx.globalAlpha = ok ? 0.4 : 0.15;
+    cx.globalAlpha = ok ? 0.8 : 0.5;
     cx.fillStyle = ok ? '#ffffff11' : '#ff000022'; cx.fillRect(gx, gy, CELL, CELL);
     cx.font = Math.floor(CELL * 0.4) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
     const icon = TD[sel.key]?.icon || '?';

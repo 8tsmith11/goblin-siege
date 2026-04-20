@@ -220,7 +220,8 @@ function handleTap(e) {
       state.sel = null;
       panelU();
     } else {
-      showTip('Must place on a path tile!');
+      const isPathItem = state.sel.item?.id?.includes('trap') || state.sel.item?.id?.includes('sap');
+      showTip(isPathItem ? 'Must place on a path tile!' : 'Cannot use that here!');
     }
     return;
   }

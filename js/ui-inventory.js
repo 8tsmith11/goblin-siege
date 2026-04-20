@@ -222,7 +222,8 @@ function _renderInvActions() {
     el.appendChild(btn);
   } else if (_invSel.section === 'consumables') {
     const it = state.inventory.consumables[_invSel.index];
-    if (it?.id === 'lumber_axe' || it?.id === 'axe' || (it?.name || '').includes('Lumber Axe')) {
+    const isAxe = it && (it.id === 'lumber_axe' || it.id === 'axe' || (it.name || '').toLowerCase().includes('axe'));
+    if (isAxe) {
       const btn = document.createElement('button');
       btn.className = 'inv-use-btn inv-use-con';
       btn.textContent = '🪓 Use';
