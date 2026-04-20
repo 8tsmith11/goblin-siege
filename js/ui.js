@@ -213,11 +213,18 @@ export function panelU() {
     const cons = state.inventory?.consumables || [];
     cons.forEach((item, i) => {
       const countLbl = (item.count && item.count > 1) ? 'x' + item.count : 'Use';
-      const isSelRR = item.id === 'relocation_charm' ? (state.sel?.type === 'relocate_source' || state.sel?.type === 'relocate_dest') : (state.sel?.type === 'consumable_pick' && state.sel?.index === i);
+      const n = (item.name || '').toLowerCase();
+      const idStr = (item.id || '').toLowerCase();
+      const isAxe = item && (idStr.includes('axe') || idStr.includes('lumber') || n.includes('axe') || n.includes('lumber'));
+      
+      const isSelRR = item.id === 'relocation_charm' ? (state.sel?.type === 'relocate_source' || state.sel?.type === 'relocate_dest') : (isAxe ? (state.sel?.type === 'forest_clear' && state.sel?.invIndex === i) : (state.sel?.type === 'consumable_pick' && state.sel?.index === i));
       const el = mkIB(item.icon, item.name, countLbl, true, isSelRR, () => {
         if (item.id === 'relocation_charm') {
           state.sel = { type: 'relocate_source', invIndex: i };
           showTip('Click the tower you want to move');
+        } else if (isAxe) {
+          state.sel = { type: 'forest_clear', invIndex: i };
+          showTip('Click a forest tile to clear it');
         } else {
           state.sel = { type: 'consumable_pick', item: { ...item }, index: i };
           showTip('Click a path tile to use ' + item.name);

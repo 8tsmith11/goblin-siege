@@ -381,8 +381,13 @@ export function render() {
   if (sel?.type === 'consumable_pick' && gCell) {
     const gx = gCell.x * CELL, gy = gCell.y * CELL, gpx = gx + CELL / 2, gpy = gy + CELL / 2;
     const onPath = state.pathSet?.has(gCell.x + ',' + gCell.y);
-    cx.globalAlpha = onPath ? 1.0 : 0.6;
-    cx.fillStyle = onPath ? '#ffffff11' : '#ff000022'; cx.fillRect(gx, gy, CELL, CELL);
+    cx.globalAlpha = onPath ? 1.0 : 0.8;
+    cx.fillStyle = onPath ? 'rgba(34,197,94,.35)' : 'rgba(239,68,68,.35)';
+    cx.fillRect(gx, gy, CELL, CELL);
+    cx.strokeStyle = onPath ? '#22c55e' : '#ef4444';
+    cx.lineWidth = 2; cx.setLineDash([4, 3]);
+    cx.strokeRect(gx + 1, gy + 1, CELL - 2, CELL - 2);
+    cx.setLineDash([]);
     cx.font = Math.floor(CELL * 0.45) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
     cx.fillText(sel.item?.icon || '?', gpx, gpy);
     cx.globalAlpha = 1;
@@ -393,8 +398,8 @@ export function render() {
     const fc = getCell(gCell.x, gCell.y);
     const isForest = fc?.type === 'forest';
     const gx = gCell.x * CELL, gy = gCell.y * CELL, gpx = gx + CELL / 2, gpy = gy + CELL / 2;
-    cx.globalAlpha = isForest ? 1.0 : 0.6;
-    cx.fillStyle = isForest ? 'rgba(34,197,94,.15)' : 'rgba(239,68,68,.15)';
+    cx.globalAlpha = isForest ? 1.0 : 0.8;
+    cx.fillStyle = isForest ? 'rgba(34,197,94,.35)' : 'rgba(239,68,68,.35)';
     cx.fillRect(gx, gy, CELL, CELL);
     cx.strokeStyle = isForest ? '#22c55e' : '#ef4444';
     cx.lineWidth = 2; cx.setLineDash([4, 3]);
