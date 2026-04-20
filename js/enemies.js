@@ -21,6 +21,20 @@ export function mkE(et, bHP, bSpd) {
 const BOSS_WAVES = new Set([5, 11, 17, 25, 30, 36, 50]);
 export function isBossWave(w) { return BOSS_WAVES.has(w) || (w > 50 && w % 5 === 0); }
 
+function buildAvail(w) {
+  const a = ['normal'];
+  if (w >= 4)  a.push('fast');
+  if (w >= 6)  a.push('tank');
+  if (w >= 8)  a.push('berserker');
+  if (w >= 12) a.push('swarm', 'shield');
+  if (w >= 18) a.push('shaman');
+  if (w >= 19) a.push('geologist');
+  if (w >= 21) a.push('healer');
+  if (w >= 23) a.push('spider');
+  if (w >= 28) a.push('stealth');
+  return a;
+}
+
 export function genWave(w) {
   const q = [], isBoss = isBossWave(w);
   const bHP = 50 + 2 * w + 0.03 * w * w, bSpd = 0.5;
@@ -47,7 +61,7 @@ export function genWave(w) {
     state.fogWave = true;
     state.fogStartTick = state.ticks;
     state.bSen.add('fog');
-    const avail = ['normal','fast','tank','berserker','shaman','stealth','healer','swarm','shield'];
+    const avail = buildAvail(w);
     const cnt = 28;
     for (let i = 0; i < cnt; i++) {
       const tp = avail[Math.floor(Math.random() * avail.length)];
@@ -61,7 +75,7 @@ export function genWave(w) {
   // Wave 40: The Weight of Bones — all enemies become geologists
   if (w === 40) {
     state.weightOfBones = true;
-    const avail40 = ['normal','fast','tank','berserker','swarm','shield','shaman','healer','stealth'];
+    const avail40 = buildAvail(w);
     const earlyScale40 = 1;
     const cnt40 = Math.floor((4 + w * 1.1 + Math.pow(w, 0.82)) * earlyScale40);
     for (let i = 0; i < cnt40; i++) {
@@ -89,17 +103,7 @@ export function genWave(w) {
     const mc = Math.floor(3 + w * 0.5);
     for (let i = 0; i < mc; i++) q.push(mkE(ETYPES[['normal', 'fast', 'berserker'][i % 3]], bHP, bSpd));
   } else {
-    const avail = ['normal'];
-    if (w >= 4)  avail.push('fast');
-    if (w >= 6)  avail.push('tank');
-    if (w >= 8)  avail.push('berserker');
-    if (w >= 12) avail.push('swarm');
-    if (w >= 12) avail.push('shield');
-    if (w >= 18) avail.push('shaman');
-    if (w >= 19) avail.push('geologist');
-    if (w >= 21) avail.push('healer');
-    if (w >= 23) avail.push('spider');
-    if (w >= 28) avail.push('stealth');
+    const avail = buildAvail(w);
     const earlyScale = w <= 3 ? 0.85 : 1;
     const cnt = Math.floor((4 + w * 1.1 + Math.pow(w, 0.82)) * earlyScale);
     for (let i = 0; i < cnt; i++) {
