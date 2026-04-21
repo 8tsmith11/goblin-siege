@@ -85,18 +85,18 @@
     },
     "aquatic": {
       "name": "Aquatic Studies",
-      "icon": "🦑",
+      "icon": "🐟",
       "cost": {
         "dust": 25,
         "stone": 15
       },
       "waves": 3,
-      "unlocks": "fish,seahorse",
+      "unlocks": "fish",
       "prereqs": [
         "structural"
       ],
       "desc": "Catalogues creatures lurking in the coastal shallows.",
-      "tooltip": "Unlocks the Fish tower (fast attack) and the Seahorse tower (stealth detection).",
+      "tooltip": "Unlocks the Fish tower — fast-firing with splash damage.",
       "x": 1440,
       "y": 720
     },
@@ -219,6 +219,23 @@
       "tooltip": "Unlocks the tower skill upgrade system — spend Dust to upgrade individual towers.",
       "x": 1200,
       "y": 600
+    },
+    "artifact_slot": {
+      "name": "Runic Harness",
+      "icon": "🎒",
+      "cost": {
+        "dust": 20,
+        "stone": 10
+      },
+      "waves": 2,
+      "unlocks": "artifact_slot_+1",
+      "prereqs": [
+        "settlement"
+      ],
+      "desc": "Crafts an additional harness mount for carrying a second artifact.",
+      "tooltip": "Adds +1 equipped artifact slot.",
+      "x": 960,
+      "y": 720
     },
     "monkey_logistics": {
       "name": "Monkey Logistics",
@@ -343,22 +360,22 @@
       "icon": "🦑",
       "cost": { "dust": 30, "stone": 10 },
       "waves": 3,
-      "unlocks": "seahorse_aura_auto",
+      "unlocks": "seahorse",
       "prereqs": ["aquatic"],
-      "desc": "Deep studies of the seahorse reveal an innate clarity field.",
-      "tooltip": "Seahorse towers automatically grant stealth-detection to all towers within 2 tiles (no skill required)."
+      "desc": "An enigmatic seahorse that instinctively hunts what others cannot see.",
+      "tooltip": "Unlocks the Seahorse tower — piercing shots that prioritize and reveal stealth enemies by default."
     },
     {
       "id": "insightful_lens",
       "pool": "parity_2",
       "name": "Insightful Lens",
       "icon": "🔭",
-      "cost": { "dust": 30, "stone": 10 },
+      "cost": { "dust": 25, "stone": 8 },
       "waves": 3,
-      "unlocks": "insightful_lens_augment",
+      "unlocks": "insightful_lens_recipe",
       "prereqs": ["aquatic"],
-      "desc": "A lens that reveals the unseen, mounted to the Lab's observation tower.",
-      "tooltip": "Adds the Insightful Lens augment to your inventory — apply it to a Lab to let all towers in its radius target stealth enemies."
+      "desc": "Theoretical optics for seeing the unseen — must still be ground and assembled at a workbench.",
+      "tooltip": "Unlocks the Insightful Lens recipe at the Workbench. Apply the crafted lens to a Lab to let all towers in its radius target stealth enemies."
     },
     {
       "id": "tremor_study",

@@ -127,9 +127,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .beast-stats { font-size:11px; color:#64748b; font-style:italic; margin-top:4px }
 #resP{position:absolute;inset:0;background:rgba(11,14,23,.97);z-index:75;display:none;flex-direction:column;align-items:center;overflow:hidden}
 #resP.sh{display:flex}
-#resH{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #2d1b6e;background:rgba(124,58,237,.1);width:100%;flex-shrink:0}
+#resH{display:flex;justify-content:space-between;align-items:stretch;padding:0 16px;border-bottom:1px solid #2d1b6e;background:rgba(124,58,237,.1);width:100%;flex-shrink:0;min-height:52px}
 #resH h2{font-family:'MedievalSharp',cursive;color:#c4b5fd;font-size:18px}
-#resClose{background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;padding:4px}
+#resClose{background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;padding:4px;align-self:center}
 #resClose:hover{color:#e2e8f0}
 #resCvWrap{flex:1;width:100%;min-height:0;overflow:hidden}
 #resCv{display:block;width:100%;height:100%;cursor:pointer}

@@ -53,8 +53,10 @@ bus.on('enemyDeath', e => {
     const dist = Math.hypot(e.x - lab.x, e.y - lab.y);
     if (dist <= lab.obsRange) {
       const tallyStick = state.inventory?.equipped?.some(a => a?.id === 'tally_stick');
-      const dustChance = tallyStick ? 0.65 : 0.5;
-      let dustYield = e.boss ? 5 : (Math.random() < dustChance ? Math.floor(rew / 2) : 0);
+      const baseDustChance = tallyStick ? 0.32 : 0.25;
+      const dustChance = e.boss ? 0.95 : Math.min(0.85, baseDustChance * rew);
+      const dustAmount = e.boss ? 5 : Math.max(1, Math.floor(rew / 2));
+      let dustYield = Math.random() < dustChance ? dustAmount : 0;
       if (dustYield > 0) {
         state.resources.dust = (state.resources.dust || 0) + dustYield;
         mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '🔮', dustYield, '#a855f7');
@@ -73,18 +75,18 @@ bus.on('enemyDeath', e => {
       }
     }
   }
-  // Spider: spawn 5-10 spiderlings (only from parent, not from spiderlings)
+  // Spider: spawn 2-4 spiderlings (only from parent, not from spiderlings)
   if (e.em === '🕷️' && !e.spiderling) {
-    const bHP = 50 + 2 * state.wave + 0.03 * state.wave * state.wave;
-    const spEt = { em:'🕷️', hpM:0.15, spdM:1.8, sz:.16, rew:0, clr:'#c4b5fd', drops:[] };
-    const count = 5 + Math.floor(Math.random() * 6);
+    const bHP = 60 + 3 * state.wave + 0.05 * state.wave * state.wave;
+    const count = 2 + Math.floor(Math.random() * 3);
+    state.bSen.add('spiderling');
     for (let i = 0; i < count; i++) {
       const angle = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 0.6;
-      const sp = mkE(spEt, bHP, 1.0);
+      const sp = mkE(ETYPES.spiderling, bHP, 1.0);
       sp.spiderling = true; sp.gMode = 'exploding';
       sp.explodeVX = Math.cos(angle) * 0.5;
       sp.explodeVY = Math.sin(angle) * 0.5;
-      sp.explodeDist = 1 + Math.random() * 2; // 1–3 tiles (random per spiderling)
+      sp.explodeDist = 0.6 + Math.random() * 0.8; // 0.6–1.4 tiles
       sp.x = e.x; sp.y = e.y; sp.pi = e.pi;
       state.enemies.push(sp);
     }
@@ -103,7 +105,7 @@ import { buildResearchGraph, tickResearch } from './research.js';
 import { tickCraft, updateTraps, cleanupBarricades } from './craft.js';
 import { addFeed, clearFeed } from './feed.js';
 import { getScribeEntry } from './bestiary.js';
-import { TOWER_SKILLS, HOARD_LEVELS, TD } from './data.js';
+import { TOWER_SKILLS, HOARD_LEVELS, TD, ETYPES } from './data.js';
 import { updateEnemies, genWave, mkE, isBossWave } from './enemies.js';
 import { updateTowers } from './towers.js';
 import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser } from './support.js';
@@ -277,7 +279,7 @@ function update() {
       e.x = state.path[0].x; e.y = state.path[0].y; e.pi = 0;
       state.enemies.push(e);
       if (e.boss) { sfxBoss(); showBL(e.line); }
-      state.spawnTimer = state.wave <= 4 ? Math.max(40, 90 - state.wave * 8) : Math.max(12, 40 - state.wave * 0.8);
+      state.spawnTimer = e.spawnDelay ?? (state.wave <= 4 ? Math.max(40, 90 - state.wave * 8) : Math.max(20, 50 - state.wave * 0.7));
     }
   }
 

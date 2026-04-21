@@ -41,6 +41,13 @@ export const RECIPES = [
     desc: 'Place on path: 40% slow to all enemies crossing. Lasts until worn down.',
     trapType: 'sap',
   },
+  {
+    id: 'insightful_lens', name: 'Insightful Lens', icon: '🔭',
+    rarity: 'rare',
+    cost: { dust: 15, stone: 8 }, waves: 2, output: 'augment',
+    desc: 'Apply to a Lab to let all towers in its radius target stealth enemies.',
+    unlockKey: 'insightful_lens_recipe',
+  },
 ];
 
 // Register items into the shared registry so resources.js can look them up

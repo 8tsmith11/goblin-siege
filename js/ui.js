@@ -12,6 +12,7 @@ import { addFeed } from './feed.js';
 export { showTT, refreshActiveTT } from './ui-tower.js';
 export { showResearch, refreshResearch, initResearchUI } from './ui-research.js';
 export { initInventoryUI, addToInventory } from './ui-inventory.js';
+import { activateArtifact } from './ui-inventory.js';
 export { openCraftPanel, renderCraftPanel, initCraftUI } from './ui-craft.js';
 
 // ── HUD ───────────────────────────────────────────────────────────────────────
@@ -232,6 +233,14 @@ export function panelU() {
       });
       pc.appendChild(el);
     });
+    const activeArts = (state.inventory?.equipped || []).filter(a => a?.active);
+    for (const art of activeArts) {
+      if (!art.cdWavesLeft) art.cdWavesLeft = 0;
+      const canUse = art.cdWavesLeft === 0 && phase === 'active';
+      const cdLabel = art.cdWavesLeft > 0 ? art.cdWavesLeft + '🌊' : 'Ready';
+      const el = mkIB(art.icon, art.name, cdLabel, canUse, false, () => activateArtifact(art));
+      pc.appendChild(el);
+    }
   } else if (tab === 'skills') {
     renderSk();
   }

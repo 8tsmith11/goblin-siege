@@ -89,7 +89,7 @@ export function renderCraftPanel() {
     qDiv.querySelector('#craftCancelBtn').onclick = () => { cancelCraft(tw); renderCraftPanel(); };
   }
 
-  for (const recipe of RECIPES) {
+  for (const recipe of RECIPES.filter(r => !r.unlockKey || state.researchUnlocks?.[r.unlockKey])) {
     const isSelected = tw.selectedRecipe === recipe.id;
     const div = document.createElement('div');
     div.className = 'craft-recipe' + (isSelected ? ' craft-recipe-selected' : '');

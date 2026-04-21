@@ -92,7 +92,7 @@ function renderInventory() {
           cd.textContent = art.cdWavesLeft + ' waves';
           btn.appendChild(cd);
         }
-        if (canUse) btn.onclick = () => _activateArtifact(art);
+        if (canUse) btn.onclick = () => activateArtifact(art);
         actRow.appendChild(btn);
       }
       artSec.appendChild(actRow);
@@ -359,13 +359,14 @@ function _invClickEquip(slotIndex) {
   _renderInvActions();
 }
 
-function _activateArtifact(art) {
+export function activateArtifact(art) {
   if (!art?.active || art.cdWavesLeft > 0 || state.phase !== 'active') return;
   if (art.id === 'the_bell') {
     _ΨΔ(() => { state.freezeActive = Math.max(state.freezeActive, 150); });
     sfxFreeze();
     art.cdWavesLeft = art.cooldownWaves || 8;
     renderInventory();
+    panelU();
   }
 }
 

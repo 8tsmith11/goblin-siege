@@ -56,7 +56,7 @@ export const UNLOCK_DESC = {
   'tower_skills':       'Tower skill upgrades unlocked',
   'workbench':          'Workbench available',
   'seahorse_aura_auto': 'Seahorse auto-aura (2-tile invis detection)',
-  'insightful_lens_augment': 'Insightful Lens augment for Lab',
+  'insightful_lens_recipe': 'Insightful Lens recipe unlocked at Workbench',
 };
 
 // Evaluate a game-state prerequisite string against current state.
@@ -241,8 +241,17 @@ export function applyUnlock(node) {
       state.researchUnlocks.seahorse_aura_auto = true;
       break;
     }
-    case 'insightful_lens_augment': {
-      import('./ui-inventory.js').then(m => m.addToInventory('augments', { id: 'insightful_lens', icon: '🔭', name: 'Insightful Lens', desc: 'Apply to a Lab to let all towers in its radius target stealth enemies.', count: 1 }));
+    case 'insightful_lens_recipe': {
+      state.researchUnlocks.insightful_lens_recipe = true;
+      break;
+    }
+    case 'artifact_slot_+1': {
+      state.researchUnlocks.artifact_slots = (state.researchUnlocks.artifact_slots || 0) + 1;
+      const inv = state.inventory;
+      if (inv) {
+        const targetLen = 1 + state.researchUnlocks.artifact_slots;
+        while (inv.equipped.length < targetLen) inv.equipped.push(null);
+      }
       break;
     }
   }

@@ -472,7 +472,7 @@ export function initResearchUI() {
     // Replace h2 with evenly-split section tab headings
     const h2 = resHeader.querySelector('h2');
     const tabBar = document.createElement('div');
-    tabBar.style.cssText = 'display:flex;flex:1;height:100%;align-self:stretch;margin:-10px 8px -10px -16px';
+    tabBar.style.cssText = 'display:flex;flex:1;align-self:stretch;margin:0 8px 0 -16px';
 
     const makeTab = (id, icon, label, view) => {
       const btn = document.createElement('button');
@@ -499,7 +499,7 @@ export function initResearchUI() {
     Object.assign(devUnlockBtn.style, {
       display: 'none', marginLeft: '8px', background: '#374151', color: '#34d399',
       border: '1px solid #34d399', padding: '2px 7px', cursor: 'pointer',
-      fontSize: '12px', borderRadius: '3px',
+      fontSize: '12px', borderRadius: '3px', alignSelf: 'center',
     });
     devUnlockBtn.onclick = () => {
       if (!state.research) return;
@@ -529,7 +529,7 @@ export function initResearchUI() {
     Object.assign(saveBtn.style, {
       display: 'none', marginLeft: '8px', background: '#374151', color: '#fbbf24',
       border: '1px solid #f59e0b', padding: '2px 7px', cursor: 'pointer',
-      fontSize: '14px', borderRadius: '3px',
+      fontSize: '14px', borderRadius: '3px', alignSelf: 'center',
     });
     saveBtn.onclick = () => {
       if (!RESEARCH_JSON) return;

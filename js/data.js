@@ -87,8 +87,9 @@ export const ETYPES = {
   healer:  { hpM:.8,  spdM:.8,  sz:.30, rew:1,  clr:'#22d3ee', em:'💚', drops: [{ type: 'wood', chance: 0.13 }] },
   swarm:   { hpM:.18, spdM:1.7, sz:.18, rew:1,  clr:'#a3e635', em:'🐜', drops: [] },
   shield:    { hpM:2,   spdM:.7,  sz:.40, rew:3,  clr:'#3b82f6', em:'🛡️', drops: [{ type: 'stone', chance: 0.16 }] },
-  geologist: { hpM:2.0, spdM:1.6, sz:.30, rew:1,  clr:'#a78bfa', em:'💎',  drops: [], noLives: true },
-  spider:    { hpM:1.4, spdM:0.9, sz:.35, rew:2,  clr:'#8b5cf6', em:'🕷️', drops: [] },
+  geologist:  { hpM:2.0, spdM:1.6, sz:.30, rew:1,  clr:'#a78bfa', em:'💎',  drops: [], noLives: true },
+  spider:     { hpM:1.4, spdM:0.9, sz:.35, rew:2,  clr:'#8b5cf6', em:'🕷️', drops: [] },
+  spiderling: { hpM:0.15, spdM:1.8, sz:.14, rew:0, clr:'#c4b5fd', em:'🕷️', drops: [] },
 };
 
 // Per-level stats for the Hoard Pile (tw.level 0 = Level 1, etc.)

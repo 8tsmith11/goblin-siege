@@ -21,24 +21,37 @@ export function mkE(et, bHP, bSpd) {
 const BOSS_WAVES = new Set([5, 11, 17, 25, 30, 36, 50]);
 export function isBossWave(w) { return BOSS_WAVES.has(w) || (w > 50 && w % 5 === 0); }
 
+const EWEIGHTS = {
+  normal: 4, fast: 3, tank: 2, berserker: 2, swarm: 3,
+  shield: 1.5, shaman: 1.5, healer: 1.5, spider: 1.5,
+  stealth: 1, geologist: 1
+};
+
+function pickType(avail) {
+  const total = avail.reduce((s, t) => s + (EWEIGHTS[t] || 1), 0);
+  let r = Math.random() * total;
+  for (const t of avail) { r -= (EWEIGHTS[t] || 1); if (r <= 0) return t; }
+  return avail[avail.length - 1];
+}
+
 function buildAvail(w) {
   const a = ['normal'];
   if (w >= 4)  a.push('fast');
   if (w >= 6)  a.push('tank');
-  if (w >= 8)  a.push('berserker');
+  if (w >= 9)  a.push('berserker');
   if (w >= 12) a.push('swarm');
-  if (w >= 18) a.push('shield');
-  if (w >= 18) a.push('shaman');
-  if (w >= 19) a.push('geologist');
-  if (w >= 21) a.push('healer');
-  if (w >= 23) a.push('spider');
-  if (w >= 28) a.push('stealth');
+  if (w >= 16) a.push('shield');
+  if (w >= 19) a.push('shaman');
+  if (w >= 22) a.push('healer');
+  if (w >= 24) a.push('spider');
+  if (w >= 27) a.push('stealth');
+  if (w >= 33) a.push('geologist');
   return a;
 }
 
 export function genWave(w) {
   const q = [], isBoss = isBossWave(w);
-  const bHP = 50 + 2 * w + 0.03 * w * w, bSpd = 0.5;
+  const bHP = 60 + 3 * w + 0.05 * w * w, bSpd = 0.5;
 
   // Wave 5: Proud Herald — special boss, announces itself
   if (w === 5) {
@@ -65,7 +78,7 @@ export function genWave(w) {
     const avail = buildAvail(w);
     const cnt = 28;
     for (let i = 0; i < cnt; i++) {
-      const tp = avail[Math.floor(Math.random() * avail.length)];
+      const tp = pickType(avail);
       state.bSen.add(tp);
       if (tp === 'swarm') { for (let j = 0; j < 4; j++) q.push(mkE(ETYPES.swarm, bHP * 1.2, bSpd)); }
       else q.push(mkE(ETYPES[tp], bHP * 1.2, bSpd));
@@ -78,9 +91,9 @@ export function genWave(w) {
     state.weightOfBones = true;
     const avail40 = buildAvail(w);
     const earlyScale40 = 1;
-    const cnt40 = Math.floor((4 + w * 1.1 + Math.pow(w, 0.82)) * earlyScale40);
+    const cnt40 = Math.floor((6 + w * 0.85 + Math.pow(w, 0.75)) * earlyScale40);
     for (let i = 0; i < cnt40; i++) {
-      const tp = avail40[Math.floor(Math.random() * avail40.length)];
+      const tp = pickType(avail40);
       state.bSen.add(tp);
       const base = mkE(ETYPES[tp], bHP, bSpd);
       base.em = '💎'; base.clr = '#a78bfa'; base.gMode = 'walking'; base.gPath = null;
@@ -106,12 +119,37 @@ export function genWave(w) {
   } else {
     const avail = buildAvail(w);
     const earlyScale = w <= 3 ? 0.85 : 1;
-    const cnt = Math.floor((4 + w * 1.1 + Math.pow(w, 0.82)) * earlyScale);
+    const cnt = Math.floor((6 + w * 0.85 + Math.pow(w, 0.75)) * earlyScale);
     for (let i = 0; i < cnt; i++) {
-      const tp = avail[Math.floor(Math.random() * avail.length)];
+      const tp = pickType(avail);
       state.bSen.add(tp);
       if (tp === 'swarm') { for (let j = 0; j < 4; j++) q.push(mkE(ETYPES.swarm, bHP, bSpd)); }
       else q.push(mkE(ETYPES[tp], bHP, bSpd));
+    }
+    // Assign per-enemy spawn delays in rhythm runs: burst / normal / slow
+    const normalDelay = Math.max(20, 50 - w * 0.7);
+    let qi = 0;
+    while (qi < q.length) {
+      const roll = Math.random();
+      if (roll < 0.28) {
+        // Burst: 3–7 enemies, 3–6 ticks each
+        const len = 3 + Math.floor(Math.random() * 5);
+        for (let j = qi; j < Math.min(qi + len, q.length); j++)
+          q[j].spawnDelay = 3 + Math.floor(Math.random() * 4);
+        qi += len;
+      } else if (roll < 0.46) {
+        // Slow trickle / dramatic pause: 1–3 enemies, 55–110 ticks each
+        const len = 1 + Math.floor(Math.random() * 3);
+        for (let j = qi; j < Math.min(qi + len, q.length); j++)
+          q[j].spawnDelay = 55 + Math.floor(Math.random() * 56);
+        qi += len;
+      } else {
+        // Normal pace: 2–6 enemies, near-baseTimer with slight jitter
+        const len = 2 + Math.floor(Math.random() * 5);
+        for (let j = qi; j < Math.min(qi + len, q.length); j++)
+          q[j].spawnDelay = normalDelay + Math.floor((Math.random() - 0.5) * 10);
+        qi += len;
+      }
     }
   }
   return q;
