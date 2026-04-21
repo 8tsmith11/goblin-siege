@@ -140,6 +140,7 @@ function tryPlaceTower(c, ex) {
       ownedSkills: {},
     };
     if (tw.type === 'clown') { tw.reverseRange = TD.clown.reverseRange; tw.reverseDur = TD.clown.reverseDur; tw.reverseCD = TD.clown.reverseCD; }
+    if (tw.type === 'campfire') { tw.warmRange = TD.campfire.warmRange; tw.warmRate = TD.campfire.warmRate; }
     if (tw.type === 'robot') tw.cd = 100;
     if (tw.type === 'beehive') { const d = TD.beehive; tw.beeCount = d.beeCount; tw.beeDmg = d.beeDmg; tw.beeRange = d.beeRange; tw.beeRate = d.beeRate; }
     if (tw.type === 'hoard') { tw.stored = 0; }

@@ -246,7 +246,8 @@ export function render() {
     if (ttTower === tw && (tw.range || tw.obsRange)) {
       const r = (tw.obsRange || tw.range) * CELL;
       const isLab = tw.type === 'lab';
-      const rc = isLab ? 'rgba(168,85,247,' : 'rgba(244,63,94,';
+      const isCampfire = tw.type === 'campfire';
+      const rc = isCampfire ? 'rgba(249,115,22,' : isLab ? 'rgba(168,85,247,' : 'rgba(244,63,94,';
       cx.beginPath(); cx.arc(px, py, r, 0, Math.PI * 2);
       cx.fillStyle = rc + '.08)'; cx.fill();
       cx.strokeStyle = rc + '.7)'; cx.lineWidth = 2; cx.stroke();
@@ -262,6 +263,12 @@ export function render() {
       cx.beginPath(); cx.arc(px, py, (tw.reverseRange || 3) * CELL, 0, Math.PI * 2);
       cx.fillStyle = 'rgba(244,63,94,.08)'; cx.fill();
       cx.strokeStyle = 'rgba(244,63,94,.7)'; cx.lineWidth = 2; cx.stroke();
+    }
+    if (ttTower === tw && tw.type === 'campfire') {
+      const r = (tw.warmRange || TD.campfire.warmRange) * CELL;
+      cx.beginPath(); cx.arc(px, py, r, 0, Math.PI * 2);
+      cx.fillStyle = 'rgba(249,115,22,.08)'; cx.fill();
+      cx.strokeStyle = 'rgba(249,115,22,.7)'; cx.lineWidth = 2; cx.stroke();
     }
     const isH = tw.type === 'hoard', def = TD[tw.type];
     const tx = Math.round(tw.x * CELL), ty = Math.round(tw.y * CELL);

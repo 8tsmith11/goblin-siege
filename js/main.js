@@ -80,11 +80,11 @@ bus.on('enemyDeath', e => {
     const count = 5 + Math.floor(Math.random() * 6);
     for (let i = 0; i < count; i++) {
       const angle = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 0.6;
-      const sp = mkE(spEt, bHP, 0.5);
+      const sp = mkE(spEt, bHP, 1.0);
       sp.spiderling = true; sp.gMode = 'exploding';
-      sp.explodeVX = Math.cos(angle) * 0.06;
-      sp.explodeVY = Math.sin(angle) * 0.06;
-      sp.explodeDist = 2 + Math.random() * 3; // 2–5 tiles (random per spiderling)
+      sp.explodeVX = Math.cos(angle) * 0.5;
+      sp.explodeVY = Math.sin(angle) * 0.5;
+      sp.explodeDist = 1 + Math.random() * 2; // 1–3 tiles (random per spiderling)
       sp.x = e.x; sp.y = e.y; sp.pi = e.pi;
       state.enemies.push(sp);
     }

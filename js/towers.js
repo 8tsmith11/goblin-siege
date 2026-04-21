@@ -36,13 +36,27 @@ export function updateTowers() {
   // Clear per-frame derived flags
   towers.forEach(tw => { tw._auraInvisActive = false; tw._labInvisActive = false; tw._warmBoost = 1; });
 
-  // Campfire: boost fire rate of towers within warmRange
+  // Campfire: boost fire rate of towers within warmRange + ambient embers
+  const EMBER_CLRS = ['#f97316','#ef4444','#fbbf24','#fb923c','#fde68a'];
   towers.filter(tw => tw.type === 'campfire').forEach(cf => {
     const wr = cf.warmRange || 1.5;
     towers.forEach(tw2 => {
       if (tw2 === cf || TD[tw2.type]?.cat !== 'tower') return;
       if (Math.hypot(tw2.x - cf.x, tw2.y - cf.y) <= wr) tw2._warmBoost = cf.warmRate ?? 0.8;
     });
+    if (ticks % 3 === 0) {
+      const angle = Math.random() * Math.PI * 2;
+      const r = Math.random() * wr * CELL;
+      particles.push({
+        x: getCenter(cf.x, CELL) + Math.cos(angle) * r,
+        y: getCenter(cf.y, CELL) + Math.sin(angle) * r,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: -0.6 - Math.random() * 0.8,
+        life: 18 + Math.floor(Math.random() * 18),
+        clr: EMBER_CLRS[Math.floor(Math.random() * EMBER_CLRS.length)],
+        sz: 1 + Math.random() * 1.5,
+      });
+    }
   });
 
   // Seahorse aura: adjacent towers (1 tile, 8-dir) gain seeInvis

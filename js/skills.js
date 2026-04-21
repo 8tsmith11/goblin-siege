@@ -107,32 +107,14 @@ function _renderSkCanvas(tw) {
   ctx.clearRect(0, 0, CV_W, CV_H);
   const owned = _ownedSet(tw);
 
-  // Edges first (behind nodes)
-  // Tier 1 → Tier 2: only show edges from owned A or B; show all dim before either is chosen
+  // Edges first (behind nodes) — only draw from owned nodes
   const ownedA = !!owned.A, ownedB = !!owned.B;
   const ownedC = !!owned.C, ownedD = !!owned.D;
-  if (!ownedA && !ownedB) {
-    _drawEdge(ctx, SK_NODES.A, SK_NODES.C, false);
-    _drawEdge(ctx, SK_NODES.A, SK_NODES.D, false);
-    _drawEdge(ctx, SK_NODES.B, SK_NODES.C, false);
-    _drawEdge(ctx, SK_NODES.B, SK_NODES.D, false);
-  } else if (ownedA) {
-    _drawEdge(ctx, SK_NODES.A, SK_NODES.C, true);
-    _drawEdge(ctx, SK_NODES.A, SK_NODES.D, true);
-  } else {
-    _drawEdge(ctx, SK_NODES.B, SK_NODES.C, true);
-    _drawEdge(ctx, SK_NODES.B, SK_NODES.D, true);
-  }
-  // Tier 2 → Mastery
+  if (ownedA) { _drawEdge(ctx, SK_NODES.A, SK_NODES.C, true); _drawEdge(ctx, SK_NODES.A, SK_NODES.D, true); }
+  if (ownedB) { _drawEdge(ctx, SK_NODES.B, SK_NODES.C, true); _drawEdge(ctx, SK_NODES.B, SK_NODES.D, true); }
   if (_nodeVisible('E', tree, tw)) {
-    if (!ownedC && !ownedD) {
-      _drawEdge(ctx, SK_NODES.C, SK_NODES.E, false);
-      _drawEdge(ctx, SK_NODES.D, SK_NODES.E, false);
-    } else if (ownedC) {
-      _drawEdge(ctx, SK_NODES.C, SK_NODES.E, true);
-    } else {
-      _drawEdge(ctx, SK_NODES.D, SK_NODES.E, true);
-    }
+    if (ownedC) _drawEdge(ctx, SK_NODES.C, SK_NODES.E, true);
+    if (ownedD) _drawEdge(ctx, SK_NODES.D, SK_NODES.E, true);
   }
 
   // Nodes

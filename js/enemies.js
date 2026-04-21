@@ -213,16 +213,18 @@ function geologistBfs(fromX, fromY, toX, toY) {
   return [];
 }
 
-// Instantly grab all ground stacks from a tile.
-function _stealGroundItems(e, tx, ty) {
+// Steal one ground stack from a tile. Returns true if taken.
+function _stealOneGroundItem(e, tx, ty) {
   const cell = getCell(tx, ty);
-  if (!cell?.stacks) return;
+  if (!cell?.stacks) return false;
   for (let i = 0; i < cell.stacks.length; i++) {
     const s = cell.stacks[i];
     if (!s || s.bossLoot || e.stolen.length >= e.gMaxSteal) continue;
     e.stolen.push({ type: s.type || (s.section === 'artifacts' ? '_artifact' : '_item'), item: s });
     cell.stacks[i] = null;
+    return true;
   }
+  return false;
 }
 
 // Returns true if a lootable tower exists at this tile.
@@ -274,23 +276,21 @@ function updateGeologist(e, path, CELL) {
   const SPD = 0.04 * (e.spd || 0.8);
   if (e.gMode === 'walking') {
     const tx = Math.round(e.x), ty = Math.round(e.y);
-    // Check current tile + all 4 cardinal neighbours
-    const checks = [[tx, ty], [tx, ty-1], [tx, ty+1], [tx-1, ty], [tx+1, ty]];
+    // Detour only when a loot tile is in the same column (same x)
     let found = false;
-    for (const [cx, cy] of checks) {
-      const cell = getCell(cx, cy);
+    for (let cy = 0; cy < state.ROWS; cy++) {
+      const cell = getCell(tx, cy);
       if (!cell) continue;
       const hasStacks = cell.stacks?.some(s => s && !s.bossLoot);
-      if (!hasStacks && !_hasTowerLoot(cx, cy)) continue;
-      // Don't target a tile another geologist is already heading to
+      if (!hasStacks && !_hasTowerLoot(tx, cy)) continue;
       const claimed = state.enemies.some(o =>
-        o !== e && !o.dead && (o.gMode === 'detouring' || o.gMode === 'stealing') &&
-        o.gTarget && Math.round(o.gTarget.x) === cx && Math.round(o.gTarget.y) === cy
+        o !== e && !o.dead && o.gMode === 'stealing' &&
+        Math.round(o.x) === tx && Math.round(o.y) === cy
       );
       if (claimed) continue;
-      e.gTarget = { x: cx, y: cy };
+      e.gTarget = { x: tx, y: cy };
       e.gMode = 'detouring';
-      e.gPath = geologistBfs(tx, ty, cx, cy);
+      e.gPath = geologistBfs(tx, ty, tx, cy);
       found = true; break;
     }
     if (!found) {
@@ -306,25 +306,17 @@ function updateGeologist(e, path, CELL) {
     if (e.gPath.length === 0) e.gMode = 'stealing';
   } else if (e.gMode === 'stealing') {
     const tx = Math.round(e.x), ty = Math.round(e.y);
-    // On arrival: instantly grab all ground items, then rate-limit tower steals
     if (!e._stealInit) {
       e._stealInit = true;
-      _stealGroundItems(e, tx, ty);
       e._stealCD = 0;
-      if (e.stolen.length >= e.gMaxSteal || !_hasTowerLoot(tx, ty)) {
-        _startRetracing(e, path); return;
-      }
     }
     if (e._stealCD > 0) { e._stealCD--; return; }
-    const didSteal = _stealFromTower(e, tx, ty);
-    if (didSteal) {
-      if (e.stolen.length >= e.gMaxSteal || !_hasTowerLoot(tx, ty)) {
-        _startRetracing(e, path); return;
-      }
-      e._stealCD = 60;
-    } else {
-      _startRetracing(e, path);
-    }
+    const didSteal = _stealOneGroundItem(e, tx, ty) || _stealFromTower(e, tx, ty);
+    if (!didSteal || e.stolen.length >= e.gMaxSteal) { _startRetracing(e, path); return; }
+    const cell = getCell(tx, ty);
+    const stillHas = cell?.stacks?.some(s => s && !s.bossLoot) || _hasTowerLoot(tx, ty);
+    if (!stillHas) { _startRetracing(e, path); return; }
+    e._stealCD = 60;
   } else if (e.gMode === 'retracing') {
     if (!e.gPath || e.gPath.length === 0) {
       if (e.gReturnTile) { e.x = e.gReturnTile.x; e.y = e.gReturnTile.y; e.pi = e.gReturnTile.pi; }
