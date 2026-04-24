@@ -473,6 +473,7 @@ export function startWave() {
     state.unlockedTowers.add('lab');
     showBanner('🧪 Lab Unlocked');
   }
+  for (const tw of state.towers) tw.wavesAlive = (tw.wavesAlive || 0) + 1;
   state.spawnQueue = genWave(state.wave); // may set state.fogWave for wave 15
   state.spawnTimer = 30; state.phase = 'active';
   hideOv();

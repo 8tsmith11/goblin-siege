@@ -40,7 +40,7 @@ export const UNLOCK_DESC = {
   'clown':              'Magnificent Clown tower',
   'lab_radius_+1':      '+1 Lab observation radius',
   'goblin_translations':'Goblin Translations lore',
-  'tower_age_counters': 'Age counters on towers',
+  'tower_age_counters': 'Age counters on towers; Hoard upgrades unlocked',
   'steam_age':          'Steam Age unlocked',
   'monkey_capacity_+1': '+1 monkey per Monkey Hut',
   'lab_radius_+2':      '+2 Lab observation radius',
@@ -223,6 +223,11 @@ export function applyUnlock(node) {
     }
     case 'monkey_auto_place': {
       state.researchUnlocks.monkey_auto_place = true;
+      break;
+    }
+    case 'tower_age_counters': {
+      state.researchUnlocks.tower_age_counters = true;
+      state.researchUnlocks.hoard_upgrades = true;
       break;
     }
     case 'goblin_translations': {

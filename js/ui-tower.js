@@ -226,7 +226,7 @@ export function showTT(tw, px, py) {
         refreshTT(tw);
       });
     }
-    if (tw.level < HOARD_UPGS.length) {
+    if (tw.level < HOARD_UPGS.length && state.researchUnlocks?.hoard_upgrades) {
       const upg = HOARD_UPGS[tw.level];
       let afford = state.gold >= upg.c;
       let costStr = '💰' + upg.c;

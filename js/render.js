@@ -297,6 +297,16 @@ export function render() {
       cx.fillText(isH ? '🏺' : (def?.icon || '?'), tx + CELL / 2, ty + CELL / 2);
     }
     if (tw.level > 0) { cx.font = 'bold ' + Math.floor(CELL * 0.16) + 'px Anybody,sans-serif'; cx.fillStyle = '#fbbf24'; cx.fillText('★'.repeat(Math.min(tw.level, 5)), tx + CELL / 2, ty + CELL - 2); }
+    if (state.researchUnlocks?.tower_age_counters && tw.wavesAlive) {
+      const bw = Math.ceil(CELL * 0.3), bh = Math.ceil(CELL * 0.2);
+      const bx = tx + CELL - bw - 2, by = ty + 2;
+      cx.fillStyle = 'rgba(0,0,0,0.65)';
+      cx.fillRect(bx, by, bw, bh);
+      cx.fillStyle = '#e2e8f0';
+      cx.font = 'bold ' + Math.floor(CELL * 0.16) + 'px Anybody,sans-serif';
+      cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.fillText(tw.wavesAlive, bx + bw / 2, by + bh / 2);
+    }
   });
 
   // Castle (end of path) — drawn oversized so it overlaps surrounding tiles

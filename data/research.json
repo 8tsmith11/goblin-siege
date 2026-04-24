@@ -1,274 +1,200 @@
 {
   "gridStep": 120,
   "fixed": {
-    "settlement": {
-      "name": "Settl. Basics",
-      "icon": "🏘️",
-      "cost": {
-        "wood": 10,
-        "stone": 10
-      },
-      "waves": 1,
-      "unlocks": "hoard",
-      "prereqs": [],
-      "desc": "Establishes the foundations of your settlement.",
-      "tooltip": "Unlocks the Hoard Pile for storing resources.",
-      "x": 960,
-      "y": 600
-    },
-    "crude_crafting": {
+    "craftsmanship": {
       "name": "Craftsmanship",
       "icon": "🛠️",
-      "cost": {
-        "wood": 8,
-        "stone": 4
-      },
+      "cost": { "wood": 8, "stone": 4 },
       "waves": 1,
       "unlocks": "workbench",
-      "prereqs": [
-        "settlement"
-      ],
+      "prereqs": [],
       "desc": "Lashes together a rough workbench from salvaged materials.",
       "tooltip": "Unlocks the Workbench — crafts augments and consumables over waves.",
-      "x": 960,
-      "y": 480
+      "x": 480,
+      "y": 720
     },
     "basic_obs": {
       "name": "Basic Observation",
       "icon": "👁️",
-      "cost": {
-        "dust": 10
-      },
+      "cost": { "dust": 10 },
       "waves": 1,
       "unlocks": "lab_radius_+1",
-      "prereqs": [
-        "settlement"
-      ],
+      "prereqs": ["craftsmanship"],
       "desc": "Trains observers to watch enemy movements more closely.",
       "tooltip": "Expands the Lab's observation radius by 1 tile, collecting Dust from a wider area.",
-      "x": 1080,
-      "y": 600
+      "x": 600,
+      "y": 360
     },
-    "pattern_rec": {
-      "name": "Pattern Recognition",
-      "icon": "📜",
-      "cost": {
-        "dust": 30,
-        "stone": 5
-      },
-      "waves": 3,
-      "unlocks": "goblin_translations",
-      "prereqs": [
-        "basic_obs"
-      ],
-      "desc": "Deciphers the goblin tongue from battlefield recordings.",
-      "tooltip": "Unlocks Goblin Translations lore entries in the Bestiary.",
-      "x": 1080,
-      "y": 480
-    },
-    "structural": {
-      "name": "Structural Analysis",
-      "icon": "🪨",
-      "cost": {
-        "dust": 20,
-        "wood": 5
-      },
-      "waves": 2,
-      "unlocks": "tower_age_counters",
-      "prereqs": [
-        "basic_obs"
-      ],
-      "desc": "Studies how goblins wear down fortifications over time.",
-      "tooltip": "Displays age counters on towers, showing how many waves they have survived.",
-      "x": 1320,
-      "y": 600
-    },
-    "aquatic": {
-      "name": "Aquatic Studies",
-      "icon": "🐟",
-      "cost": {
-        "dust": 25,
-        "stone": 15
-      },
-      "waves": 3,
-      "unlocks": "fish",
-      "prereqs": [
-        "structural"
-      ],
-      "desc": "Catalogues creatures lurking in the coastal shallows.",
-      "tooltip": "Unlocks the Fish tower — fast-firing with splash damage.",
-      "x": 1440,
-      "y": 720
-    },
-    "avian": {
-      "name": "Avian Mastery",
-      "icon": "🦩",
-      "cost": {
-        "dust": 35,
-        "wood": 20
-      },
-      "waves": 4,
-      "unlocks": "heron",
-      "prereqs": [
-        "aquatic"
-      ],
-      "desc": "Trains a great heron as a precision aerial striker.",
-      "tooltip": "Unlocks the Heron tower, a high-damage single-target sniper.",
-      "x": 1560,
-      "y": 840
-    },
-    "the_forge": {
-      "name": "The Forge",
-      "icon": "⚒️",
-      "cost": {
-        "dust": 50,
-        "stone": 20
-      },
-      "waves": 5,
-      "unlocks": "steam_age",
-      "prereqs": [
-        "pattern_rec",
-        "structural"
-      ],
-      "desc": "Harnesses steam and iron to push beyond the stone age.",
-      "tooltip": "Advances the settlement to the Steam Age, enabling industrial buildings.",
-      "x": 1440,
-      "y": 480
-    },
-    "automation": {
-      "name": "AI Automation",
-      "icon": "🤖",
-      "cost": {
-        "dust": 60,
-        "stone": 40
-      },
-      "waves": 5,
-      "unlocks": "robot",
-      "prereqs": [
-        "the_forge"
-      ],
-      "desc": "Constructs a mechanical agent that never sleeps.",
-      "tooltip": "Unlocks the Robot support, which automatically casts spells during waves.",
-      "x": 1560,
-      "y": 480
-    },
-    "animal_husb": {
-      "name": "Animal Husbandry",
-      "icon": "🐵",
-      "cost": {
-        "dust": 15,
-        "wood": 10
-      },
-      "waves": 2,
-      "unlocks": "monkey,stockpile",
-      "prereqs": [
-        "basic_obs"
-      ],
-      "desc": "Domesticates local primates for resource logistics.",
-      "tooltip": "Unlocks the Monkey Hut (assigns monkeys to gather, courier, or boost) and the Stockpile.",
-      "x": 1080,
-      "y": 840
-    },
-    "stockpile_iface": {
-      "name": "Resource Interface",
-      "icon": "📬",
-      "cost": {
-        "dust": 25,
-        "wood": 10
-      },
-      "waves": 3,
-      "unlocks": "stockpile_interface",
-      "prereqs": [
-        "animal_husb"
-      ],
-      "desc": "Reroutes the stockpile directly into the settlement ledger.",
-      "tooltip": "Unlocks Interface Mode on Stockpiles — deposited items go straight to your inventory.",
-      "x": 1200,
-      "y": 960
-    },
-    "monkey_training": {
-      "name": "Monkey Training",
-      "icon": "🐒",
-      "cost": {
-        "dust": 20,
-        "wood": 10
-      },
-      "waves": 2,
-      "unlocks": "monkey_capacity_+1",
-      "prereqs": [
-        "animal_husb"
-      ],
-      "desc": "Refines training regimens to house an extra monkey.",
-      "tooltip": "Each existing and future Monkey Hut gains +1 monkey capacity.",
-      "x": 1200,
-      "y": 840
-    },
-    "combat_training": {
-      "name": "Combat Training",
-      "icon": "⚔️",
-      "cost": {
-        "dust": 15,
-        "stone": 5
-      },
-      "waves": 2,
-      "unlocks": "tower_skills",
-      "prereqs": [
-        "settlement"
-      ],
-      "desc": "Establishes a formal training regimen for your tower crews.",
-      "tooltip": "Unlocks the tower skill upgrade system — spend Dust to upgrade individual towers.",
-      "x": 1200,
-      "y": 600
-    },
-    "artifact_slot": {
-      "name": "Runic Harness",
-      "icon": "🎒",
-      "cost": {
-        "dust": 20,
-        "stone": 10
-      },
-      "waves": 2,
-      "unlocks": "artifact_slot_+1",
-      "prereqs": [
-        "settlement"
-      ],
-      "desc": "Crafts an additional harness mount for carrying a second artifact.",
-      "tooltip": "Adds +1 equipped artifact slot.",
-      "x": 960,
-      "y": 720
-    },
-    "monkey_logistics": {
-      "name": "Monkey Logistics",
-      "icon": "🔄",
-      "cost": {
-        "dust": 35,
-        "wood": 20
-      },
-      "waves": 4,
-      "unlocks": "monkey_logistics",
-      "prereqs": [
-        "monkey_training",
-        "the_forge"
-      ],
-      "desc": "Advanced primate training: rotating deliveries and forest foraging.",
-      "tooltip": "Unlocks Round Robin (cycle up to 5 delivery targets) and Harvest (mine rock nodes or forage wood from forest) roles for monkeys.",
-      "x": 1320,
-      "y": 840
-    }
-  },
-  "variable": [
-    {
-      "id": "beekeeping",
-      "pool": "general",
+    "beekeeping": {
       "name": "Apiculture",
       "icon": "🐝",
       "cost": { "dust": 20, "wood": 15 },
       "waves": 2,
       "unlocks": "beehive",
-      "prereqs": ["basic_obs"],
+      "prereqs": ["craftsmanship"],
       "desc": "Cultivates hives whose swarms harry goblin raiders.",
-      "tooltip": "Unlocks the Beehive building, which sends bees to sting and slow nearby enemies."
+      "tooltip": "Unlocks the Beehive building, which sends bees to sting and slow nearby enemies.",
+      "x": 600,
+      "y": 720
     },
+    "settling_basics": {
+      "name": "Settl. Basics",
+      "icon": "🏘️",
+      "cost": { "wood": 10, "stone": 10 },
+      "waves": 1,
+      "unlocks": "hoard",
+      "prereqs": ["craftsmanship"],
+      "desc": "Establishes the foundations of your settlement.",
+      "tooltip": "Unlocks the Hoard Pile for storing resources.",
+      "x": 600,
+      "y": 1080
+    },
+    "pattern_rec": {
+      "name": "Pattern Recognition",
+      "icon": "📜",
+      "cost": { "dust": 30, "stone": 5 },
+      "waves": 3,
+      "unlocks": "goblin_translations",
+      "prereqs": ["basic_obs"],
+      "desc": "Deciphers the goblin tongue from battlefield recordings.",
+      "tooltip": "Unlocks Goblin Translations lore entries in the Bestiary.",
+      "x": 720,
+      "y": 120
+    },
+    "avian": {
+      "name": "Avian Mastery",
+      "icon": "🦩",
+      "cost": { "dust": 35, "wood": 20 },
+      "waves": 4,
+      "unlocks": "heron",
+      "prereqs": ["basic_obs"],
+      "desc": "Trains a great heron as a precision aerial striker.",
+      "tooltip": "Unlocks the Heron tower, a high-damage single-target sniper.",
+      "x": 720,
+      "y": 240
+    },
+    "combat_training": {
+      "name": "Combat Training",
+      "icon": "⚔️",
+      "cost": { "dust": 15, "stone": 5 },
+      "waves": 2,
+      "unlocks": "tower_skills",
+      "prereqs": ["basic_obs"],
+      "desc": "Establishes a formal training regimen for your tower crews.",
+      "tooltip": "Unlocks the tower skill upgrade system — spend Dust to upgrade individual towers.",
+      "x": 720,
+      "y": 360
+    },
+    "structural": {
+      "name": "Structural Analysis",
+      "icon": "🪨",
+      "cost": { "dust": 20, "wood": 5 },
+      "waves": 2,
+      "unlocks": "tower_age_counters",
+      "prereqs": ["settling_basics"],
+      "desc": "Studies how goblins wear down fortifications over time.",
+      "tooltip": "Displays age counters on towers. Allows upgrading Hoard Piles.",
+      "x": 720,
+      "y": 1080
+    },
+    "monkey_business": {
+      "name": "Monkey Business",
+      "icon": "🐵",
+      "cost": { "dust": 15, "wood": 10 },
+      "waves": 2,
+      "unlocks": "monkey,stockpile",
+      "prereqs": ["settling_basics"],
+      "desc": "Domesticates local primates for resource logistics.",
+      "tooltip": "Unlocks the Monkey Hut (assigns monkeys to gather, courier, or boost) and the Stockpile.",
+      "x": 720,
+      "y": 1200
+    },
+    "artifact_slot": {
+      "name": "Runic Harness",
+      "icon": "🎒",
+      "cost": { "dust": 20, "stone": 10 },
+      "waves": 2,
+      "unlocks": "artifact_slot_+1",
+      "prereqs": ["combat_training"],
+      "desc": "Crafts an additional harness mount for carrying a second artifact.",
+      "tooltip": "Adds +1 equipped artifact slot.",
+      "x": 840,
+      "y": 360
+    },
+    "neuron_activation": {
+      "name": "Neuron Activation",
+      "icon": "🧠",
+      "cost": { "dust": 30, "wood": 10 },
+      "waves": 3,
+      "unlocks": "monkey_auto_place",
+      "prereqs": ["monkey_business"],
+      "desc": "Monkeys learn to recognize and deploy path items autonomously.",
+      "tooltip": "Courier and Round Robin monkeys automatically place consumable traps/sap when delivering to a path tile.",
+      "x": 840,
+      "y": 1080
+    },
+    "monkey_training": {
+      "name": "Monkey Training",
+      "icon": "🐒",
+      "cost": { "dust": 20, "wood": 10 },
+      "waves": 2,
+      "unlocks": "monkey_capacity_+1",
+      "prereqs": ["monkey_business"],
+      "desc": "Refines training regimens to house an extra monkey.",
+      "tooltip": "Each existing and future Monkey Hut gains +1 monkey capacity.",
+      "x": 840,
+      "y": 1200
+    },
+    "stockpile_iface": {
+      "name": "Resource Interface",
+      "icon": "📬",
+      "cost": { "dust": 25, "wood": 10 },
+      "waves": 3,
+      "unlocks": "stockpile_interface",
+      "prereqs": ["monkey_business"],
+      "desc": "Reroutes the stockpile directly into the settlement ledger.",
+      "tooltip": "Unlocks Interface Mode on Stockpiles — deposited items go straight to your inventory.",
+      "x": 840,
+      "y": 1320
+    },
+    "the_forge": {
+      "name": "The Forge",
+      "icon": "⚒️",
+      "cost": { "dust": 50, "stone": 20 },
+      "waves": 5,
+      "unlocks": "steam_age",
+      "prereqs": ["structural", "monkey_business"],
+      "desc": "Harnesses steam and iron to push beyond the stone age.",
+      "tooltip": "Advances the settlement to the Steam Age, enabling industrial buildings.",
+      "x": 960,
+      "y": 1140
+    },
+    "automation": {
+      "name": "AI Automation",
+      "icon": "🤖",
+      "cost": { "dust": 60, "stone": 40 },
+      "waves": 5,
+      "unlocks": "robot",
+      "prereqs": ["the_forge"],
+      "desc": "Constructs a mechanical agent that never sleeps.",
+      "tooltip": "Unlocks the Robot support, which automatically casts spells during waves.",
+      "x": 1080,
+      "y": 1140
+    },
+    "monkey_logistics": {
+      "name": "Monkey Logistics",
+      "icon": "🔄",
+      "cost": { "dust": 35, "wood": 20 },
+      "waves": 4,
+      "unlocks": "monkey_logistics",
+      "prereqs": ["monkey_training", "the_forge"],
+      "desc": "Advanced primate training: rotating deliveries and forest foraging.",
+      "tooltip": "Unlocks Round Robin (cycle up to 5 delivery targets) and Harvest (mine rock nodes or forage wood from forest) roles for monkeys.",
+      "x": 1080,
+      "y": 1260
+    }
+  },
+  "variable": [
     {
       "id": "reptilian",
       "pool": "parity_1",
@@ -277,7 +203,7 @@
       "cost": { "dust": 30, "stone": 20 },
       "waves": 3,
       "unlocks": "lizard",
-      "prereqs": ["structural"],
+      "prereqs": ["combat_training"],
       "desc": "Bonds with a vicious lizard that haunts the stone walls.",
       "tooltip": "Unlocks the Lizard tower, a close-range area-damage attacker."
     },
@@ -289,7 +215,7 @@
       "cost": { "dust": 25, "stone": 10 },
       "waves": 3,
       "unlocks": "clown",
-      "prereqs": ["structural"],
+      "prereqs": ["combat_training"],
       "desc": "A charismatic performer who disorients enemy formations.",
       "tooltip": "Unlocks the Clown support, which periodically reverses enemy movement direction."
     },
@@ -306,18 +232,6 @@
       "tooltip": "Expands the Lab's observation radius by 2 tiles."
     },
     {
-      "id": "neuron_activation",
-      "pool": "general",
-      "name": "Neuron Activation",
-      "icon": "🧠",
-      "cost": { "dust": 30, "wood": 10 },
-      "waves": 3,
-      "unlocks": "monkey_auto_place",
-      "prereqs": ["monkey_logistics"],
-      "desc": "Monkeys learn to recognize and deploy path items autonomously.",
-      "tooltip": "Courier and Round Robin monkeys automatically place consumable traps/sap when delivering to a path tile."
-    },
-    {
       "id": "bonfire",
       "pool": "general",
       "name": "Bonfire Theory",
@@ -330,28 +244,16 @@
       "tooltip": "Unlocks the Campfire tower, which buffs the fire rate of adjacent towers."
     },
     {
-      "id": "cartography",
+      "id": "aquatic",
       "pool": "general",
-      "name": "Prim. Cartography",
-      "icon": "🗺️",
-      "cost": { "dust": 25, "stone": 5 },
+      "name": "Aquatic Studies",
+      "icon": "🐟",
+      "cost": { "dust": 25, "stone": 15 },
       "waves": 3,
-      "unlocks": "reveal_5_tiles",
+      "unlocks": "fish",
       "prereqs": ["basic_obs"],
-      "desc": "Charts the surrounding terrain to expose hidden routes.",
-      "tooltip": "Immediately reveals 5 random map tiles, potentially uncovering resource nodes."
-    },
-    {
-      "id": "fermentation",
-      "pool": "general",
-      "name": "Fermentation",
-      "icon": "🍺",
-      "cost": { "dust": 15, "wood": 5 },
-      "waves": 2,
-      "unlocks": "consumable_ale",
-      "prereqs": ["basic_obs"],
-      "desc": "Brews a potent ale to bolster defenders between waves.",
-      "tooltip": "Unlocks a consumable Ale item that temporarily boosts gold income."
+      "desc": "Catalogues creatures lurking in the coastal shallows.",
+      "tooltip": "Unlocks the Fish tower — fast-firing with splash damage."
     },
     {
       "id": "insightful_seahorse",
@@ -361,7 +263,7 @@
       "cost": { "dust": 30, "stone": 10 },
       "waves": 3,
       "unlocks": "seahorse",
-      "prereqs": ["aquatic"],
+      "prereqs": ["basic_obs"],
       "desc": "An enigmatic seahorse that instinctively hunts what others cannot see.",
       "tooltip": "Unlocks the Seahorse tower — piercing shots that prioritize and reveal stealth enemies by default."
     },
@@ -373,7 +275,7 @@
       "cost": { "dust": 25, "stone": 8 },
       "waves": 3,
       "unlocks": "insightful_lens_recipe",
-      "prereqs": ["aquatic"],
+      "prereqs": ["basic_obs"],
       "desc": "Theoretical optics for seeing the unseen — must still be ground and assembled at a workbench.",
       "tooltip": "Unlocks the Insightful Lens recipe at the Workbench. Apply the crafted lens to a Lab to let all towers in its radius target stealth enemies."
     },
@@ -390,7 +292,7 @@
       "hidden": true,
       "trigger": "tremor_event_seen",
       "x": 120,
-      "y": 600
+      "y": 720
     },
     {
       "id": "acoustic_anomaly",
@@ -405,24 +307,23 @@
       "hidden": true,
       "trigger": "frequency_played",
       "x": 240,
-      "y": 600
+      "y": 720
     }
   ],
   "pools": {
     "parity_1": {
       "size": 1,
-      "positions": [{"x": 1320, "y": 720}]
+      "positions": [{"x": 840, "y": 480}]
     },
     "parity_2": {
       "size": 1,
-      "positions": [{"x": 1440, "y": 600}]
+      "positions": [{"x": 720, "y": 720}]
     },
     "general": {
-      "size": 3,
+      "size": 2,
       "positions": [
-        {"x": 1200, "y": 720},
-        {"x": 120, "y": 480},
-        {"x": 0, "y": 360}
+        {"x": 720, "y": 480},
+        {"x": 720, "y": 600}
       ]
     }
   }
