@@ -28,7 +28,7 @@ function shouldShowNode(id, nodes) {
   if (!node) return false;
   if (node.hidden && !state.bSen?.has(node.trigger)) return false;
   if (!checkGamePrereq(node)) return false;
-  return node.prereqs.every(p => nodes[p]?.status !== 'locked');
+  return node.prereqs.every(p => { const s = nodes[p]?.status; return s === 'complete' || s === 'active'; });
 }
 
 function clampResCam(W, H) {
@@ -262,7 +262,14 @@ function fitResCv() {
   cv.height = cv.clientHeight || 280;
   if (!_rPos) {
     _rPos = layoutNodes(state.research, cv.width, cv.height);
-    _rCam.zoom = 1; _rCam.panX = 0; _rCam.panY = 0;
+    const rootId = Object.keys(state.research).find(id => state.research[id].prereqs.length === 0 && _rPos[id]);
+    _rCam.zoom = 1;
+    if (rootId) {
+      _rCam.panX = cv.width / 2 - _rPos[rootId].x;
+      _rCam.panY = cv.height / 2 - _rPos[rootId].y;
+    } else {
+      _rCam.panX = 0; _rCam.panY = 0;
+    }
   }
   clampResCam(cv.width, cv.height);
   renderResearch();
