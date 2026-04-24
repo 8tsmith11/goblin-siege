@@ -324,6 +324,8 @@ export function refreshResearch() {
   renderResearch();
 }
 
+export function resetResPos() { _rPos = null; }
+
 export function initResearchUI() {
   const cv = document.getElementById('resCv');
   if (!cv) return;

@@ -114,7 +114,7 @@ import { render, invalidateBg, clearFogParticles } from './render.js';
 import { ARTIFACTS } from './artifacts.js';
 import { triggerEvent } from './events.js';
 import { sfxBoss, sfxWave, sfxKill, sfxHit, startHum, stopHum } from './audio.js';
-import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, initInventoryUI, initCraftUI, showLedger } from './ui.js';
+import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, resetResPos, initInventoryUI, initCraftUI, showLedger } from './ui.js';
 import { initInput, updateCameraKeys } from './input.js';
 import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
 import { placeNodes, updateNodes } from './resources.js';
@@ -456,6 +456,7 @@ export function startGame() {
   if (!state.worldGenChoices.wave10Blueprint)
     state.worldGenChoices.wave10Blueprint = Math.random() < 0.5 ? 'clown' : 'lizard';
   if (!state.research) state.research = buildResearchGraph();
+  resetResPos();
   state.started = true; state.phase = 'prep'; state.prepTicks = 1800;
   invalidateBg(); initSz(); hideOv(); hudU(); panelU();
   initWeather();

@@ -2,10 +2,10 @@
 import { state, _ΨΔ, clampCam, startPrep, getCell } from './main.js';
 import { TOWER_SKILLS } from './data.js';
 import { spawnBees } from './support.js';
-import { hudU, panelU, showBanner, showOv, hideOv, hideTT } from './ui.js';
+import { hudU, panelU, showBanner, showOv, hideOv, hideTT, resetResPos } from './ui.js';
 import { getFeedLog, restoreFeed } from './feed.js';
 import { reinitMonkeys } from './monkeys.js';
-import { FIXED_RESEARCH, refreshStatuses } from './research.js';
+import { FIXED_RESEARCH, VARIABLE_RESEARCH, RESEARCH_JSON, refreshStatuses } from './research.js';
 
 // ─── Encode / decode ──────────────────────────────────────────────────────────
 const _ψ = [0x47,0x6f,0x62,0x53,0x69,0x65,0x39,0x31,0x78,0x6b,0x37,0x5a];
@@ -133,8 +133,15 @@ function _apply(d) {
   _reconnectGrid(state.grid, state.towers, state.nodes);
   state.resources = { ...(d._rs || {}) };
   state.research = d._res || null;
-  // Merge any new fixed research nodes added since this save was created
+  // Merge any new fixed research nodes added since this save was created,
+  // and prune stale nodes whose IDs no longer exist in the current tree.
   if (state.research && FIXED_RESEARCH) {
+    const knownVarIds = new Set((VARIABLE_RESEARCH || []).map(n => n.id));
+    for (const id of Object.keys(state.research)) {
+      if (!FIXED_RESEARCH[id] && !id.startsWith('pool_') && !knownVarIds.has(id)) {
+        delete state.research[id];
+      }
+    }
     for (const [id, def] of Object.entries(FIXED_RESEARCH)) {
       if (!state.research[id]) {
         state.research[id] = { ...def, id, status: 'locked', wavesLeft: def.waves, wavesTotal: def.waves };
@@ -142,6 +149,26 @@ function _apply(d) {
     }
     refreshStatuses(state.research);
   }
+  // Refresh pool slot positions and prereqs from current pool config.
+  // Saved pool nodes may have stale x/y/prereqs from a layout rework.
+  if (state.research && RESEARCH_JSON?.pools) {
+    for (const [poolId, poolCfg] of Object.entries(RESEARCH_JSON.pools)) {
+      const positions = poolCfg.positions || [];
+      positions.forEach((pos, i) => {
+        const slotId = `pool_${poolId}_${i}`;
+        const slot = state.research[slotId];
+        if (!slot) return;
+        const src = (VARIABLE_RESEARCH || []).find(n => n.id === slot._sourceId);
+        if (src) { slot.prereqs = [...src.prereqs]; slot.x = pos.x; slot.y = pos.y; }
+        else delete state.research[slotId];
+      });
+      // Drop extra slots beyond current pool size
+      for (let i = positions.length; state.research[`pool_${poolId}_${i}`]; i++)
+        delete state.research[`pool_${poolId}_${i}`];
+    }
+    refreshStatuses(state.research);
+  }
+  resetResPos();
   state.researchUnlocks = { ...(d._rUnlocks || {}) };
   state.unlockedTowers = new Set(d._unlocked || ['squirrel','lion','penguin']);
   state.bSen = new Set(d._bSen || ['sleepy_door']);
