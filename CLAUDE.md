@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Full code map with import graph, domain map, and state reference → [`docs/code-map.md`](docs/code-map.md)**
+
 ## Running the game
 
 No build step. Serve with any static file server and open `index.html`:
@@ -14,16 +16,76 @@ python3 -m http.server
 
 Opening `index.html` directly as a `file://` URL won't work — ES modules require HTTP.
 
+## Code Tree
+
+```
+js/
+│
+├── CORE
+│   ├── main.js          state, _ΨΔ gold/lives gate, getCell/setCell, game loop, startGame/startWave
+│   ├── bus.js           bus.on / bus.emit
+│   ├── pool.js          object pools (projectiles, beams)
+│   └── utils.js         spawnParticles, getCenter
+│
+├── DATA
+│   ├── data.js          TD · TOWER_SKILLS · ETYPES · HOARD_LEVELS/UPGS · BOSS_LINES
+│   └── artifacts.js     ARTIFACTS · RARITY_COLORS
+│
+├── WORLD
+│   ├── path.js          buildPath (maze gen) · genLakes
+│   ├── grid.js          createGrid · addToCell · getEnemiesInRadius
+│   └── render.js        render() · canPlace() · invalidateBg() · clearFogParticles()
+│
+├── COMBAT
+│   ├── enemies.js       mkE · genWave · updateEnemies · isBossWave
+│   ├── towers.js        updateTowers
+│   ├── projectiles.js   updateProjectiles
+│   ├── spells.js        SP (spell defs) · castSpell
+│   ├── skills.js        renderSk · showTowerSkill
+│   └── support.js       spawnBees · updateClam/Clown/Robot/Bees/FactoryLaser
+│
+├── ECONOMY
+│   ├── resources.js     RTYPES · NTYPES · placeNodes · updateNodes · dropItem
+│   ├── monkeys.js       initMonkeys · updateMonkeys · MONKEY_NAMES
+│   ├── craft.js         RECIPES · tickCraft · placeConsumable · applyAugment
+│   └── research.js      FIXED/VARIABLE_RESEARCH · buildResearchGraph · tickResearch · applyUnlock
+│
+├── WORLD SYSTEMS
+│   ├── events.js        EVENTS · triggerEvent
+│   ├── weather.js       WEATHER_TYPES · initWeather · tickWeather · updateWeather
+│   ├── npc.js           placeNpcs · initNpcUI · updateNpcBubble · fireTrigger
+│   ├── bestiary.js      BESTIARY · TRANSLATIONS · getScribeLogs · getScribeEntry
+│   ├── save.js          autoSave · loadGame · exportSave · clearSave · hasSave
+│   ├── feed.js          addFeed · clearFeed
+│   └── audio.js         sfxBoss/Kill/Hit/Wave/Place · startHum/stopHum · toggleSound
+│
+├── INPUT
+│   └── input.js         initInput · updateCameraKeys  (touch + mouse + keyboard)
+│
+└── UI
+    ├── ui.js            hudU · panelU · mkF · mkGain · showOv/hideOv · showBanner · showLedger
+    │                    (re-exports showTT / showResearch / initInventoryUI / openCraftPanel)
+    ├── ui-tower.js      showTT · refreshActiveTT · TOWER_UPGS · doUpg · doSell
+    ├── ui-monkey.js     buildMonkeyTT  — monkey role/config panel (called by ui-tower.js)
+    ├── ui-research.js   showResearch · refreshResearch · initResearchUI
+    ├── ui-inventory.js  initInventoryUI · addToInventory · openInventoryForAugment · syncInvBtn
+    ├── ui-pip.js        initPipUI · refreshPipStock · syncPipBtn · updatePipPanel
+    ├── ui-craft.js      openCraftPanel · renderCraftPanel · initCraftUI
+    └── dev.js           initDev  (loaded last, optional)
+```
+
 ## Quick Reference
 
 Jump directly to frequently-needed content:
 
 | What | File : approx line |
 |------|-------------------|
-| Enemy types & stats (HP/speed/reward/drops) | `js/data.js:58` — `ETYPES` |
+| Enemy types & stats (HP/speed/reward/drops) | `js/data.js:80` — `ETYPES` |
 | Enemy movement, healer, poison, stealth logic | `js/enemies.js` — `updateEnemies` |
 | All tower & support definitions | `js/data.js:1` — `TD` |
-| Tower skill upgrade trees (A/B/C/D) | `js/data.js:20` — `TOWER_SKILLS` |
+| Tower skill upgrade trees (A/B/C/D/E) | `js/data.js:21` — `TOWER_SKILLS` |
+| Tower upgrade costs (level 1–5) | `js/ui-tower.js` — `TOWER_UPGS` |
+| Monkey role/config UI | `js/ui-monkey.js` — `buildMonkeyTT` |
 | Spell definitions & cast logic | `js/spells.js:6` — `SP`, `castSpell` |
 | Random events (gold rush, ambush, etc.) | `js/events.js:7` — `EVENTS` |
 | World gen: path + lake generation | `js/path.js` — `buildPath`, `genLakes` |
@@ -42,7 +104,7 @@ Jump directly to frequently-needed content:
 | Crafting system (recipes, workbench UI, traps/barricades) | `js/craft.js` + `js/ui-craft.js` — `RECIPES`, `tickCraft`, `openCraftPanel` |
 | Artifacts & rarity definitions | `js/artifacts.js` — `ARTIFACTS`, `RARITY_COLORS` |
 | Weather types & effects | `js/weather.js` — `WEATHER_TYPES`, `tickWeather`, `updateWeather` |
-| Grid accessors (unified, hide PAD offset) | `js/main.js:63` — `getCell`, `setCell` |
+| Grid accessors (unified, hide PAD offset) | `js/main.js:130` — `getCell`, `setCell` |
 
 ## Protected State & Common Patterns
 
@@ -104,7 +166,8 @@ All shared mutable game state lives in a single `const state = {}` object export
 | `js/ui-pip.js` | Pip Pip merchant shop panel — `refreshPipStock` (per-wave random consumable stock), `syncPipBtn` (show after wave 4), `updatePipPanel` (live resource ticker), `initPipUI` |
 | `js/ui-inventory.js` | Player inventory panel — `initInventoryUI`, `addToInventory(section, item)` — sections: `'artifacts'`, `'augments'`, `'blueprints'`, `'consumables'`; blueprint items use `bpOverlay` for stacked 🟦+icon display |
 | `js/ui-craft.js` | Workbench crafting panel — `openCraftPanel(tw)`, `renderCraftPanel()`, `initCraftUI()` |
-| `js/ui-tower.js` | Tower tooltip and selection panel — `showTT(tw, px, py)`, `refreshActiveTT()` |
+| `js/ui-tower.js` | Tower tooltip and selection panel — `showTT(tw, px, py)`, `refreshActiveTT()`, `TOWER_UPGS` |
+| `js/ui-monkey.js` | Monkey role/config panel built inside the tower tooltip — `buildMonkeyTT(tw, container, onRefresh)` |
 | `js/ui-research.js` | Research web panel — `showResearch()`, `refreshResearch()`, `initResearchUI()` |
 | `js/artifacts.js` | `ARTIFACTS` array and `RARITY_COLORS` map — artifact definitions with stat effects |
 | `js/craft.js` | `RECIPES`, `tickCraft()`, `placeConsumable()`, `updateTraps()`, `cleanupBarricades()`, `applyAugment()` — crafting logic separate from UI |
