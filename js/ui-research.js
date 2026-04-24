@@ -28,7 +28,7 @@ function shouldShowNode(id, nodes) {
   if (!node) return false;
   if (node.hidden && !state.bSen?.has(node.trigger)) return false;
   if (!checkGamePrereq(node)) return false;
-  return node.prereqs.every(p => { const s = nodes[p]?.status; return s === 'complete' || s === 'active'; });
+  return node.prereqs.every(p => nodes[p]?.status !== 'locked');
 }
 
 function clampResCam(W, H) {
