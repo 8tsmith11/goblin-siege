@@ -455,8 +455,14 @@ export function initResearchUI() {
         RESEARCH_JSON.fixed[_pinnedNodeId].x = nx;
         RESEARCH_JSON.fixed[_pinnedNodeId].y = ny;
       } else {
-        const vn = RESEARCH_JSON.variable.find(n => n.id === _pinnedNodeId);
-        if (vn) { vn.x = nx; vn.y = ny; }
+        const pm = _pinnedNodeId.match(/^pool_([^_]+)_(\d+)$/);
+        if (pm && RESEARCH_JSON.pools?.[pm[1]]?.positions?.[+pm[2]]) {
+          RESEARCH_JSON.pools[pm[1]].positions[+pm[2]].x = nx;
+          RESEARCH_JSON.pools[pm[1]].positions[+pm[2]].y = ny;
+        } else {
+          const vn = RESEARCH_JSON.variable.find(n => n.id === _pinnedNodeId);
+          if (vn) { vn.x = nx; vn.y = ny; }
+        }
       }
     }
     clampResCam(cv.width, cv.height);
@@ -548,8 +554,14 @@ export function initResearchUI() {
             RESEARCH_JSON.fixed[id].x = pos.x;
             RESEARCH_JSON.fixed[id].y = pos.y;
           } else {
-            const vn = RESEARCH_JSON.variable.find(n => n.id === id);
-            if (vn) { vn.x = pos.x; vn.y = pos.y; }
+            const pm = id.match(/^pool_([^_]+)_(\d+)$/);
+            if (pm && RESEARCH_JSON.pools?.[pm[1]]?.positions?.[+pm[2]]) {
+              RESEARCH_JSON.pools[pm[1]].positions[+pm[2]].x = pos.x;
+              RESEARCH_JSON.pools[pm[1]].positions[+pm[2]].y = pos.y;
+            } else {
+              const vn = RESEARCH_JSON.variable.find(n => n.id === id);
+              if (vn) { vn.x = pos.x; vn.y = pos.y; }
+            }
           }
         }
       }
