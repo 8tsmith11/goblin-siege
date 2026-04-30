@@ -127,6 +127,7 @@ export function updateBees() {
     bee.x = getCenter(hive.x, CELL) + Math.cos(bee.angle) * CELL * 1.5;
     bee.y = getCenter(hive.y, CELL) + Math.sin(bee.angle) * CELL * 1.5;
     if (bee.cd > 0) { bee.cd--; continue; }
+    if (state.ceasefire) continue;
     const wx = (bee.x - CELL / 2) / CELL, wy = (bee.y - CELL / 2) / CELL;
     const inR = getEnemiesInRadius(grid, wx, wy, bee.range, true, false);
     if (!inR.length) continue;
