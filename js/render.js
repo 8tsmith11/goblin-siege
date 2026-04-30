@@ -313,8 +313,13 @@ export function render() {
         cx.font = Math.floor(CELL * 0.72) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
         cx.fillText('🏳️', tx + CELL / 2, ty + CELL / 2 - CELL * 0.42);
       } else {
-        cx.font = Math.floor(CELL * 0.5) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
-        cx.fillText('🏳️', tx + CELL / 2, ty + CELL / 2);
+        const cx2 = tx + CELL / 2, cy2 = ty + CELL / 2;
+        cx.save();
+        cx.translate(cx2, cy2); cx.rotate(Math.PI);
+        cx.font = Math.floor(CELL * 0.35) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+        cx.globalAlpha = 0.6;
+        cx.fillText('🏳️', 0, 0);
+        cx.restore();
       }
       return;
     }
