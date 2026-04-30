@@ -4,6 +4,7 @@ import { getP, freeP, freeBeam } from './pool.js';
 import { updateProjectiles } from './projectiles.js';
 import { dropItem } from './resources.js';
 import { buildPath } from './path.js';
+import { RESEARCH_DATA_READY } from './research.js';
 
 bus.on('enemyDeath', e => {
   state._kills = (state._kills || 0) + 1;
@@ -645,7 +646,9 @@ document.getElementById('rstBtn').addEventListener('click', () => {
 document.getElementById('goBtn').addEventListener('click', () => { if (state.phase === 'prep') startWave(); });
 initTabs(); initInput(); measure();
 initSaveUI(); initBestiaryUI(); initResearchUI(); initInventoryUI(); initCraftUI(); initNpcUI(); initPipUI();
-const _sv = hasSave() && loadGame();
-initSz(); panelU(); hudU(); loop();
-showWelcome(VERSION, _sv ? startPrep : startGame);
-import('./dev.js').then(m => m.initDev(state, hudU)).catch(() => {});
+RESEARCH_DATA_READY.then(() => {
+  const _sv = hasSave() && loadGame();
+  initSz(); panelU(); hudU(); loop();
+  showWelcome(VERSION, _sv ? startPrep : startGame);
+  import('./dev.js').then(m => m.initDev(state, hudU)).catch(() => {});
+});
