@@ -4,6 +4,7 @@ import { clearEnemiesGrid, addToCell } from './grid.js';
 import { ETYPES, BOSS_LINES } from './data.js';
 import { spawnParticles, getCenter } from './utils.js';
 import { bus } from './bus.js';
+import { speak } from './audio.js';
 
 export function mkE(et, bHP, bSpd) {
   const e = {
@@ -259,6 +260,19 @@ export function updateEnemies() {
       }
       if (grid.length > 0) addToCell(grid, e);
       continue;
+    }
+
+    if (e.auditor) {
+      if (!e._audLines) {
+        e._audLines = ['How much did that one cost you?', 'And that one? And that one?', 'All quite expensive. Fascinating.', 'I will need a full accounting when this is over.'];
+        e._audIndex = 0;
+        e._audDelay = 0;
+      } else if (e.hp < e.mhp && ticks >= e._audDelay) {
+        const line = e._audLines[e._audIndex % e._audLines.length];
+        e._audIndex++;
+        speak(line);
+        e._audDelay = ticks + 300; // 5 seconds
+      }
     }
     if (e.spiderling && e.gMode === 'walking_to_path') {
       const tgt = path[e._pathTarget];

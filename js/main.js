@@ -567,15 +567,8 @@ export function startWave() {
       if (_auditorWave) {
         showBanner('🏛️ Curious Auditor');
         sfxBoss();
-        // Auditor voice lines via interval (cleared on death)
-        const _lines = ['🏛️ "How much did that one cost you?"', '🏛️ "And that one? And that one?"', '🏛️ "All quite expensive. Fascinating."', '🏛️ "I will need a full accounting when this is over."'];
-        let _li = 0;
-        if (state._auditorTimer) { clearInterval(state._auditorTimer); state._auditorTimer = null; }
-        state._auditorTimer = setInterval(() => {
-          if (!state.auditorActive || _li >= _lines.length) { clearInterval(state._auditorTimer); state._auditorTimer = null; return; }
-          const _line = _lines[_li++];
-          speak(_line.replace(/[^\x00-\x7F"' .?]/g, '').trim());
-        }, 5000);
+        // Speak initial arrival line
+        speak("I have arrived to audit your expenditures.");
       } else if (_watcherWave) {
         showBanner('🔮 The Patient Watcher');
       } else {
