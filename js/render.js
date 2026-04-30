@@ -461,7 +461,18 @@ export function render() {
     cx.restore();
   }
 
-  // Stacks rendered after NPCs (see below)
+  // NPCs (drawn before enemies so enemies/bosses appear in front)
+  if (state.npcs?.length) {
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    for (const npc of state.npcs) {
+      if (npc.img === 'elder' && _imgElder.complete && _imgElder.naturalWidth) {
+        cx.drawImage(_imgElder, npc.x * CELL, npc.y * CELL, CELL, CELL);
+      } else {
+        cx.font = Math.floor(CELL * 0.7) + 'px serif';
+        cx.fillText(npc.icon, npc.x * CELL + CELL / 2, npc.y * CELL + CELL / 2);
+      }
+    }
+  }
 
   // Enemies
   enemies.forEach(e => {
@@ -643,20 +654,7 @@ export function render() {
     cx.fillText(icon, gpx, gpy); cx.globalAlpha = 1;
   }
 
-  // NPCs (drawn in world space — may be outside inner grid, e.g. forest border)
-  if (state.npcs?.length) {
-    cx.textAlign = 'center'; cx.textBaseline = 'middle';
-    for (const npc of state.npcs) {
-      if (npc.img === 'elder' && _imgElder.complete && _imgElder.naturalWidth) {
-        cx.drawImage(_imgElder, npc.x * CELL, npc.y * CELL, CELL, CELL);
-      } else {
-        cx.font = Math.floor(CELL * 0.7) + 'px serif';
-        cx.fillText(npc.icon, npc.x * CELL + CELL / 2, npc.y * CELL + CELL / 2);
-      }
-    }
-  }
-
-  // Stacks (items on ground — rendered after NPCs so they appear on top)
+  // Stacks (items on ground — rendered after enemies so they appear on top)
   renderStacks();
 
   cx.restore();
