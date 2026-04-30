@@ -461,8 +461,7 @@ export function render() {
     cx.restore();
   }
 
-  // Stacks (items on ground — rendered before enemies so enemies appear on top)
-  renderStacks();
+  // Stacks rendered after NPCs (see below)
 
   // Enemies
   enemies.forEach(e => {
@@ -656,6 +655,9 @@ export function render() {
       }
     }
   }
+
+  // Stacks (items on ground — rendered after NPCs so they appear on top)
+  renderStacks();
 
   cx.restore();
   if (freezeActive > 0) { cx.fillStyle = 'rgba(56,189,248,' + (0.06 + 0.03 * Math.sin(ticks * 0.2)) + ')'; cx.fillRect(0, 0, W, H); }
