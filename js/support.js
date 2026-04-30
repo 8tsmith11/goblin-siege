@@ -1,7 +1,7 @@
 'use strict';
 import { state, dropLoot } from './main.js';
 import { TD } from './data.js';
-import { sfxClown, sfxBee, sfxLaser } from './audio.js';
+import { sfxClown, sfxBee, sfxLaser, speak } from './audio.js';
 import { getEnemiesInRadius } from './grid.js';
 import { mkF, mkGain, showBanner } from './ui.js';
 import { getProj } from './pool.js';
@@ -163,7 +163,7 @@ export function spawnSpiderMother() {
     x: start.x, y: start.y,
     pi: 0,
     phase: 'forward',
-    spd: 0.35,
+    spd: 0.10,
     dead: false,
     stonePickedUp: false,
   };
@@ -194,6 +194,7 @@ export function updateSpiderMother() {
         sm.phase = 'return';
         sm.pi = path.length - 1;
         addFeed('event', '🕷️ "Thank you." The Spider Mother turns to leave.');
+        speak('Thank you.');
       }
     } else {
       sm.x += (dx / dist) * sm.spd;

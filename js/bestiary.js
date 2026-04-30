@@ -166,7 +166,7 @@ export function getScribeEntry(wave, state) {
     12: () => 'The ground shook. It always shakes at this point.',
     15: () => "The fog came. You can't fight fog. The towers kept shooting, but they were shooting at their own shadows.",
     17: () => state.bSen?.has('curious_auditor') ? "After the fog, something new. It didn't kill \u2014 it taxed. Every shot cost them. Some stopped shooting. I don't know if that was wise or cowardice." : null,
-    18: () => 'They translated the first sounds. Give it time.',
+    23: () => 'They translated the first sounds. Give it time.',
     20: () => `The Ledger appeared. The number was ${state._kills || 0}. I wrote it down.`,
     22: () => "New material on the surface. They can't use it yet. They will.",
     25: () => "The age is ending. Whatever comes next will be louder. It's always louder.",
@@ -190,7 +190,7 @@ export function getScribeLogs(state) {
   }
   if (w >= 12) logs.push({ w: 'Wave 12', t: "The ground shook. It always shakes at this point." });
   if (w >= 15) logs.push({ w: 'Wave 15', t: "The fog came. You can't fight fog. The towers kept shooting, but they were shooting at their own shadows." });
-  if (w >= 18) logs.push({ w: 'Wave 18', t: 'They translated the first sounds. Give it time.' });
+  if (w >= 23) logs.push({ w: 'Wave 23', t: 'They translated the first sounds. Give it time.' });
   if (w >= 20) logs.push({ w: 'Wave 20', t: `The Ledger appeared. The number was ${(state._kills||0)}. I wrote it down.` });
   if (w >= 22) logs.push({ w: 'Wave 22', t: "New material on the surface. They can't use it yet. They will." });
   if (w >= 25) logs.push({ w: 'Wave 25', t: "The age is ending. Whatever comes next will be louder. It's always louder." });

@@ -101,14 +101,16 @@ bus.on('enemyDeath', e => {
       mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '📒', 1, '#f59e0b');
     }
   }
-  // Patient Watcher path-phase death: drop Unblinking Eye
-  if (e.watcher && e.watcherPhase === 'path') {
-    const eye = ARTIFACTS.find(a => a.id === 'unblinking_eye');
-    if (eye) {
-      dropLoot(e.x, e.y, 'artifacts', { ...eye, cdWavesLeft: 0 });
-      mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '👁️', 1, '#c084fc');
+  // Patient Watcher death: stop hum and drop Unblinking Eye if in path phase
+  if (e.watcher) {
+    stopHum();
+    if (e.watcherPhase === 'path') {
+      const eye = ARTIFACTS.find(a => a.id === 'unblinking_eye');
+      if (eye) {
+        dropLoot(e.x, e.y, 'artifacts', { ...eye, cdWavesLeft: 0 });
+        mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '👁️', 1, '#c084fc');
+      }
     }
-    if (window.bgm && isSoundOn()) window.bgm.volume = 0.3;
   }
   // Wave 10 boss: drop blueprint on the ground
   if (e.boss && state.wave === 10 && state.worldGenChoices?.wave10Blueprint) {
@@ -122,13 +124,15 @@ bus.on('enemyDeath', e => {
 });
 // Patient Watcher: teleport to path start, begin path phase
 bus.on('watcherTransition', ({ watcher }) => {
-  sfxBoss();
+  sfxWatcherScreech();
+  startHum();
 });
 
 // Patient Watcher escaped
 bus.on('watcherEscaped', () => {
   state.watcherEscaped = true;
-  if (window.bgm && isSoundOn()) window.bgm.volume = 0.3;
+  sfxWatcherScreech();
+  stopHum();
   showBanner('🔮 The Patient Watcher walked away.');
 });
 
@@ -144,7 +148,7 @@ import { updateMonkeys } from './monkeys.js';
 import { render, invalidateBg, clearFogParticles } from './render.js';
 import { ARTIFACTS } from './artifacts.js';
 import { triggerEvent } from './events.js';
-import { sfxBoss, sfxWave, sfxKill, sfxHit, startHum, stopHum, isSoundOn } from './audio.js';
+import { sfxBoss, sfxWave, sfxKill, sfxHit, startHum, stopHum, isSoundOn, sfxWatcherScreech, speak } from './audio.js';
 import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, resetResPos, initInventoryUI, initCraftUI, showLedger } from './ui.js';
 import { initInput, updateCameraKeys } from './input.js';
 import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
@@ -342,11 +346,11 @@ function update() {
 
   updateClam(); updateClown(); updateRobot(); updateBees(); updateMonkeys(); updateTowers();
   updateSpiderMother();
-  // Silence BGM during Patient Watcher roam phase
-  const _watcherRoaming = state.enemies.some(e => e.watcher && e.watcherPhase === 'roam');
-  if (window.bgm) window.bgm.volume = _watcherRoaming ? 0 : (isSoundOn() ? 0.3 : 0);
+  // Silence BGM while Patient Watcher is alive (any phase)
+  const _watcherPresent = state.enemies.some(e => e.watcher);
+  if (window.bgm) window.bgm.volume = _watcherPresent ? 0 : (isSoundOn() ? 0.3 : 0);
   // Camera shake
-  if (state.cameraShake > 0) state.cameraShake--;
+  if (state.cameraShake > 0) state.cameraShake = Math.max(0, state.cameraShake - 0.5);
   updateProjectiles();
 
   // Kill check
@@ -455,7 +459,7 @@ function update() {
     // Transition seamlessly into the prep phase without a blocking modal.
     bus.emit('trigger', { type: 'wave_prep', wave: state.wave + 1 });
     state.phase = 'prep'; state.prepTicks = 1800; sfxWave(); _φ = false;
-    if (state.wave === 3 && !state.frequencyPlayed) {
+    if (state.wave === 22 && !state.frequencyPlayed) {
       state.frequencyPlayed = true;
       startHum();
       setTimeout(() => stopHum(), 10000);
@@ -523,7 +527,7 @@ export function startGame() {
 }
 
 export function startWave() {
-  if (state.wave !== 3) stopHum(); // let hum run through wave 4 (started at end of wave 3)
+  if (state.wave !== 22) stopHum(); // let hum run through wave 23 (started at end of wave 22)
   state.wave++;
   // Unlock lab at wave 8
   if (state.wave >= 8 && !state.unlockedTowers.has('lab')) {
@@ -568,7 +572,8 @@ export function startWave() {
         if (state._auditorTimer) { clearInterval(state._auditorTimer); state._auditorTimer = null; }
         state._auditorTimer = setInterval(() => {
           if (!state.auditorActive || _li >= _lines.length) { clearInterval(state._auditorTimer); state._auditorTimer = null; return; }
-          addFeed('boss', _lines[_li++]);
+          const _line = _lines[_li++];
+          speak(_line.replace(/[^\x00-\x7F"' .?]/g, '').trim());
         }, 5000);
       } else if (_watcherWave) {
         showBanner('🔮 The Patient Watcher');

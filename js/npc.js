@@ -195,8 +195,10 @@ function _handleTrigger(type, ctx) {
       if (line.cond && !line.cond(state)) continue;
       state.firedTriggerLines.add(key);
       const text = typeof line.text === 'function' ? line.text(state) : line.text;
-      if (_bubbleQueue.length < 3) _bubbleQueue.push({ npc, text });
-      addFeed('npc', text);
+      const _waveMismatch = line.wave !== undefined && line.wave !== state.wave + 1;
+      const displayText = _waveMismatch ? `[Wave ${line.wave}] ${text}` : text;
+      if (_bubbleQueue.length < 3) _bubbleQueue.push({ npc, text: displayText });
+      addFeed('npc', displayText);
       _processQueue();
       if (line.onFire) line.onFire(npc);
     }

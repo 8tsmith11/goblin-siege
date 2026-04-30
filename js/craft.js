@@ -1,5 +1,5 @@
 'use strict';
-import { state, dropLoot } from './main.js';
+import { state, dropLoot, getCell } from './main.js';
 import { dropItem, _itemRegistry } from './resources.js';
 import { TD } from './data.js';
 
@@ -53,7 +53,7 @@ export const RECIPES = [
     id: 'seed_stone', name: 'Seed Stone', icon: '🪨',
     rarity: 'rare',
     cost: { stone: 8, wood: 4 }, waves: 2, output: 'consumable',
-    desc: 'Place on a path tile. Invisible to enemies. Only the Spider Mother will notice.',
+    desc: 'Place on a tower tile. Invisible to enemies. Only the Spider Mother will notice.',
     trapType: 'seed_stone',
     unlockKey: 'seed_stone_recipe',
   },
@@ -173,11 +173,13 @@ export function removeAugment(tower, index) {
 export function placeConsumable(item, gx, gy) {
   const recipe = RECIPES.find(r => r.id === item.id);
   if (!recipe || recipe.output !== 'consumable') return false;
-  if (!state.pathSet?.has(gx + ',' + gy)) return false;
   if (recipe.trapType === 'seed_stone') {
+    const cell = getCell(gx, gy);
+    if (!cell || cell.type !== 'tower') return false;
     state.seedStone = { x: gx, y: gy, wavesLeft: 10, carried: false };
     return true;
   }
+  if (!state.pathSet?.has(gx + ',' + gy)) return false;
   const trap = { type: recipe.trapType, x: gx, y: gy };
   if (recipe.trapType === 'trap') {
     trap.dmg = 9999; // insta-kill non-bosses; capped vs bosses in updateTraps

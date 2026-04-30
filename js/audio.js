@@ -120,6 +120,28 @@ function startMusic() {
   if (sOn) window.bgm.play().catch(()=>{});
 }
 
+export function sfxWatcherScreech() {
+  if (!AC || !sOn) return;
+  const now = AC.currentTime;
+  for (const [freq, vol, dur] of [[1600, 0.3, 0.9], [900, 0.25, 1.1], [2400, 0.2, 0.7]]) {
+    const o = AC.createOscillator(), g = AC.createGain(), lfo = AC.createOscillator(), lfoG = AC.createGain();
+    o.type = 'sawtooth'; o.frequency.value = freq;
+    lfo.type = 'square'; lfo.frequency.value = 14 + Math.random() * 8;
+    lfoG.gain.value = freq * 0.3;
+    lfo.connect(lfoG); lfoG.connect(o.frequency);
+    g.gain.setValueAtTime(vol * 0.7, now);
+    g.gain.linearRampToValueAtTime(vol, now + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+    o.connect(g); g.connect(MG);
+    o.start(now); lfo.start(now); o.stop(now + dur); lfo.stop(now + dur);
+  }
+  const sub = AC.createOscillator(), subG = AC.createGain();
+  sub.type = 'sine'; sub.frequency.value = 50;
+  sub.frequency.exponentialRampToValueAtTime(20, now + 0.5);
+  subG.gain.setValueAtTime(0.4, now); subG.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+  sub.connect(subG); subG.connect(MG); sub.start(now); sub.stop(now + 0.5);
+}
+
 export function speak(text) {
   if (!sOn || !window.speechSynthesis) return;
   const u = new SpeechSynthesisUtterance(text);

@@ -311,7 +311,7 @@ export function render() {
       cx.strokeStyle = tw.raised ? '#22c55e' : '#3730a3'; cx.lineWidth = 1; cx.strokeRect(tx + 0.5, ty + 0.5, CELL - 1, CELL - 1);
       if (tw.raised) {
         cx.font = Math.floor(CELL * 0.72) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
-        cx.fillText('🏳️', tx + CELL / 2, ty + CELL / 2 - CELL * 0.42);
+        cx.fillText('🏳️', tx + CELL / 2, ty + CELL / 2 - CELL * 0.52);
       } else {
         const cx2 = tx + CELL / 2, cy2 = ty + CELL / 2;
         cx.save();

@@ -293,14 +293,14 @@ export function updateEnemies() {
         // 20% HP: violent teleport to path start
         if (e.hp <= e.mhp * 0.2) {
           e.watcherPhase = 'path'; e.x = path[0].x; e.y = path[0].y; e.pi = 0;
-          state.cameraShake = 40;
+          state.cameraShake = 120;
           bus.emit('watcherTransition', { watcher: e });
         }
         // After 30s with NO damage ever (timer stops once first hit lands)
         else if (!e.everAttacked && e.damageTimer > 1800) {
           e.watcherPhase = 'escaping';
           e.x = path[path.length - 1].x; e.y = path[path.length - 1].y; e.pi = path.length - 1;
-          state.cameraShake = 25;
+          state.cameraShake = 80;
           state.watcherEscaped = true;
           bus.emit('watcherEscaped');
         }
