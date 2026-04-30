@@ -149,7 +149,7 @@ export function genWave(w) {
     }
 
     if (bossType === 'patient_watcher') {
-      const watchHP = Math.floor(bHP * 10);
+      const watchHP = Math.floor((bHP * 8 + w * 80) * 7.5); // 20% = 1.5× a normal boss
       state.bSen.add('patient_watcher');
       const corners = [
         { x: 1, y: 1 }, { x: state.COLS - 2, y: 1 },
@@ -170,7 +170,7 @@ export function genWave(w) {
         spd: 0.28, sz: 1.2, rew: 40, clr: '#7c3aed', em: '🔮', drops: [],
         pi: 0, x: corner.x, y: corner.y, slow: 0, _trapSlow: 0, st: 0, dead: false, spdBuff: 0, frozen: 0,
         stealth: false, stealthTimer: 0, healCD: 0, boss: true, watcher: true,
-        watcherPhase: 'roam', watcherPoints, watcherTargetIdx: 0, damageTimer: 0, prevHp: watchHP,
+        watcherPhase: 'roam', watcherPoints, watcherTargetIdx: 0, damageTimer: 0, prevHp: watchHP, everAttacked: false,
         line: '', reversed: false, reverseTimer: 0, poison: null, stunned: 0,
         // Eye offsets and tentacle data initialised here
         _eyes: Array.from({ length: 8 }, (_, i) => ({
@@ -288,18 +288,19 @@ export function updateEnemies() {
     if (e.watcher) {
       if (e.watcherPhase === 'roam') {
         // Damage timer — reset on hit
-        if (e.hp < e.prevHp) { e.damageTimer = 0; e.prevHp = e.hp; }
-        else e.damageTimer++;
-        // 20% HP: violent teleport to path start — checked BEFORE escape so it always fires if reached
+        if (e.hp < e.prevHp) { e.everAttacked = true; e.damageTimer = 0; e.prevHp = e.hp; }
+        else if (!e.everAttacked) e.damageTimer++;
+        // 20% HP: violent teleport to path start
         if (e.hp <= e.mhp * 0.2) {
           e.watcherPhase = 'path'; e.x = path[0].x; e.y = path[0].y; e.pi = 0;
           state.cameraShake = 40;
           bus.emit('watcherTransition', { watcher: e });
         }
-        // After 30s without damage, watcher leaves peacefully
-        else if (e.damageTimer > 1800) {
+        // After 30s with NO damage ever (timer stops once first hit lands)
+        else if (!e.everAttacked && e.damageTimer > 1800) {
           e.watcherPhase = 'escaping';
           e.x = path[path.length - 1].x; e.y = path[path.length - 1].y; e.pi = path.length - 1;
+          state.cameraShake = 25;
           state.watcherEscaped = true;
           bus.emit('watcherEscaped');
         }

@@ -303,15 +303,21 @@ export function render() {
       cx.fillStyle = 'rgba(249,115,22,.08)'; cx.fill();
       cx.strokeStyle = 'rgba(249,115,22,.7)'; cx.lineWidth = 2; cx.stroke();
     }
-    // Ceasefire flag: render like a regular tower box but with emoji offset when raised
+    // Ceasefire flag: render like a regular tower box but with emoji offset/scale when raised
     if (tw.type === 'ceasefire_flag') {
       const tx = Math.round(tw.x * CELL), ty = Math.round(tw.y * CELL);
       cx.fillStyle = tw.raised ? '#0f2a1a' : '#171838';
       cx.fillRect(tx, ty, CELL, CELL);
       cx.strokeStyle = tw.raised ? '#22c55e' : '#3730a3'; cx.lineWidth = 1; cx.strokeRect(tx + 0.5, ty + 0.5, CELL - 1, CELL - 1);
-      const offset = tw.raised ? -CELL * 0.18 : 0;
-      cx.font = Math.floor(CELL * 0.55) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
-      cx.fillText('🏳️', tx + CELL / 2, ty + CELL / 2 + offset);
+      if (tw.raised) {
+        const grow = 1 + 0.06 * Math.sin(ticks * 0.07);
+        const sz = Math.floor(CELL * 0.72 * grow);
+        cx.font = sz + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+        cx.fillText('🏳️', tx + CELL / 2, ty + CELL / 2 - CELL * 0.28);
+      } else {
+        cx.font = Math.floor(CELL * 0.5) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+        cx.fillText('🏳️', tx + CELL / 2, ty + CELL / 2);
+      }
       return;
     }
 
