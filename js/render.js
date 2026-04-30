@@ -303,28 +303,16 @@ export function render() {
       cx.fillStyle = 'rgba(249,115,22,.08)'; cx.fill();
       cx.strokeStyle = 'rgba(249,115,22,.7)'; cx.lineWidth = 2; cx.stroke();
     }
-    // Ceasefire flag: special rendering
+    // Ceasefire flag: render like a regular tower box but with emoji offset when raised
     if (tw.type === 'ceasefire_flag') {
-      const tx = tw.x * CELL, ty = tw.y * CELL;
-      cx.save();
-      if (tw.raised) {
-        // Large flag raised above the tile
-        cx.font = Math.floor(CELL * 0.65) + 'px serif';
-        cx.textAlign = 'center'; cx.textBaseline = 'bottom';
-        cx.fillText('🏳️', tx + CELL / 2, ty - CELL * 0.1);
-        // Pole
-        cx.strokeStyle = '#d4d4d8'; cx.lineWidth = 2;
-        cx.beginPath(); cx.moveTo(tx + CELL / 2, ty); cx.lineTo(tx + CELL / 2, ty + CELL); cx.stroke();
-      } else {
-        // Small lowered flag
-        cx.font = Math.floor(CELL * 0.35) + 'px serif';
-        cx.textAlign = 'center'; cx.textBaseline = 'bottom';
-        cx.globalAlpha = 0.6;
-        cx.fillText('🏳️', tx + CELL / 2, ty + CELL);
-        cx.globalAlpha = 1;
-      }
-      cx.restore();
-      return; // skip default tower rendering
+      const tx = Math.round(tw.x * CELL), ty = Math.round(tw.y * CELL);
+      cx.fillStyle = tw.raised ? '#0f2a1a' : '#171838';
+      cx.fillRect(tx, ty, CELL, CELL);
+      cx.strokeStyle = tw.raised ? '#22c55e' : '#3730a3'; cx.lineWidth = 1; cx.strokeRect(tx + 0.5, ty + 0.5, CELL - 1, CELL - 1);
+      const offset = tw.raised ? -CELL * 0.18 : 0;
+      cx.font = Math.floor(CELL * 0.55) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.fillText('🏳️', tx + CELL / 2, ty + CELL / 2 + offset);
+      return;
     }
 
     const isH = tw.type === 'hoard', def = TD[tw.type];
@@ -413,9 +401,6 @@ export function render() {
     if (ticks % 4 === 0) state.particles.push({ x: bee.x, y: bee.y, vx: 0, vy: 0, life: 8, clr: '#fbbf2444', sz: 1.5 });
   });
 
-  // Stacks (rendered above towers) + ground loot
-  renderStacks();
-
   // Monkeys — hidden while boosting (monkey "disappears" into the target building)
   for (const tw of towers) {
     if (tw.type !== 'monkey' || !tw.monkeys) continue;
@@ -495,16 +480,18 @@ export function render() {
       cx.fillStyle = teleporting ? '#ffffff' : '#4c1d95';
       cx.fill();
       cx.strokeStyle = '#7c3aed'; cx.lineWidth = 3; cx.stroke();
-      // 8 drifting eyes spread across full body radius
+      // 8 eyes orbiting in a ring at fixed radius, all upright, spinning clockwise
       if (e._eyes) {
+        const ringRad = r * 0.72;
+        const ringSpeed = 0.004; // clockwise
         for (let i = 0; i < e._eyes.length; i++) {
           const eye = e._eyes[i];
-          const drift = Math.sin(ticks / 40 + (eye.phase || i * 0.8)) * CELL * 0.06;
-          const ex2 = px + eye.ox * r * 0.85 + drift;
-          const ey2 = py + eye.oy * r * 0.85 + drift * 0.5;
-          cx.beginPath(); cx.ellipse(ex2, ey2, CELL * 0.09, CELL * 0.06, 0, 0, Math.PI * 2);
+          const eyeAng = eye.ang + ticks * ringSpeed;
+          const ex2 = px + Math.cos(eyeAng) * ringRad;
+          const ey2 = py + Math.sin(eyeAng) * ringRad;
+          cx.beginPath(); cx.ellipse(ex2, ey2, CELL * 0.12, CELL * 0.09, 0, 0, Math.PI * 2);
           cx.fillStyle = '#f3f4f6'; cx.fill();
-          cx.beginPath(); cx.arc(ex2 + drift * 0.3, ey2, CELL * 0.04, 0, Math.PI * 2);
+          cx.beginPath(); cx.arc(ex2, ey2 + CELL * 0.02, CELL * 0.055, 0, Math.PI * 2);
           cx.fillStyle = '#1e1b4b'; cx.fill();
         }
       }
@@ -522,7 +509,7 @@ export function render() {
           const ty2 = py + Math.sin(ang) * r;
           const cpx = tx2 + Math.cos(ang + Math.PI / 4) * len;
           const cpy = ty2 + Math.sin(ang + Math.PI / 4) * len;
-          const thick = CELL * 0.045 + CELL * 0.04 * Math.sin(ticks / 53 + t.phase * 1.7);
+          const thick = CELL * 0.045 + CELL * 0.05 * Math.max(0, Math.sin(ticks / 53 + t.phase * 1.7));
           cx.beginPath(); cx.moveTo(tx2, ty2);
           cx.quadraticCurveTo(cpx, cpy, tx2 + Math.cos(ang) * len * 1.5, ty2 + Math.sin(ang) * len * 1.5);
           cx.strokeStyle = '#5b21b6'; cx.lineWidth = Math.max(1, thick); cx.stroke();
@@ -657,6 +644,9 @@ export function render() {
       }
     }
   }
+
+  // Stacks (rendered above NPCs so drops on NPC tiles are visible)
+  renderStacks();
 
   cx.restore();
   if (freezeActive > 0) { cx.fillStyle = 'rgba(56,189,248,' + (0.06 + 0.03 * Math.sin(ticks * 0.2)) + ')'; cx.fillRect(0, 0, W, H); }

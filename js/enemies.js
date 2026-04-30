@@ -24,7 +24,7 @@ export function isBossWave(w) { return BOSS_WAVES.has(w) || (w > 50 && w % 5 ===
 
 // Named boss order — consumed in sequence for each regular boss wave (after Herald & Fog).
 // 'vanguard' = generic crown boss. After the list is exhausted, falls back to 'vanguard'.
-export const BOSS_ORDER = ['curious_auditor', 'vanguard', 'patient_watcher'];
+export const BOSS_ORDER = ['herald', 'curious_auditor', 'vanguard', 'vanguard', 'patient_watcher'];
 
 const EWEIGHTS = {
   normal: 4, fast: 3, tank: 2, berserker: 2, swarm: 3,
@@ -88,6 +88,7 @@ export function genWave(w) {
     });
     const mc = Math.floor(3 + w * 0.5);
     for (let i = 0; i < mc; i++) q.push(mkE(ETYPES[['normal', 'fast', 'berserker'][i % 3]], bHP, bSpd));
+    state.namedBossIndex = (state.namedBossIndex || 0) + 1; // advance past 'herald' slot
     return q;
   }
 
@@ -148,7 +149,7 @@ export function genWave(w) {
     }
 
     if (bossType === 'patient_watcher') {
-      const watchHP = Math.floor(bHP * 60);
+      const watchHP = Math.floor(bHP * 18);
       state.bSen.add('patient_watcher');
       const corners = [
         { x: 1, y: 1 }, { x: state.COLS - 2, y: 1 },
@@ -172,12 +173,12 @@ export function genWave(w) {
         watcherPhase: 'roam', watcherPoints, watcherTargetIdx: 0, damageTimer: 0, prevHp: watchHP,
         line: '', reversed: false, reverseTimer: 0, poison: null, stunned: 0,
         // Eye offsets and tentacle data initialised here
-        _eyes: Array.from({ length: 8 }, (_, i) => {
-          // Distribute eyes across full body radius (0.25..0.9 of r)
-          const ang = Math.random() * Math.PI * 2;
-          const rad = 0.25 + Math.random() * 0.65;
-          return { ox: Math.cos(ang) * rad, oy: Math.sin(ang) * rad, phase: i * 0.8 };
-        }),
+        _eyes: Array.from({ length: 8 }, (_, i) => ({
+          ang: (Math.PI * 2 * i / 8) + (Math.random() - 0.5),
+          rad: 0.15 + Math.random() * 0.8,
+          speed: (0.003 + Math.random() * 0.009) * (Math.random() > 0.5 ? 1 : -1),
+          phase: Math.random() * Math.PI * 2,
+        })),
         _tentacles: Array.from({ length: 6 }, (_, i) => ({
           baseAngle: (Math.PI * 2 * i) / 6, phase: i * 1.1,
         })),

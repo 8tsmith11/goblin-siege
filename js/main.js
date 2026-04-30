@@ -94,6 +94,7 @@ bus.on('enemyDeath', e => {
   // Curious Auditor death: drop Auditor's Ledger
   if (e.auditor) {
     state.auditorActive = false;
+    if (state._auditorTimer) { clearInterval(state._auditorTimer); state._auditorTimer = null; }
     const ledger = ARTIFACTS.find(a => a.id === 'auditors_ledger');
     if (ledger) {
       dropLoot(e.x, e.y, 'artifacts', { ...ledger, cdWavesLeft: 0 });
@@ -122,16 +123,14 @@ bus.on('enemyDeath', e => {
 // Patient Watcher: teleport to path start, begin path phase
 bus.on('watcherTransition', ({ watcher }) => {
   sfxBoss();
-  addFeed('boss', '🔮 The Patient Watcher moves. It is angry now.');
   if (window.bgm && isSoundOn()) window.bgm.volume = 0.3;
 });
 
-// Patient Watcher escaped (ceasefire held for 30s)
+// Patient Watcher escaped
 bus.on('watcherEscaped', () => {
   state.watcherEscaped = true;
   if (window.bgm && isSoundOn()) window.bgm.volume = 0.3;
   showBanner('🔮 The Patient Watcher walked away.');
-  addFeed('boss', '🔮 It left. The ceasefire held long enough. You will not see it again.');
 });
 
 import { buildResearchGraph, tickResearch } from './research.js';
@@ -563,14 +562,17 @@ export function startWave() {
       const _watcherWave = state.spawnQueue.some(e => e.watcher);
       if (_auditorWave) {
         showBanner('🏛️ Curious Auditor');
-        addFeed('boss', '🏛️ The Auditor arrives. Every shot will cost you.');
         sfxBoss();
-        // Schedule auditor voice lines via addFeed
+        // Auditor voice lines via interval (cleared on death)
         const _lines = ['🏛️ "How much did that one cost you?"', '🏛️ "And that one? And that one?"', '🏛️ "All quite expensive. Fascinating."', '🏛️ "I will need a full accounting when this is over."'];
-        _lines.forEach((line, i) => setTimeout(() => { if (state.auditorActive) addFeed('boss', line); }, (5000 + i * 5000)));
+        let _li = 0;
+        if (state._auditorTimer) { clearInterval(state._auditorTimer); state._auditorTimer = null; }
+        state._auditorTimer = setInterval(() => {
+          if (!state.auditorActive || _li >= _lines.length) { clearInterval(state._auditorTimer); state._auditorTimer = null; return; }
+          addFeed('boss', _lines[_li++]);
+        }, 5000);
       } else if (_watcherWave) {
         showBanner('🔮 The Patient Watcher');
-        addFeed('boss', '🔮 Something is here. It is not attacking. It is watching.');
       } else {
         showBanner(boss ? '👑 BOSS W' + state.wave : '⚔️ Wave ' + state.wave);
         addFeed(boss ? 'boss' : 'wave', boss ? 'Boss Wave ' + state.wave + '!' : 'Wave ' + state.wave + ' begins.');

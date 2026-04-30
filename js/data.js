@@ -16,7 +16,7 @@ export const TD = {
   workbench:{ name:'Workbench',          icon:'🛠️', clr:'#a16207', cost:80, resCost:{ wood:10, stone:5 }, cat:'support', desc:'Crafts augments and consumables over waves' },
   robot:    { name:'AI Agent',           icon:'🤖', clr:'#38bdf8', cost:110, cat:'support', autoSpell:true, reqAge: 'iron', desc:'Automatically casts spells during waves' },
   campfire: { name:'Warm Campfire',      icon:'🔥', clr:'#f97316', cost:50,  resCost:{wood:4}, cat:'support', range:1.5, warmRange:1.5, warmRate:0.8, desc:'Boosts fire rate of adjacent towers by 20%' },
-  ceasefire_flag: { name:'Ceasefire Flag', icon:'🏳️', clr:'#f0f0f0', cost:0, cat:'support', desc:'Click to raise or lower. When raised, all towers hold their fire. Consumable traps still work.' },
+  ceasefire_flag: { name:'Ceasefire Flag', icon:'🏳️', clr:'#f0f0f0', cost:20, resCost:{wood:10}, cat:'support', desc:'Click to raise or lower. When raised, all towers hold their fire. Consumable traps still work.' },
   grateful_spider: { name:'Grateful Spider', icon:'🕷️', clr:'#8b5cf6', cost:0, cat:'tower', dmg:12, range:3, rate:40, pClr:'#c4b5fd', pSpd:4, splash:0, slow:0.4, target:'first', desc:'Shoots slowing webs · Once per wave: webs a path tile in range (slows + damages) · Blueprint only' },
 };
 

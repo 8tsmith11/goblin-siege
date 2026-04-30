@@ -125,6 +125,11 @@ function tryPlaceTower(c, ex) {
     state.sel = null; hideTT(); state.ttTower = null; panelU();
     return;
   }
+  if (state.sel.key === 'ceasefire_flag' && state.towers.some(t => t.type === 'ceasefire_flag')) {
+    showTip('Only one Ceasefire Flag allowed per map!');
+    state.sel = null; hideTT(); state.ttTower = null; panelU();
+    return;
+  }
 
   let tw;
   _ΨΔ(() => {
