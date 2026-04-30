@@ -98,7 +98,7 @@ export function updateTowers() {
       if (lab && Math.abs(tw.x - lab.x) <= 1 && Math.abs(tw.y - lab.y) <= 1) warmPebbleBoost = 0.9;
     }
     warmPebbleBoost = Math.min(warmPebbleBoost, tw._warmBoost ?? 1);
-    const canSeeInvis = tw.seeInvis || tw._auraInvisActive || tw._labInvisActive;
+    const canSeeInvis = def.seeInvis || tw.seeInvis || tw._auraInvisActive || tw._labInvisActive;
     const unblinkingEye = state.inventory?.equipped?.some(a => a?.id === 'unblinking_eye');
     const effectiveRange = (state.fogWave ? Math.max(1, tw.range * 0.55) : tw.range) + (unblinkingEye ? 0.5 : 0);
     const vis = getEnemiesInRadius(grid, tw.x, tw.y, effectiveRange, true, canSeeInvis);
@@ -114,7 +114,7 @@ export function updateTowers() {
     
     projectiles.push(spawnProjectile(tw, tgt, def, false));
     sfxShoot(); tw.cd = Math.round(def.rate * warmPebbleBoost);
-    if (state.auditorActive) {
+    if (state.enemies.some(e => e.auditor && !e.dead)) {
       _ΨΔ(() => { state.gold = Math.max(0, state.gold - 1); });
       mkF(getCenter(tw.x, CELL), getCenter(tw.y, CELL), '-1', '#ef4444');
     }
@@ -131,17 +131,20 @@ export function updateTowers() {
       if (!e.spdBuff) e.spdBuff = tw.megaSpeed ? 2 : 1;
       if (ticks % 12 === 0) spawnParticles(particles, getCenter(e.x, CELL), getCenter(e.y, CELL), 1, { vxBase: (Math.random()-.5)*2, vyBase: -1.5, spreadX: 0, spreadY: 0, life: 10, clr: '#a3e635', sz: 2 });
     });
-    // Grateful Spider: once-per-wave web shot on first target in range near path tile
-    if (tw.type === 'grateful_spider' && !tw.webUsed && state.phase === 'active' && ticks % 180 === 1) {
-      const pathInRange = state.path.filter(p => Math.hypot(p.x - tw.x, p.y - tw.y) <= effectiveRange);
-      if (pathInRange.length) {
-        const center = pathInRange[Math.floor(pathInRange.length / 2)];
-        const webTiles = state.path.filter(p => Math.abs(p.x - center.x) + Math.abs(p.y - center.y) <= 2).slice(0, tw.webSpread ? 5 : 3);
-        if (!state.webs) state.webs = [];
-        const duration = tw.webLasting ? 7200 : 120;
-        for (const pt of webTiles) state.webs.push({ x: pt.x, y: pt.y, expiry: ticks + duration, dmg: tw.webVenom ? 3 : 0, slow: tw.webSlowBonus ? 0.8 : 0.6 });
-        tw.webUsed = true;
+    // Grateful Spider: once-per-wave web shot
+    if (tw.type === 'grateful_spider') {
+      if (!tw.webUsed && state.phase === 'active' && ticks % 180 === 1) {
+        const pathInRange = state.path.filter(p => Math.hypot(p.x - tw.x, p.y - tw.y) <= effectiveRange);
+        if (pathInRange.length) {
+          const center = pathInRange[Math.floor(pathInRange.length / 2)];
+          const webTiles = state.path.filter(p => Math.abs(p.x - center.x) + Math.abs(p.y - center.y) <= 2).slice(0, tw.webSpread ? 5 : 3);
+          if (!state.webs) state.webs = [];
+          const duration = tw.webLasting ? 7200 : 120;
+          for (const pt of webTiles) state.webs.push({ x: pt.x, y: pt.y, expiry: ticks + duration, dmg: tw.webVenom ? 3 : 0, slow: tw.webSlowBonus ? 0.8 : 0.6 });
+          tw.webUsed = true;
+        }
       }
+      return;
     }
   });
   // Apply web effects to enemies

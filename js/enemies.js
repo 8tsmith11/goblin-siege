@@ -336,6 +336,7 @@ export function updateEnemies() {
     if (e.pi >= path.length - 1 && !e.reversed) {
       e.dead = true;
       if (!e.noLives) state.lives -= (e.boss || state.fogWave) ? 3 : 1;
+      if (e.auditor) state.auditorActive = false;
       continue;
     }
     if (e.pi <= 0 && e.reversed) { e.reversed = false; e.reverseTimer = 0; }

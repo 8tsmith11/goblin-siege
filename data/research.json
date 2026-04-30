@@ -415,7 +415,7 @@
     },
     {
       "id": "acoustic_anomaly",
-      "name": "Acoustic Anomaly",
+      "name": "Frequency Research",
       "icon": "〰️",
       "cost": {
         "dust": 20

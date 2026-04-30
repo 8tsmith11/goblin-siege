@@ -45,9 +45,8 @@ export const RECIPES = [
   {
     id: 'insightful_lens', name: 'Insightful Lens', icon: '🔭',
     rarity: 'rare',
-    cost: { dust: 15, stone: 8 }, waves: 2, output: 'augment',
-    desc: 'Apply to a Lab to let all towers in its radius target stealth enemies.',
-    unlockKey: 'insightful_lens_recipe',
+    cost: { stone: 8 }, waves: 2, output: 'augment',
+    desc: 'Equip on a Lab. Towers within Lab range can target invisible enemies. Also grants +1 Range to Lab.',
   },
   {
     id: 'seed_stone', name: 'Seed Stone', icon: '🪨',
@@ -56,14 +55,6 @@ export const RECIPES = [
     desc: 'Place on a tower tile. Invisible to enemies. Only the Spider Mother will notice.',
     trapType: 'seed_stone',
     unlockKey: 'seed_stone_recipe',
-  },
-  {
-    id: 'ceasefire_flag_bp', name: 'Ceasefire Flag Blueprint', icon: '🏳️',
-    rarity: 'rare',
-    cost: { wood: 5, stone: 3 }, waves: 1, output: 'blueprint',
-    desc: 'Unlocks the Ceasefire Flag. When raised, towers stand down.',
-    unlockKey: 'ceasefire_flag_bp_recipe',
-    buildKey: 'ceasefire_flag',
   },
 ];
 
@@ -175,7 +166,7 @@ export function placeConsumable(item, gx, gy) {
   if (!recipe || recipe.output !== 'consumable') return false;
   if (recipe.trapType === 'seed_stone') {
     const cell = getCell(gx, gy);
-    if (!cell || cell.type !== 'tower') return false;
+    if (!cell || cell.type !== 'tower' || cell.content?.type !== 'castle') return false;
     state.seedStone = { x: gx, y: gy, wavesLeft: 10, carried: false };
     return true;
   }

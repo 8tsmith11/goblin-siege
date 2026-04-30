@@ -203,12 +203,9 @@ export function updateSpiderMother() {
     }
   } else if (sm.phase === 'return') {
     const target = path[sm.pi];
-    if (!target || sm.pi < 0) {
-      // Ritual complete — drop rewards and leave
-      sm.dead = true;
-      state.spiderMother = null;
-      state.seedStone = null;
-      state.spiderRitualDone = true;
+
+    if (!sm.droppedItems && sm.pi <= Math.floor(path.length / 2)) {
+      sm.droppedItems = true;
       // Drop Spider Staff artifact
       const staff = ARTIFACTS.find(a => a.id === 'spider_staff');
       if (staff) {
@@ -224,6 +221,15 @@ export function updateSpiderMother() {
         dropLoot(gsBp.x, gsBp.y, 'blueprints', { id: 'grateful_spider_bp', icon: '🟦', bpOverlay: '🕷️', name: 'Grateful Spider Blueprint', unlocks: 'grateful_spider' });
         mkGain(gsBp.x * state.CELL + state.CELL / 2, gsBp.y * state.CELL + state.CELL / 2, '🕷️', 1, '#8b5cf6');
       }
+      showBanner('🕷️ The Spider Mother leaves a gift.');
+    }
+
+    if (!target || sm.pi < 0) {
+      // Ritual complete — leave
+      sm.dead = true;
+      state.spiderMother = null;
+      state.seedStone = null;
+      state.spiderRitualDone = true;
       showBanner('🕷️ The Spider Mother has gone. Spiders will come no more.');
       addFeed('event', '🕷️ The ritual is complete. The spiders are done here.');
       return;

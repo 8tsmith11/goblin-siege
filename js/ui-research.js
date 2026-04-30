@@ -26,7 +26,10 @@ function isNodeVisible(node) {
 function shouldShowNode(id, nodes) {
   const node = nodes[id];
   if (!node) return false;
-  if (node.hidden && !state.bSen?.has(node.trigger)) return false;
+  if (node.hidden) {
+    if (node.trigger === 'frequency_played' && !state.frequencyPlayed) return false;
+    else if (node.trigger !== 'frequency_played' && !state.bSen?.has(node.trigger)) return false;
+  }
   if (!checkGamePrereq(node)) return false;
   return node.prereqs.every(p => nodes[p]?.status !== 'locked');
 }

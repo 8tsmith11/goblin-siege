@@ -249,28 +249,25 @@ export function render() {
     cx.textAlign = 'center'; cx.textBaseline = 'middle';
     for (const web of state.webs) {
       const px = web.x * CELL + CELL / 2, py = web.y * CELL + CELL / 2;
-      cx.globalAlpha = 0.55;
-      cx.fillStyle = '#9ca3af44';
-      cx.fillRect(web.x * CELL, web.y * CELL, CELL, CELL);
-      cx.globalAlpha = 0.7;
+      cx.globalAlpha = 0.8;
+      cx.font = Math.floor(CELL * 0.9) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
       cx.fillText('🕸️', px, py);
     }
     cx.globalAlpha = 1;
     cx.restore();
   }
 
-  // Seed stone
-  if (state.seedStone && !state.seedStone.carried) {
-    const { x, y } = state.seedStone;
-    const px = x * CELL + CELL / 2, py = y * CELL + CELL / 2;
-    const pulse = 0.7 + 0.3 * Math.sin(ticks / 18);
-    cx.save();
-    cx.globalAlpha = pulse;
-    cx.shadowColor = '#a78bfa'; cx.shadowBlur = 12;
-    cx.font = Math.floor(CELL * 0.45) + 'px serif';
+  // NPCs
+  if (state.npcs?.length) {
     cx.textAlign = 'center'; cx.textBaseline = 'middle';
-    cx.fillText('🪨', px, py);
-    cx.restore();
+    for (const npc of state.npcs) {
+      if (npc.img === 'elder' && _imgElder.complete && _imgElder.naturalWidth) {
+        cx.drawImage(_imgElder, npc.x * CELL, npc.y * CELL, CELL, CELL);
+      } else {
+        cx.font = Math.floor(CELL * 0.7) + 'px serif';
+        cx.fillText(npc.icon, npc.x * CELL + CELL / 2, npc.y * CELL + CELL / 2);
+      }
+    }
   }
 
   // Towers
@@ -360,6 +357,20 @@ export function render() {
     cx.drawImage(_imgCastle, lp.x * CELL + CELL / 2 - cs / 2, lp.y * CELL + CELL / 2 - cs / 2, cs, cs);
   }
 
+  // Seed Stone
+  if (state.seedStone && !state.seedStone.carried) {
+    const { x, y } = state.seedStone;
+    const px = x * CELL + CELL / 2, py = y * CELL + CELL / 2;
+    const pulse = 0.7 + 0.3 * Math.sin(ticks / 18);
+    cx.save();
+    cx.globalAlpha = pulse;
+    cx.shadowColor = '#a78bfa'; cx.shadowBlur = 12;
+    cx.font = Math.floor(CELL * 0.45) + 'px serif';
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.fillText('🪨', px, py);
+    cx.restore();
+  }
+
   // Mastery auras — second pass so they overlap neighboring towers
   cx.save();
   towers.forEach(tw => {
@@ -402,13 +413,8 @@ export function render() {
   });
   cx.restore();
 
-  // Bees
-  bees.forEach(bee => {
-    if (bee.dead) return;
-    cx.font = Math.floor(CELL * 0.3) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
-    cx.fillText('🐝', bee.x, bee.y);
-    if (ticks % 4 === 0) state.particles.push({ x: bee.x, y: bee.y, vx: 0, vy: 0, life: 8, clr: '#fbbf2444', sz: 1.5 });
-  });
+  // Stacks (items on ground)
+  renderStacks();
 
   // Monkeys — hidden while boosting (monkey "disappears" into the target building)
   for (const tw of towers) {
@@ -447,8 +453,6 @@ export function render() {
     const sm = state.spiderMother;
     const px = sm.x * CELL + CELL / 2, py = sm.y * CELL + CELL / 2;
     cx.save();
-    const pulse = 0.8 + 0.2 * Math.sin(ticks / 20);
-    cx.globalAlpha = pulse;
     cx.font = Math.floor(CELL * 1.1) + 'px serif';
     cx.textAlign = 'center'; cx.textBaseline = 'middle';
     cx.fillText('🕷️', px, py);
@@ -457,21 +461,7 @@ export function render() {
       cx.font = Math.floor(CELL * 0.4) + 'px serif';
       cx.fillText('🪨', px + CELL * 0.35, py - CELL * 0.35);
     }
-    cx.globalAlpha = 1;
     cx.restore();
-  }
-
-  // NPCs (drawn before enemies so enemies/bosses appear in front)
-  if (state.npcs?.length) {
-    cx.textAlign = 'center'; cx.textBaseline = 'middle';
-    for (const npc of state.npcs) {
-      if (npc.img === 'elder' && _imgElder.complete && _imgElder.naturalWidth) {
-        cx.drawImage(_imgElder, npc.x * CELL, npc.y * CELL, CELL, CELL);
-      } else {
-        cx.font = Math.floor(CELL * 0.7) + 'px serif';
-        cx.fillText(npc.icon, npc.x * CELL + CELL / 2, npc.y * CELL + CELL / 2);
-      }
-    }
   }
 
   // Enemies
@@ -561,6 +551,14 @@ export function render() {
     const pct = e.hp / e.mhp; cx.fillStyle = pct > 0.5 ? '#22c55e' : pct > 0.25 ? '#f59e0b' : '#ef4444';
     cx.fillRect(bx, by, bw * Math.max(0, pct), bh);
     if (e.boss && ticks % 2 === 0) { cx.fillStyle = 'rgba(255,215,0,.12)'; cx.beginPath(); cx.arc(px, py, sz + 8 + Math.sin(ticks * 0.1) * 3, 0, Math.PI * 2); cx.fill(); }
+  });
+
+  // Bees
+  bees.forEach(bee => {
+    if (bee.dead) return;
+    cx.font = Math.floor(CELL * 0.3) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.fillText('🐝', bee.x, bee.y);
+    if (ticks % 4 === 0) state.particles.push({ x: bee.x, y: bee.y, vx: 0, vy: 0, life: 8, clr: '#fbbf2444', sz: 1.5 });
   });
 
   // Projectiles
@@ -653,9 +651,6 @@ export function render() {
     const icon = TD[sel.key]?.icon || '?';
     cx.fillText(icon, gpx, gpy); cx.globalAlpha = 1;
   }
-
-  // Stacks (items on ground — rendered after enemies so they appear on top)
-  renderStacks();
 
   cx.restore();
   if (freezeActive > 0) { cx.fillStyle = 'rgba(56,189,248,' + (0.06 + 0.03 * Math.sin(ticks * 0.2)) + ')'; cx.fillRect(0, 0, W, H); }

@@ -459,6 +459,7 @@ function update() {
     // Transition seamlessly into the prep phase without a blocking modal.
     bus.emit('trigger', { type: 'wave_prep', wave: state.wave + 1 });
     state.phase = 'prep'; state.prepTicks = 1800; sfxWave(); _φ = false;
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
     if (state.wave === 22 && !state.frequencyPlayed) {
       state.frequencyPlayed = true;
       startHum();
