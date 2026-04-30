@@ -206,6 +206,7 @@ export function dropItem(cx, cy, type) {
 export function renderStacks() {
   const { cx, CELL, grid, COLS, ROWS } = state;
   if (!grid.length) return;
+  cx.globalAlpha = 1;
   
   const slots = [
     {dx: 0.25, dy: 0.25},

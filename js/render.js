@@ -467,6 +467,7 @@ export function render() {
   // Enemies
   enemies.forEach(e => {
     if (e.dead) return;
+    cx.save(); // Ensure any enemy-specific alpha changes are contained
     const px = e.x * CELL + CELL / 2, py = e.y * CELL + CELL / 2, sz = CELL * e.sz;
     // Patient Watcher: custom rendering
     if (e.watcher) {
@@ -551,6 +552,7 @@ export function render() {
     const pct = e.hp / e.mhp; cx.fillStyle = pct > 0.5 ? '#22c55e' : pct > 0.25 ? '#f59e0b' : '#ef4444';
     cx.fillRect(bx, by, bw * Math.max(0, pct), bh);
     if (e.boss && ticks % 2 === 0) { cx.fillStyle = 'rgba(255,215,0,.12)'; cx.beginPath(); cx.arc(px, py, sz + 8 + Math.sin(ticks * 0.1) * 3, 0, Math.PI * 2); cx.fill(); }
+    cx.restore();
   });
 
   // Bees
@@ -585,7 +587,7 @@ export function render() {
   cx.globalAlpha = 1;
 
   // Particles
-  particles.forEach(p => { cx.globalAlpha = Math.max(0, p.life / 20); cx.fillStyle = p.clr; cx.beginPath(); cx.arc(p.x, p.y, p.sz, 0, Math.PI * 2); cx.fill(); }); cx.globalAlpha = 1;
+  particles.forEach(p => { cx.globalAlpha = Math.min(1, Math.max(0, p.life / 20)); cx.fillStyle = p.clr; cx.beginPath(); cx.arc(p.x, p.y, p.sz, 0, Math.PI * 2); cx.fill(); }); cx.globalAlpha = 1;
 
   // Consumable placement preview
   if (sel?.type === 'consumable_pick' && gCell) {

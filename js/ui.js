@@ -1,7 +1,7 @@
 'use strict';
 import { state, startGame, startWave, startPrep, resetGame, _ΨΔ } from './main.js';
 import { RTYPES } from './resources.js';
-import { TD } from './data.js';
+import { TD, ETYPES } from './data.js';
 import { SP, castSpell } from './spells.js';
 import { renderSk } from './skills.js';
 import { BESTIARY, getScribeLogs } from './bestiary.js';
@@ -365,12 +365,23 @@ export function renderBestiary() {
     const el = document.createElement('div');
     el.id = 'beast-ent-' + k;
     el.className = 'beast-ent' + (d.boss ? ' boss' : '') + (lock ? ' locked' : '');
+
+    let statsHtml = '';
+    const et = ETYPES[k];
+    if (et) {
+      const hp = et.hpM >= 2.5 ? 'Very High' : et.hpM >= 1.5 ? 'High' : et.hpM >= 1.0 ? 'Above Avg' : et.hpM >= 0.8 ? 'Standard' : et.hpM >= 0.4 ? 'Low' : 'Minimal';
+      const spd = et.spdM >= 1.6 ? 'Very Fast' : et.spdM >= 1.2 ? 'Fast' : et.spdM >= 0.9 ? 'Moderate' : et.spdM >= 0.7 ? 'Slow' : 'Very Slow';
+      statsHtml = '<div class="beast-stats">HP: ' + hp + ' | Speed: ' + spd + ' | Reward: ' + et.rew + 'g' + (et.noLives ? ' | Deals 0 lives' : '') + (k === 'spider' ? ' | Spawns spiderlings' : '') + '</div>';
+    } else if (d.stats) {
+      statsHtml = '<div class="beast-stats">' + d.stats + '</div>';
+    }
+
     el.innerHTML = '<div class="beast-ic">' + d.icon + '</div>'
       + '<div class="beast-txt">'
       + '<div class="beast-nm">' + d.name + '</div>'
       + '<div class="beast-cls" style="color:' + d.clr + '">' + d.cls + '</div>'
       + '<div class="beast-desc">' + d.desc + '</div>'
-      + (d.stats ? '<div class="beast-stats">' + d.stats + '</div>' : '')
+      + statsHtml
       + '</div>';
     c.appendChild(el);
   }
