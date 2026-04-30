@@ -149,7 +149,7 @@ export function genWave(w) {
     }
 
     if (bossType === 'patient_watcher') {
-      const watchHP = Math.floor(bHP * 18);
+      const watchHP = Math.floor(bHP * 10);
       state.bSen.add('patient_watcher');
       const corners = [
         { x: 1, y: 1 }, { x: state.COLS - 2, y: 1 },
@@ -174,10 +174,7 @@ export function genWave(w) {
         line: '', reversed: false, reverseTimer: 0, poison: null, stunned: 0,
         // Eye offsets and tentacle data initialised here
         _eyes: Array.from({ length: 8 }, (_, i) => ({
-          ang: (Math.PI * 2 * i / 8) + (Math.random() - 0.5),
-          rad: 0.15 + Math.random() * 0.8,
-          speed: (0.003 + Math.random() * 0.009) * (Math.random() > 0.5 ? 1 : -1),
-          phase: Math.random() * Math.PI * 2,
+          ang: (Math.PI * 2 * i / 8),
         })),
         _tentacles: Array.from({ length: 6 }, (_, i) => ({
           baseAngle: (Math.PI * 2 * i) / 6, phase: i * 1.1,
@@ -293,18 +290,18 @@ export function updateEnemies() {
         // Damage timer — reset on hit
         if (e.hp < e.prevHp) { e.damageTimer = 0; e.prevHp = e.hp; }
         else e.damageTimer++;
-        // After 30s without damage, watcher decides to leave regardless of ceasefire
-        if (e.damageTimer > 1800) {
+        // 20% HP: violent teleport to path start — checked BEFORE escape so it always fires if reached
+        if (e.hp <= e.mhp * 0.2) {
+          e.watcherPhase = 'path'; e.x = path[0].x; e.y = path[0].y; e.pi = 0;
+          state.cameraShake = 40;
+          bus.emit('watcherTransition', { watcher: e });
+        }
+        // After 30s without damage, watcher leaves peacefully
+        else if (e.damageTimer > 1800) {
           e.watcherPhase = 'escaping';
           e.x = path[path.length - 1].x; e.y = path[path.length - 1].y; e.pi = path.length - 1;
           state.watcherEscaped = true;
           bus.emit('watcherEscaped');
-        }
-        // 20% HP transition: teleport to path start, become regular boss
-        else if (e.hp <= e.mhp * 0.2) {
-          e.watcherPhase = 'path'; e.x = path[0].x; e.y = path[0].y; e.pi = 0;
-          state.cameraShake = 40;
-          bus.emit('watcherTransition', { watcher: e });
         }
         // Roam: drift toward current waypoint
         else if (e.watcherPoints?.length) {

@@ -123,7 +123,6 @@ bus.on('enemyDeath', e => {
 // Patient Watcher: teleport to path start, begin path phase
 bus.on('watcherTransition', ({ watcher }) => {
   sfxBoss();
-  if (window.bgm && isSoundOn()) window.bgm.volume = 0.3;
 });
 
 // Patient Watcher escaped
