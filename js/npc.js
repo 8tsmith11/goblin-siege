@@ -1,7 +1,9 @@
 'use strict';
 import { state, getCell, dropLoot } from './main.js';
+import { invalidateBg } from './render.js';
 import { bus } from './bus.js';
 import { addFeed } from './feed.js';
+import { isBossWave } from './enemies.js';
 
 // ─── NPC speech data ──────────────────────────────────────────────────────────
 
@@ -55,7 +57,8 @@ const NPC_LINES = {
     },
     {
       trigger: 'wave_prep',
-      cond: s => s.bSen?.has('spider') && !s.firedTriggerLines?.has('elderberry:spider_lore'),
+      // Fire on the first non-boss prep after spiders have been seen (not same wave as shadow warning)
+      cond: s => s.bSen?.has('spider') && s.wave >= 25 && !isBossWave(s.wave + 1),
       text: "The one with many children. She is not hunting you — she is looking for a Seed Stone. Her brood cannot grow without it. You can make one at the Workbench. And build a Ceasefire Flag to stand down your towers. Let her come, let her take it, and she will never lay siege again. I was here when the old builders did this. It worked.",
       onFire: (npc) => {
         setTimeout(() => {
@@ -69,8 +72,8 @@ const NPC_LINES = {
     },
     {
       trigger: 'wave_prep',
-      cond: s => s.bSen?.has('spider'),
-      text: "I've left the blueprints at my feet. A Ceasefire Flag, and the recipe for the Seed Stone. The rest is yours."
+      cond: s => s.bSen?.has('spider') && s.wave >= 25 && !isBossWave(s.wave + 1),
+      text: "I've left them at my feet. A Ceasefire Flag, and the recipe for the Seed Stone. The rest is yours."
     }
   ]
 };
@@ -81,7 +84,6 @@ export function placeNpcs() {
   const { COLS, ROWS, path } = state;
   const PAD = 6;
   const pathEndY = path.length > 0 ? path[path.length - 1].y : -1;
-  // Right border forest tiles adjacent to the inner playfield
   const candidates = [];
   for (let y = PAD; y < ROWS - PAD; y++) {
     if (y === pathEndY) continue;
@@ -90,7 +92,11 @@ export function placeNpcs() {
   }
   if (candidates.length === 0) return;
   const row = candidates[Math.floor(Math.random() * candidates.length)];
-  state.npcs = [{ id: 'elderberry', icon: '🌳', img: 'elder', name: 'Elder Elderberry', x: COLS - PAD, y: row }];
+  const npcX = COLS - PAD;
+  // Make NPC tile render and behave like an empty tile so drops are visible and clickable
+  const npcCell = getCell(npcX, row);
+  if (npcCell) { npcCell.type = 'empty'; invalidateBg(); }
+  state.npcs = [{ id: 'elderberry', icon: '🌳', img: 'elder', name: 'Elder Elderberry', x: npcX, y: row }];
 }
 
 // ─── Speech bubble ────────────────────────────────────────────────────────────
@@ -107,11 +113,11 @@ if (window.speechSynthesis) {
   window.speechSynthesis.addEventListener('voiceschanged', _loadVoices);
 }
 
-function _elderSpeak(text) {
-  if (!window.speechSynthesis) return;
+function _elderSpeak(text, onDone) {
+  if (!window.speechSynthesis) { setTimeout(onDone, 4000); return; }
   window.speechSynthesis.cancel();
   const utt = new SpeechSynthesisUtterance(text);
-  utt.rate = 0.68;
+  utt.rate = 0.78;
   utt.pitch = 0.85;
   utt.volume = 0.82;
   const voices = _voices.length ? _voices : window.speechSynthesis.getVoices();
@@ -120,6 +126,8 @@ function _elderSpeak(text) {
     || voices.find(v => v.lang.startsWith('en'))
     || voices[0];
   if (preferred) utt.voice = preferred;
+  utt.onend = () => onDone();
+  utt.onerror = () => onDone();
   window.speechSynthesis.speak(utt);
 }
 
@@ -136,13 +144,15 @@ function _processQueue() {
   _bubble.textContent = text;
   _bubble.classList.add('sh');
   _positionBubble(npc);
-  _elderSpeak(text);
   clearTimeout(_bubbleTimer);
-  _bubbleTimer = setTimeout(() => {
-    _bubble.classList.remove('sh');
-    _bubbleActive = false;
-    _bubbleTimer = setTimeout(_processQueue, 700);
-  }, 9000);
+  _elderSpeak(text, () => {
+    // Wait a beat after speech ends before hiding and processing next
+    _bubbleTimer = setTimeout(() => {
+      _bubble.classList.remove('sh');
+      _bubbleActive = false;
+      _bubbleTimer = setTimeout(_processQueue, 600);
+    }, 800);
+  });
 }
 
 function _positionBubble(npc) {

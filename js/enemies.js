@@ -158,9 +158,10 @@ export function genWave(w) {
       const numPts = 6;
       const watcherPoints = [];
       for (let i = 0; i < numPts; i++) {
+        // Keep 3 tiles from edge so watcher stays in the visible playfield
         watcherPoints.push({
-          x: 1 + Math.random() * (state.COLS - 3),
-          y: 1 + Math.random() * (state.ROWS - 3),
+          x: 3 + Math.random() * (state.COLS - 7),
+          y: 3 + Math.random() * (state.ROWS - 7),
         });
       }
       q.push({
@@ -171,10 +172,12 @@ export function genWave(w) {
         watcherPhase: 'roam', watcherPoints, watcherTargetIdx: 0, damageTimer: 0, prevHp: watchHP,
         line: '', reversed: false, reverseTimer: 0, poison: null, stunned: 0,
         // Eye offsets and tentacle data initialised here
-        _eyes: Array.from({ length: 8 }, (_, i) => ({
-          ox: (Math.random() - 0.5) * 0.6, oy: (Math.random() - 0.5) * 0.6,
-          phase: i * 0.8,
-        })),
+        _eyes: Array.from({ length: 8 }, (_, i) => {
+          // Distribute eyes across full body radius (0.25..0.9 of r)
+          const ang = Math.random() * Math.PI * 2;
+          const rad = 0.25 + Math.random() * 0.65;
+          return { ox: Math.cos(ang) * rad, oy: Math.sin(ang) * rad, phase: i * 0.8 };
+        }),
         _tentacles: Array.from({ length: 6 }, (_, i) => ({
           baseAngle: (Math.PI * 2 * i) / 6, phase: i * 1.1,
         })),
@@ -289,8 +292,8 @@ export function updateEnemies() {
         // Damage timer — reset on hit
         if (e.hp < e.prevHp) { e.damageTimer = 0; e.prevHp = e.hp; }
         else e.damageTimer++;
-        // Ceasefire escape (30s of no damage while flag raised)
-        if (state.ceasefire && e.damageTimer > 1800) {
+        // After 30s without damage, watcher decides to leave regardless of ceasefire
+        if (e.damageTimer > 1800) {
           e.watcherPhase = 'escaping';
           e.x = path[path.length - 1].x; e.y = path[path.length - 1].y; e.pi = path.length - 1;
           state.watcherEscaped = true;

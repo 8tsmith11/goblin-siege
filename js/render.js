@@ -475,18 +475,33 @@ export function render() {
     if (e.watcher) {
       cx.save();
       const r = CELL * 1.2;
+      const teleporting = e.watcherPhase === 'teleporting';
+      // Dark aura — layered radial glow behind body
+      const auraRad1 = r * (2.2 + 0.15 * Math.sin(ticks / 22));
+      const auraRad2 = r * (1.6 + 0.1 * Math.sin(ticks / 35 + 1));
+      const grad = cx.createRadialGradient(px, py, r * 0.8, px, py, auraRad1);
+      grad.addColorStop(0, 'rgba(30,5,60,0.55)');
+      grad.addColorStop(0.5, 'rgba(15,0,35,0.3)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      cx.beginPath(); cx.arc(px, py, auraRad1, 0, Math.PI * 2);
+      cx.fillStyle = grad; cx.fill();
+      const grad2 = cx.createRadialGradient(px, py, r * 0.5, px, py, auraRad2);
+      grad2.addColorStop(0, 'rgba(80,0,120,0.35)');
+      grad2.addColorStop(1, 'rgba(0,0,0,0)');
+      cx.beginPath(); cx.arc(px, py, auraRad2, 0, Math.PI * 2);
+      cx.fillStyle = grad2; cx.fill();
       // Body
       cx.beginPath(); cx.arc(px, py, r, 0, Math.PI * 2);
-      cx.fillStyle = e.watcherPhase === 'teleporting' ? '#ffffff' : '#4c1d95';
+      cx.fillStyle = teleporting ? '#ffffff' : '#4c1d95';
       cx.fill();
       cx.strokeStyle = '#7c3aed'; cx.lineWidth = 3; cx.stroke();
-      // 8 drifting eyes
+      // 8 drifting eyes spread across full body radius
       if (e._eyes) {
         for (let i = 0; i < e._eyes.length; i++) {
           const eye = e._eyes[i];
           const drift = Math.sin(ticks / 40 + (eye.phase || i * 0.8)) * CELL * 0.06;
-          const ex2 = px + eye.ox * CELL * 0.7 + drift;
-          const ey2 = py + eye.oy * CELL * 0.7 + drift * 0.5;
+          const ex2 = px + eye.ox * r * 0.85 + drift;
+          const ey2 = py + eye.oy * r * 0.85 + drift * 0.5;
           cx.beginPath(); cx.ellipse(ex2, ey2, CELL * 0.09, CELL * 0.06, 0, 0, Math.PI * 2);
           cx.fillStyle = '#f3f4f6'; cx.fill();
           cx.beginPath(); cx.arc(ex2 + drift * 0.3, ey2, CELL * 0.04, 0, Math.PI * 2);
@@ -496,20 +511,21 @@ export function render() {
       // Nose
       cx.beginPath(); cx.ellipse(px, py + CELL * 0.15, CELL * 0.07, CELL * 0.05, 0, 0, Math.PI * 2);
       cx.fillStyle = '#312e81'; cx.fill();
-      // Tentacles
+      // Tentacles with varying thickness (different period from wave)
       if (e._tentacles) {
         for (let i = 0; i < e._tentacles.length; i++) {
           const t = e._tentacles[i];
-          const ang = t.baseAngle || t.angle || (Math.PI * 2 * i / 6);
+          const ang = t.baseAngle || (Math.PI * 2 * i / 6);
           const tentWave = Math.sin(ticks / 30 + t.phase) * CELL * 0.3;
           const len = CELL * 0.9 + tentWave;
           const tx2 = px + Math.cos(ang) * r;
           const ty2 = py + Math.sin(ang) * r;
           const cpx = tx2 + Math.cos(ang + Math.PI / 4) * len;
           const cpy = ty2 + Math.sin(ang + Math.PI / 4) * len;
+          const thick = CELL * 0.045 + CELL * 0.04 * Math.sin(ticks / 53 + t.phase * 1.7);
           cx.beginPath(); cx.moveTo(tx2, ty2);
           cx.quadraticCurveTo(cpx, cpy, tx2 + Math.cos(ang) * len * 1.5, ty2 + Math.sin(ang) * len * 1.5);
-          cx.strokeStyle = '#5b21b6'; cx.lineWidth = CELL * 0.07; cx.stroke();
+          cx.strokeStyle = '#5b21b6'; cx.lineWidth = Math.max(1, thick); cx.stroke();
         }
       }
       // HP bar

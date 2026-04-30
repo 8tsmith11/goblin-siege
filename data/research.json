@@ -386,7 +386,7 @@
         "dust": 25,
         "stone": 8
       },
-      "waves": 3,
+      "waves": 2,
       "unlocks": "insightful_lens_recipe",
       "prereqs": [
         "basic_obs"

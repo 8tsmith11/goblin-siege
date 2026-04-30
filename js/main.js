@@ -494,7 +494,7 @@ function update() {
 // updateProjectiles removed to projectiles.js
 
 export function dropLoot(x, y, section, item) {
-  x = Math.max(0, Math.min(state.COLS - 1, Math.round(x)));
+  x = Math.max(0, Math.min(state.COLS, Math.round(x)));
   y = Math.max(0, Math.min(state.ROWS - 1, Math.round(y)));
   const cell = getCell(x, y);
   if (!cell) return;
