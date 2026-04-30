@@ -47,7 +47,7 @@
       "desc": "Cultivates hives whose swarms harry goblin raiders.",
       "tooltip": "Unlocks the Beehive building, which sends bees to sting and slow nearby enemies.",
       "x": 720,
-      "y": 840
+      "y": 720
     },
     "settling_basics": {
       "name": "Settl. Basics",
@@ -454,12 +454,12 @@
       "size": 2,
       "positions": [
         {
-          "x": 720,
-          "y": 480
+          "x": 480,
+          "y": 600
         },
         {
-          "x": 720,
-          "y": 600
+          "x": 480,
+          "y": 480
         }
       ]
     }

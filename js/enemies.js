@@ -3,6 +3,7 @@ import { state, getCell } from './main.js';
 import { clearEnemiesGrid, addToCell } from './grid.js';
 import { ETYPES, BOSS_LINES } from './data.js';
 import { spawnParticles, getCenter } from './utils.js';
+import { bus } from './bus.js';
 
 export function mkE(et, bHP, bSpd) {
   const e = {
@@ -21,10 +22,14 @@ export function mkE(et, bHP, bSpd) {
 const BOSS_WAVES = new Set([5, 11, 17, 25, 30, 36, 50]);
 export function isBossWave(w) { return BOSS_WAVES.has(w) || (w > 50 && w % 5 === 0); }
 
+// Named boss order — consumed in sequence for each regular boss wave (after Herald & Fog).
+// 'vanguard' = generic crown boss. After the list is exhausted, falls back to 'vanguard'.
+export const BOSS_ORDER = ['curious_auditor', 'vanguard', 'patient_watcher'];
+
 const EWEIGHTS = {
   normal: 4, fast: 3, tank: 2, berserker: 2, swarm: 3,
   shield: 1.5, shaman: 1.5, healer: 1.5, spider: 1.5,
-  stealth: 1, geologist: 1
+  stealth: 1, geologist: 0.3
 };
 
 function pickType(avail) {
@@ -43,10 +48,26 @@ function buildAvail(w) {
   if (w >= 16) a.push('shield');
   if (w >= 19) a.push('shaman');
   if (w >= 22) a.push('healer');
-  if (w >= 24) a.push('spider');
+  if (w >= 24 && !state.spiderRitualDone) a.push('spider');
   if (w >= 27) a.push('stealth');
   if (w >= 33) a.push('geologist');
   return a;
+}
+
+// Returns a lightweight preview of what types appear in wave w (no state mutation).
+export function previewWave(w) {
+  if (w === 15) return '🌫️ Considerate Fog';
+  if (w === 40) return '💎 Weight of Bones';
+  if (w === 5)  return '📯 Proud Herald';
+  if (isBossWave(w)) {
+    const idx = state.namedBossIndex ?? 0;
+    const bt = BOSS_ORDER[idx] ?? 'vanguard';
+    if (bt === 'curious_auditor') return '🏛️ Curious Auditor';
+    if (bt === 'patient_watcher') return '🔮 Patient Watcher';
+    return '👑 Vanguard';
+  }
+  const avail = buildAvail(w);
+  return avail.map(t => ETYPES[t]?.em || '?').join(' ');
 }
 
 export function genWave(w) {
@@ -90,13 +111,12 @@ export function genWave(w) {
   if (w === 40) {
     state.weightOfBones = true;
     const avail40 = buildAvail(w);
-    const earlyScale40 = 1;
-    const cnt40 = Math.floor((6 + w * 0.85 + Math.pow(w, 0.75)) * earlyScale40);
+    const cnt40 = Math.floor(6 + w * 0.85 + Math.pow(w, 0.75));
     for (let i = 0; i < cnt40; i++) {
       const tp = pickType(avail40);
       state.bSen.add(tp);
       const base = mkE(ETYPES[tp], bHP, bSpd);
-      base.em = '💎'; base.clr = '#a78bfa'; base.gMode = 'walking'; base.gPath = null;
+      base.em = '💎'; base.clr = '#a78bfa'; base.sz = 0.30; base.gMode = 'walking'; base.gPath = null;
       base.gTarget = null; base.stolen = []; base.gMaxSteal = 10; base.noLives = true;
       q.push(base);
     }
@@ -105,6 +125,64 @@ export function genWave(w) {
   }
 
   if (isBoss) {
+    // Named boss rotation: consume BOSS_ORDER in sequence, fall back to 'vanguard' when exhausted
+    state.namedBossIndex = state.namedBossIndex || 0;
+    const bossType = BOSS_ORDER[state.namedBossIndex] ?? 'vanguard';
+    state.namedBossIndex++;
+
+    if (bossType === 'curious_auditor') {
+      const audHP = Math.floor(bHP * 15);
+      state.bSen.add('curious_auditor');
+      state.auditorActive = true;
+      q.push({
+        tp: 'boss', hp: audHP, mhp: audHP,
+        spd: bSpd * 0.35, sz: 0.65, rew: 40, clr: '#ef4444', em: '🏛️', drops: [],
+        pi: 0, x: 0, y: 0, slow: 0, _trapSlow: 0, st: 0, dead: false, spdBuff: 0, frozen: 0,
+        stealth: false, stealthTimer: 0, healCD: 0, boss: true, auditor: true,
+        line: 'How much did that one cost you?',
+        reversed: false, reverseTimer: 0, poison: null, stunned: 0,
+      });
+      const mc = Math.floor(3 + w * 0.5);
+      for (let i = 0; i < mc; i++) q.push(mkE(ETYPES[['normal', 'fast', 'berserker'][i % 3]], bHP, bSpd));
+      return q;
+    }
+
+    if (bossType === 'patient_watcher') {
+      const watchHP = Math.floor(bHP * 60);
+      state.bSen.add('patient_watcher');
+      const corners = [
+        { x: 1, y: 1 }, { x: state.COLS - 2, y: 1 },
+        { x: 1, y: state.ROWS - 2 }, { x: state.COLS - 2, y: state.ROWS - 2 }
+      ];
+      const corner = corners[Math.floor(Math.random() * corners.length)];
+      const numPts = 6;
+      const watcherPoints = [];
+      for (let i = 0; i < numPts; i++) {
+        watcherPoints.push({
+          x: 1 + Math.random() * (state.COLS - 3),
+          y: 1 + Math.random() * (state.ROWS - 3),
+        });
+      }
+      q.push({
+        tp: 'boss', hp: watchHP, mhp: watchHP,
+        spd: 0.28, sz: 1.2, rew: 40, clr: '#7c3aed', em: '🔮', drops: [],
+        pi: 0, x: corner.x, y: corner.y, slow: 0, _trapSlow: 0, st: 0, dead: false, spdBuff: 0, frozen: 0,
+        stealth: false, stealthTimer: 0, healCD: 0, boss: true, watcher: true,
+        watcherPhase: 'roam', watcherPoints, watcherTargetIdx: 0, damageTimer: 0, prevHp: watchHP,
+        line: '', reversed: false, reverseTimer: 0, poison: null, stunned: 0,
+        // Eye offsets and tentacle data initialised here
+        _eyes: Array.from({ length: 8 }, (_, i) => ({
+          ox: (Math.random() - 0.5) * 0.6, oy: (Math.random() - 0.5) * 0.6,
+          phase: i * 0.8,
+        })),
+        _tentacles: Array.from({ length: 6 }, (_, i) => ({
+          baseAngle: (Math.PI * 2 * i) / 6, phase: i * 1.1,
+        })),
+      });
+      return q;
+    }
+
+    // Vanguard: generic crown boss
     state.bSen.add('boss');
     q.push({
       tp: 'boss', hp: Math.floor(bHP * 8 + w * 80), mhp: Math.floor(bHP * 8 + w * 80),
@@ -114,11 +192,12 @@ export function genWave(w) {
       line: BOSS_LINES[Math.floor(w / 5) % BOSS_LINES.length],
       reversed: false, reverseTimer: 0, poison: null, stunned: 0,
     });
-    const mc = Math.floor(3 + w * 0.5);
-    for (let i = 0; i < mc; i++) q.push(mkE(ETYPES[['normal', 'fast', 'berserker'][i % 3]], bHP, bSpd));
+    const mc2 = Math.floor(3 + w * 0.5);
+    for (let i = 0; i < mc2; i++) q.push(mkE(ETYPES[['normal', 'fast', 'berserker'][i % 3]], bHP, bSpd));
   } else {
     const avail = buildAvail(w);
-    const earlyScale = w <= 3 ? 0.85 : 1;
+    // Early waves: more enemies, well-spaced, no burst clumping
+    const earlyScale = w <= 4 ? 1.5 : w <= 7 ? 1.2 : 1;
     const cnt = Math.floor((6 + w * 0.85 + Math.pow(w, 0.75)) * earlyScale);
     for (let i = 0; i < cnt; i++) {
       const tp = pickType(avail);
@@ -126,25 +205,27 @@ export function genWave(w) {
       if (tp === 'swarm') { for (let j = 0; j < 4; j++) q.push(mkE(ETYPES.swarm, bHP, bSpd)); }
       else q.push(mkE(ETYPES[tp], bHP, bSpd));
     }
-    // Assign per-enemy spawn delays in rhythm runs: burst / normal / slow
-    const normalDelay = Math.max(20, 50 - w * 0.7);
+    // Spawn delay rhythm: burst forbidden in early waves, wide spacing throughout
+    const isEarly = w <= 7;
+    const minBurstGap = isEarly ? 45 : 3;
+    const normalDelay = isEarly ? Math.max(65, 100 - w * 5) : Math.max(20, 50 - w * 0.7);
     let qi = 0;
     while (qi < q.length) {
       const roll = Math.random();
-      if (roll < 0.28) {
-        // Burst: 3–7 enemies, 3–6 ticks each
+      if (!isEarly && roll < 0.28) {
+        // Burst: 3–7 enemies, tight spacing (not in early waves)
         const len = 3 + Math.floor(Math.random() * 5);
         for (let j = qi; j < Math.min(qi + len, q.length); j++)
-          q[j].spawnDelay = 3 + Math.floor(Math.random() * 4);
+          q[j].spawnDelay = minBurstGap + Math.floor(Math.random() * 10);
         qi += len;
       } else if (roll < 0.46) {
-        // Slow trickle / dramatic pause: 1–3 enemies, 55–110 ticks each
+        // Slow trickle: 1–3 enemies, long gap
         const len = 1 + Math.floor(Math.random() * 3);
         for (let j = qi; j < Math.min(qi + len, q.length); j++)
-          q[j].spawnDelay = 55 + Math.floor(Math.random() * 56);
+          q[j].spawnDelay = (isEarly ? 100 : 55) + Math.floor(Math.random() * 56);
         qi += len;
       } else {
-        // Normal pace: 2–6 enemies, near-baseTimer with slight jitter
+        // Normal pace
         const len = 2 + Math.floor(Math.random() * 5);
         for (let j = qi; j < Math.min(qi + len, q.length); j++)
           q[j].spawnDelay = normalDelay + Math.floor((Math.random() - 0.5) * 10);
@@ -200,6 +281,54 @@ export function updateEnemies() {
       updateGeologist(e, path, CELL);
       if (grid.length > 0 && !e.dead) addToCell(grid, e);
       continue;
+    }
+
+    // Patient Watcher: roaming boss — custom movement, no path-following in roam phase
+    if (e.watcher) {
+      if (e.watcherPhase === 'roam') {
+        // Damage timer — reset on hit
+        if (e.hp < e.prevHp) { e.damageTimer = 0; e.prevHp = e.hp; }
+        else e.damageTimer++;
+        // Ceasefire escape (30s of no damage while flag raised)
+        if (state.ceasefire && e.damageTimer > 1800) {
+          e.watcherPhase = 'escaping';
+          e.x = path[path.length - 1].x; e.y = path[path.length - 1].y; e.pi = path.length - 1;
+          state.watcherEscaped = true;
+          bus.emit('watcherEscaped');
+        }
+        // 20% HP transition: teleport to path start, become regular boss
+        else if (e.hp <= e.mhp * 0.2) {
+          e.watcherPhase = 'path'; e.x = path[0].x; e.y = path[0].y; e.pi = 0;
+          state.cameraShake = 40;
+          bus.emit('watcherTransition', { watcher: e });
+        }
+        // Roam: drift toward current waypoint
+        else if (e.watcherPoints?.length) {
+          const tgt = e.watcherPoints[e.watcherTargetIdx % e.watcherPoints.length];
+          const dx = tgt.x - e.x, dy = tgt.y - e.y, d = Math.hypot(dx, dy);
+          const spd = e.spd * 0.04;
+          if (d < spd + 0.05) {
+            e.watcherTargetIdx = (e.watcherTargetIdx + 1) % e.watcherPoints.length;
+          } else {
+            e.x += dx / d * spd; e.y += dy / d * spd;
+          }
+        }
+        if (grid.length > 0) addToCell(grid, e);
+        continue;
+      }
+      // Escaping: walk backward to path start then remove (no lives penalty)
+      if (e.watcherPhase === 'escaping') {
+        if (e.pi <= 0) { e.dead = true; continue; }
+        const prevI = e.pi - 1;
+        const t = path[prevI];
+        const dx = t.x - e.x, dy = t.y - e.y, d = Math.hypot(dx, dy);
+        const spd = e.spd * 0.04;
+        if (d < spd + 0.01) { e.x = t.x; e.y = t.y; e.pi = prevI; }
+        else { e.x += dx / d * spd; e.y += dy / d * spd; }
+        if (grid.length > 0) addToCell(grid, e);
+        continue;
+      }
+      // 'path' phase: falls through to normal boss movement below
     }
 
     if (e.pi >= path.length - 1 && !e.reversed) {
@@ -314,9 +443,10 @@ function updateGeologist(e, path, CELL) {
   const SPD = 0.04 * (e.spd || 0.8);
   if (e.gMode === 'walking') {
     const tx = Math.round(e.x), ty = Math.round(e.y);
-    // Detour only when a loot tile is in the same column (same x)
+    // Only scan for off-path loot when snapped to a whole tile (avoids mid-step jitter)
+    const atTile = Math.abs(e.x - tx) < 0.08 && Math.abs(e.y - ty) < 0.08;
     let found = false;
-    for (let cy = 0; cy < state.ROWS; cy++) {
+    for (let cy = atTile ? 0 : state.ROWS; cy < state.ROWS; cy++) {
       const cell = getCell(tx, cy);
       if (!cell) continue;
       const hasStacks = cell.stacks?.some(s => s && !s.bossLoot);

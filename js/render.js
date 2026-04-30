@@ -136,7 +136,9 @@ export function render() {
 
   cx.clearRect(0, 0, W, H);
   cx.save();
-  cx.setTransform(cam.zoom, 0, 0, cam.zoom, -cam.panX * cam.zoom, -cam.panY * cam.zoom);
+  const _shake = state.cameraShake > 0 ? (Math.random() - 0.5) * state.cameraShake * 0.4 : 0;
+  const _shakeY = state.cameraShake > 0 ? (Math.random() - 0.5) * state.cameraShake * 0.4 : 0;
+  cx.setTransform(cam.zoom, 0, 0, cam.zoom, -cam.panX * cam.zoom + _shake, -cam.panY * cam.zoom + _shakeY);
   
   if (!bgCache && state.pathReady && CELL > 0) updateBgCache();
   if (bgCache) cx.drawImage(bgCache, 0, 0);
@@ -240,6 +242,37 @@ export function render() {
     }
   }
 
+  // Web tiles (spider staff / grateful spider)
+  if (state.webs?.length) {
+    cx.save();
+    cx.font = Math.floor(CELL * 0.55) + 'px serif';
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    for (const web of state.webs) {
+      const px = web.x * CELL + CELL / 2, py = web.y * CELL + CELL / 2;
+      cx.globalAlpha = 0.55;
+      cx.fillStyle = '#9ca3af44';
+      cx.fillRect(web.x * CELL, web.y * CELL, CELL, CELL);
+      cx.globalAlpha = 0.7;
+      cx.fillText('🕸️', px, py);
+    }
+    cx.globalAlpha = 1;
+    cx.restore();
+  }
+
+  // Seed stone
+  if (state.seedStone && !state.seedStone.carried) {
+    const { x, y } = state.seedStone;
+    const px = x * CELL + CELL / 2, py = y * CELL + CELL / 2;
+    const pulse = 0.7 + 0.3 * Math.sin(ticks / 18);
+    cx.save();
+    cx.globalAlpha = pulse;
+    cx.shadowColor = '#a78bfa'; cx.shadowBlur = 12;
+    cx.font = Math.floor(CELL * 0.45) + 'px serif';
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.fillText('🪨', px, py);
+    cx.restore();
+  }
+
   // Towers
   towers.forEach(tw => {
     const px = tw.x * CELL + CELL / 2, py = tw.y * CELL + CELL / 2;
@@ -270,6 +303,30 @@ export function render() {
       cx.fillStyle = 'rgba(249,115,22,.08)'; cx.fill();
       cx.strokeStyle = 'rgba(249,115,22,.7)'; cx.lineWidth = 2; cx.stroke();
     }
+    // Ceasefire flag: special rendering
+    if (tw.type === 'ceasefire_flag') {
+      const tx = tw.x * CELL, ty = tw.y * CELL;
+      cx.save();
+      if (tw.raised) {
+        // Large flag raised above the tile
+        cx.font = Math.floor(CELL * 0.65) + 'px serif';
+        cx.textAlign = 'center'; cx.textBaseline = 'bottom';
+        cx.fillText('🏳️', tx + CELL / 2, ty - CELL * 0.1);
+        // Pole
+        cx.strokeStyle = '#d4d4d8'; cx.lineWidth = 2;
+        cx.beginPath(); cx.moveTo(tx + CELL / 2, ty); cx.lineTo(tx + CELL / 2, ty + CELL); cx.stroke();
+      } else {
+        // Small lowered flag
+        cx.font = Math.floor(CELL * 0.35) + 'px serif';
+        cx.textAlign = 'center'; cx.textBaseline = 'bottom';
+        cx.globalAlpha = 0.6;
+        cx.fillText('🏳️', tx + CELL / 2, ty + CELL);
+        cx.globalAlpha = 1;
+      }
+      cx.restore();
+      return; // skip default tower rendering
+    }
+
     const isH = tw.type === 'hoard', def = TD[tw.type];
     const tx = Math.round(tw.x * CELL), ty = Math.round(tw.y * CELL);
     if (isH && _imgHoard.naturalWidth) {
@@ -297,16 +354,6 @@ export function render() {
       cx.fillText(isH ? '🏺' : (def?.icon || '?'), tx + CELL / 2, ty + CELL / 2);
     }
     if (tw.level > 0) { cx.font = 'bold ' + Math.floor(CELL * 0.16) + 'px Anybody,sans-serif'; cx.fillStyle = '#fbbf24'; cx.fillText('★'.repeat(Math.min(tw.level, 5)), tx + CELL / 2, ty + CELL - 2); }
-    if (state.researchUnlocks?.tower_age_counters && tw.wavesAlive) {
-      const bw = Math.ceil(CELL * 0.3), bh = Math.ceil(CELL * 0.2);
-      const bx = tx + CELL - bw - 2, by = ty + 2;
-      cx.fillStyle = 'rgba(0,0,0,0.65)';
-      cx.fillRect(bx, by, bw, bh);
-      cx.fillStyle = '#e2e8f0';
-      cx.font = 'bold ' + Math.floor(CELL * 0.16) + 'px Anybody,sans-serif';
-      cx.textAlign = 'center'; cx.textBaseline = 'middle';
-      cx.fillText(tw.wavesAlive, bx + bw / 2, by + bh / 2);
-    }
   });
 
   // Castle (end of path) — drawn oversized so it overlaps surrounding tiles
@@ -401,10 +448,78 @@ export function render() {
     cx.fillText('🐵', tx + CELL - 2, ty + 2);
   }
 
+  // Spider Mother (neutral entity — separate from enemies array)
+  if (state.spiderMother && !state.spiderMother.dead) {
+    const sm = state.spiderMother;
+    const px = sm.x * CELL + CELL / 2, py = sm.y * CELL + CELL / 2;
+    cx.save();
+    const pulse = 0.8 + 0.2 * Math.sin(ticks / 20);
+    cx.globalAlpha = pulse;
+    cx.font = Math.floor(CELL * 1.1) + 'px serif';
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.fillText('🕷️', px, py);
+    // Seed stone carried
+    if (sm.stonePickedUp && state.seedStone?.carried) {
+      cx.font = Math.floor(CELL * 0.4) + 'px serif';
+      cx.fillText('🪨', px + CELL * 0.35, py - CELL * 0.35);
+    }
+    cx.globalAlpha = 1;
+    cx.restore();
+  }
+
   // Enemies
   enemies.forEach(e => {
     if (e.dead) return;
     const px = e.x * CELL + CELL / 2, py = e.y * CELL + CELL / 2, sz = CELL * e.sz;
+    // Patient Watcher: custom rendering
+    if (e.watcher) {
+      cx.save();
+      const r = CELL * 1.2;
+      // Body
+      cx.beginPath(); cx.arc(px, py, r, 0, Math.PI * 2);
+      cx.fillStyle = e.watcherPhase === 'teleporting' ? '#ffffff' : '#4c1d95';
+      cx.fill();
+      cx.strokeStyle = '#7c3aed'; cx.lineWidth = 3; cx.stroke();
+      // 8 drifting eyes
+      if (e._eyes) {
+        for (let i = 0; i < e._eyes.length; i++) {
+          const eye = e._eyes[i];
+          const drift = Math.sin(ticks / 40 + (eye.phase || i * 0.8)) * CELL * 0.06;
+          const ex2 = px + eye.ox * CELL * 0.7 + drift;
+          const ey2 = py + eye.oy * CELL * 0.7 + drift * 0.5;
+          cx.beginPath(); cx.ellipse(ex2, ey2, CELL * 0.09, CELL * 0.06, 0, 0, Math.PI * 2);
+          cx.fillStyle = '#f3f4f6'; cx.fill();
+          cx.beginPath(); cx.arc(ex2 + drift * 0.3, ey2, CELL * 0.04, 0, Math.PI * 2);
+          cx.fillStyle = '#1e1b4b'; cx.fill();
+        }
+      }
+      // Nose
+      cx.beginPath(); cx.ellipse(px, py + CELL * 0.15, CELL * 0.07, CELL * 0.05, 0, 0, Math.PI * 2);
+      cx.fillStyle = '#312e81'; cx.fill();
+      // Tentacles
+      if (e._tentacles) {
+        for (let i = 0; i < e._tentacles.length; i++) {
+          const t = e._tentacles[i];
+          const ang = t.baseAngle || t.angle || (Math.PI * 2 * i / 6);
+          const tentWave = Math.sin(ticks / 30 + t.phase) * CELL * 0.3;
+          const len = CELL * 0.9 + tentWave;
+          const tx2 = px + Math.cos(ang) * r;
+          const ty2 = py + Math.sin(ang) * r;
+          const cpx = tx2 + Math.cos(ang + Math.PI / 4) * len;
+          const cpy = ty2 + Math.sin(ang + Math.PI / 4) * len;
+          cx.beginPath(); cx.moveTo(tx2, ty2);
+          cx.quadraticCurveTo(cpx, cpy, tx2 + Math.cos(ang) * len * 1.5, ty2 + Math.sin(ang) * len * 1.5);
+          cx.strokeStyle = '#5b21b6'; cx.lineWidth = CELL * 0.07; cx.stroke();
+        }
+      }
+      // HP bar
+      const bw = r * 2, bh = 4, bx2 = px - bw / 2, by2 = py - r - 8;
+      cx.fillStyle = '#0f0f0f'; cx.fillRect(bx2, by2, bw, bh);
+      const pct = e.hp / e.mhp; cx.fillStyle = pct > 0.5 ? '#22c55e' : pct > 0.25 ? '#f59e0b' : '#ef4444';
+      cx.fillRect(bx2, by2, bw * Math.max(0, pct), bh);
+      cx.restore();
+      return;
+    }
     if (e.stealth) cx.globalAlpha = 0.25;
     cx.fillStyle = 'rgba(0,0,0,.2)'; cx.beginPath(); cx.ellipse(px, py + sz * 0.3, sz * 0.4, sz * 0.12, 0, 0, Math.PI * 2); cx.fill();
     cx.fillStyle = e.clr + '22'; cx.beginPath(); cx.arc(px, py, sz + 2, 0, Math.PI * 2); cx.fill();

@@ -49,6 +49,10 @@ function handleStackInteraction(c, e) {
       if (stack.bossLoot) {
         glCell.stacks[closestIndex] = null;
         if (stack.item.unlocks) state.unlockedTowers.add(stack.item.unlocks);
+        if (stack.item.recipeUnlock) {
+          if (!state.researchUnlocks) state.researchUnlocks = {};
+          state.researchUnlocks[stack.item.recipeUnlock] = 1;
+        }
         addToInventory(stack.section, stack.item);
         mkGain(px, py, stack.item.bpOverlay || stack.item.icon || '🎁', 1, '#fde68a');
         showBanner((stack.item.name || 'Item') + ' collected!');
@@ -146,6 +150,7 @@ function tryPlaceTower(c, ex) {
     if (tw.type === 'hoard') { tw.stored = 0; }
     if (tw.type === 'stockpile') { tw.slots = [null, null, null, null]; tw.mode = 'storage'; }
     if (tw.type === 'workbench') { tw.craftQueue = null; tw.selectedRecipe = null; tw.inv = {}; }
+    if (tw.type === 'ceasefire_flag') { tw.raised = false; }
     if (tw.type === 'lab') { tw.obsRange = TD.lab.obsRange + (state.researchUnlocks?.lab_radius || 0); }
     if (tw.type === 'monkey') {
       tw.range = TD.monkey.range;
@@ -206,6 +211,17 @@ function handleTap(e) {
     return;
   }
 
+  // Spider Staff: click a path tile to place webs
+  if (state.sel?.type === 'spider_staff_pick') {
+    if (!state.pathSet?.has(c.x + ',' + c.y)) { showTip('Must click a path tile!'); return; }
+    if (!state.webs) state.webs = [];
+    const center = { x: c.x, y: c.y };
+    const webTiles = state.path.filter(p => Math.abs(p.x - center.x) + Math.abs(p.y - center.y) <= 2).slice(0, 5);
+    for (const pt of webTiles) state.webs.push({ x: pt.x, y: pt.y, expiry: state.ticks + 120, dmg: 3, slow: 0.6 });
+    state.sel = null;
+    showTip('🕸️ Webs placed!');
+    return;
+  }
   // Consumable-pick mode: click a path tile to place
   if (state.sel?.type === 'consumable_pick') {
     if (placeConsumable(state.sel.item, c.x, c.y)) {
@@ -359,6 +375,14 @@ function handleTap(e) {
     if (handleGroundLoot(c)) return;
     if (handleStackInteraction(c, e)) return;
     if (handleNodeInteraction(c)) return;
+    // Ceasefire flag: clicking an existing flag toggles its raised state
+    if (ex?.type === 'ceasefire_flag') {
+      ex.raised = !ex.raised;
+      state.ceasefire = state.towers.some(t => t.type === 'ceasefire_flag' && t.raised);
+      showTip(ex.raised ? '🏳️ Ceasefire raised — towers stand down.' : '🏳️ Ceasefire lowered — towers resume.');
+      hudU(); panelU();
+      return;
+    }
   }
 
   if (state.sel && state.sel.type !== 'spell' && state.sel.type !== 'relocate_source' && state.sel.type !== 'relocate_dest') {

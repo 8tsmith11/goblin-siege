@@ -194,6 +194,7 @@ export function showTT(tw, px, py) {
     if (tw.chain) s += ' Chn:' + tw.chain;
     if (tw._buffed) s += ' 🐚';
   }
+  if (state.researchUnlocks?.tower_age_counters && tw.wavesAlive) s += ' · Age:' + tw.wavesAlive + 'w';
   document.getElementById('ttS').textContent = s;
 
   const a = document.getElementById('ttA'); a.innerHTML = '';

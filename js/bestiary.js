@@ -84,6 +84,26 @@ export const BESTIARY = {
     desc: "A towering figure. It demands passage and does not stop for negotiations. Highly durable.",
     stats: ""
   },
+  curious_auditor: {
+    name: "Curious Auditor", icon: "🏛️", cls: "🟣 Unknown — BOSS", clr: "#ef4444", boss: true,
+    desc: "I've classified this one as Unknown because I'm not certain it's hostile. It did not attack the castle. It walked the path and charged us for defending ourselves. Each tower shot cost one gold while it was alive. This is not combat. This is taxation. Whether taxation constitutes hostility is a philosophical question I am not equipped to answer.",
+    stats: ""
+  },
+  patient_watcher: {
+    name: "The Patient Watcher", icon: "🔮", cls: "🟣 Unknown — BOSS", clr: "#7c3aed", boss: true,
+    desc: "It moved between our towers for what felt like a long time. It never attacked. We thought it was confused. Then someone shot it. It stopped being patient. It didn't attack us until we hurt it. I think that matters.",
+    stats: ""
+  },
+  spider_mother: {
+    name: "The Spider Mother", icon: "🕷️", cls: "🟡 Neutral", clr: "#a855f7",
+    desc: "She came when the flag was raised and the stone was there. She did not acknowledge the towers. She walked to the stone, took it, and left. The only thing she said was 'thank you.' Just before she disappeared into the forest. She has not been seen since. Neither have any of her children.",
+    stats: ""
+  },
+  grateful_spider: {
+    name: "Grateful Spider", icon: "🕷️", cls: "🟢 Allied", clr: "#22c55e",
+    desc: "One of hers. Left behind. Perhaps on purpose — the Spider Mother's way of saying the matter was settled. It shoots webs and slows the horde. Once per wave it will coat a stretch of path in silk. We did not train it. It already knew what to do.",
+    stats: ""
+  },
 
   // Allied Towers / Entities
   squirrel: {
@@ -141,14 +161,16 @@ export function getScribeEntry(wave, state) {
     1:  () => 'I should start writing again. One more time.',
     3:  () => hasLab ? 'They built a lab.' : null,
     5:  () => 'The first boss. They survived. They always survive the first one.',
-    8:  () => "One walked backward. In Version 412 the backward walker stopped and faced the camera. That hasn\u2019t happened yet.",
+    8:  () => null,
     10: () => !hasLab ? "No lab yet. Interesting. Most build one. Whatever they know that the others didn\u2019t, I hope it\u2019s worth knowing." : "They\u2019re building faster now. It\u2019s beautiful in a way. The way an avalanche is beautiful.",
     12: () => 'The ground shook. It always shakes at this point.',
-    15: () => "The fog came. You can\u2019t fight fog.",
+    15: () => "The fog came. You can't fight fog. The towers kept shooting, but they were shooting at their own shadows.",
+    17: () => state.bSen?.has('curious_auditor') ? "After the fog, something new. It didn't kill \u2014 it taxed. Every shot cost them. Some stopped shooting. I don't know if that was wise or cowardice." : null,
     18: () => 'They translated the first sounds. Give it time.',
     20: () => `The Ledger appeared. The number was ${state._kills || 0}. I wrote it down.`,
-    22: () => "New material on the surface. They can\u2019t use it yet. They will.",
-    25: () => "The age is ending. Whatever comes next will be louder. It\u2019s always louder.",
+    22: () => "New material on the surface. They can't use it yet. They will.",
+    25: () => "The age is ending. Whatever comes next will be louder. It's always louder.",
+    32: () => state.bSen?.has('patient_watcher') && state.watcherEscaped ? "It left. Untouched. We stared at it for thirty seconds and it walked out the back. I've never seen anything leave before." : state.bSen?.has('patient_watcher') && !state.watcherEscaped ? "It moved like it had nowhere to be. Then they hurt it. That was a mistake." : null,
   };
   return entries[wave]?.() ?? null;
 }
@@ -162,17 +184,22 @@ export function getScribeLogs(state) {
     if (hasLab3) logs.push({ w: 'Wave 3', t: 'They built a lab.' });
   }
   if (w >= 5) logs.push({ w: 'Wave 5', t: "The first boss. They survived. They always survive the first one." });
-  if (w >= 8) logs.push({ w: 'Wave 8', t: "One walked backward. In Version 412 the backward walker stopped and faced the camera. That hasn't happened yet." });
   if (w >= 10) {
     const hasLab10 = state.towers?.some(t => t.type === 'lab') || state.bSen?.has('lab');
     logs.push({ w: 'Wave 10', t: !hasLab10 ? "No lab yet. Interesting. Most build one. Whatever they know that the others didn't, I hope it's worth knowing." : "They're building faster now. It's beautiful in a way. The way an avalanche is beautiful." });
   }
   if (w >= 12) logs.push({ w: 'Wave 12', t: "The ground shook. It always shakes at this point." });
-  if (w >= 15) logs.push({ w: 'Wave 15', t: "The fog came. You can't fight fog." });
+  if (w >= 15) logs.push({ w: 'Wave 15', t: "The fog came. You can't fight fog. The towers kept shooting, but they were shooting at their own shadows." });
   if (w >= 18) logs.push({ w: 'Wave 18', t: 'They translated the first sounds. Give it time.' });
   if (w >= 20) logs.push({ w: 'Wave 20', t: `The Ledger appeared. The number was ${(state._kills||0)}. I wrote it down.` });
   if (w >= 22) logs.push({ w: 'Wave 22', t: "New material on the surface. They can't use it yet. They will." });
   if (w >= 25) logs.push({ w: 'Wave 25', t: "The age is ending. Whatever comes next will be louder. It's always louder." });
+  if (w >= 18 && state.bSen?.has('curious_auditor')) logs.push({ w: '~Wave 17', t: "After the fog, something new. It didn't kill — it taxed. Every shot cost them. Some stopped shooting. I don't know if that was wise or cowardice." });
+  if (w >= 27 && state.bSen?.has('spider')) logs.push({ w: '~Wave 24', t: "The spiders arrived. They didn't go for the towers. They went for something we hadn't built yet." });
+  if (w >= 30 && state.bSen?.has('patient_watcher') && state.watcherEscaped) logs.push({ w: '~Wave 30', t: "It left. Untouched. It moved between our walls for thirty seconds and no one fired. I've never seen anything leave before." });
+  if (w >= 30 && state.bSen?.has('patient_watcher') && !state.watcherEscaped) logs.push({ w: '~Wave 30', t: "It moved like it had nowhere to be. Then they hurt it. That was a mistake. Once hurt, it came for the gate like everything else." });
+  if (w >= 30 && state.spiderRitualDone) logs.push({ w: 'Ritual', t: "She came. She took what she needed. She said thank you. The old builders knew this would happen. They always did. There are no more spiders." });
+  else if (w >= 35 && state.bSen?.has('spider') && !state.spiderRitualDone) logs.push({ w: '~Wave 35+', t: "The spiders keep coming. The flag was never raised. The stone was never made. It will keep happening." });
   if (w >= 39) logs.push({ w: 'Wave 39', t: "They are coming for the stones. All of them, this time." });
   if (w >= 40) logs.push({ w: 'Wave 40', t: "Every last one. Collectors, to the core. The Weight of Bones." });
 

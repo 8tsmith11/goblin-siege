@@ -1,11 +1,13 @@
 'use strict';
-import { state } from './main.js';
+import { state, dropLoot } from './main.js';
 import { TD } from './data.js';
 import { sfxClown, sfxBee, sfxLaser } from './audio.js';
 import { getEnemiesInRadius } from './grid.js';
-import { mkF } from './ui.js';
+import { mkF, mkGain, showBanner } from './ui.js';
 import { getProj } from './pool.js';
 import { spawnParticles, getCenter } from './utils.js';
+import { addFeed } from './feed.js';
+import { ARTIFACTS } from './artifacts.js';
 
 export function spawnBees(hive) {
   state.bees = state.bees.filter(b => b.hive !== hive);
@@ -149,4 +151,89 @@ export function updateFactoryLaser() {
     spawnParticles(particles, getCenter(tgt.x, CELL), getCenter(tgt.y, CELL), 3, { spreadX: 3, spreadY: 3, life: 8, clr: '#ef4444', sz: 2 });
     sfxLaser(); tw.laserCD = Math.max(8, 25 - tw.laserLvl * 4);
   });
+}
+
+// ─── Spider Mother ────────────────────────────────────────────────────────────
+
+export function spawnSpiderMother() {
+  const { path, CELL } = state;
+  if (!path?.length) return;
+  const start = path[0];
+  state.spiderMother = {
+    x: start.x, y: start.y,
+    pi: 0,
+    phase: 'forward',
+    spd: 0.35,
+    dead: false,
+    stonePickedUp: false,
+  };
+  state.bSen.add('spider_mother');
+}
+
+export function updateSpiderMother() {
+  const sm = state.spiderMother;
+  if (!sm || sm.dead) return;
+  const { path, CELL, ticks } = state;
+  if (!path?.length) return;
+
+  if (sm.phase === 'forward') {
+    const target = path[sm.pi];
+    if (!target) { sm.phase = 'return'; return; }
+    const dx = target.x - sm.x, dy = target.y - sm.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < sm.spd) {
+      // Check if we're on the seed stone tile
+      if (state.seedStone && !sm.stonePickedUp && target.x === state.seedStone.x && target.y === state.seedStone.y) {
+        sm.stonePickedUp = true;
+        state.seedStone.carried = true;
+        addFeed('event', '🕷️ The Spider Mother takes the Seed Stone.');
+      }
+      sm.x = target.x; sm.y = target.y;
+      sm.pi++;
+      if (sm.pi >= path.length) {
+        sm.phase = 'return';
+        sm.pi = path.length - 1;
+        addFeed('event', '🕷️ "Thank you." The Spider Mother turns to leave.');
+      }
+    } else {
+      sm.x += (dx / dist) * sm.spd;
+      sm.y += (dy / dist) * sm.spd;
+    }
+  } else if (sm.phase === 'return') {
+    const target = path[sm.pi];
+    if (!target || sm.pi < 0) {
+      // Ritual complete — drop rewards and leave
+      sm.dead = true;
+      state.spiderMother = null;
+      state.seedStone = null;
+      state.spiderRitualDone = true;
+      // Drop Spider Staff artifact
+      const staff = ARTIFACTS.find(a => a.id === 'spider_staff');
+      if (staff) {
+        const mid = path[Math.floor(path.length / 2)];
+        if (mid) {
+          dropLoot(mid.x, mid.y, 'artifacts', { ...staff, cdWavesLeft: 0 });
+          mkGain(mid.x * state.CELL + state.CELL / 2, mid.y * state.CELL + state.CELL / 2, '🕸️', 1, '#f59e0b');
+        }
+      }
+      // Drop Grateful Spider blueprint
+      const gsBp = path[Math.floor(path.length / 2)];
+      if (gsBp) {
+        dropLoot(gsBp.x, gsBp.y, 'blueprints', { id: 'grateful_spider_bp', icon: '🟦', bpOverlay: '🕷️', name: 'Grateful Spider Blueprint', unlocks: 'grateful_spider' });
+        mkGain(gsBp.x * state.CELL + state.CELL / 2, gsBp.y * state.CELL + state.CELL / 2, '🕷️', 1, '#8b5cf6');
+      }
+      showBanner('🕷️ The Spider Mother has gone. Spiders will come no more.');
+      addFeed('event', '🕷️ The ritual is complete. The spiders are done here.');
+      return;
+    }
+    const dx = target.x - sm.x, dy = target.y - sm.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < sm.spd) {
+      sm.x = target.x; sm.y = target.y;
+      sm.pi--;
+    } else {
+      sm.x += (dx / dist) * sm.spd;
+      sm.y += (dy / dist) * sm.spd;
+    }
+  }
 }

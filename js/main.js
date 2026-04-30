@@ -91,6 +91,24 @@ bus.on('enemyDeath', e => {
       state.enemies.push(sp);
     }
   }
+  // Curious Auditor death: drop Auditor's Ledger
+  if (e.auditor) {
+    state.auditorActive = false;
+    const ledger = ARTIFACTS.find(a => a.id === 'auditors_ledger');
+    if (ledger) {
+      dropLoot(e.x, e.y, 'artifacts', { ...ledger, cdWavesLeft: 0 });
+      mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '📒', 1, '#f59e0b');
+    }
+  }
+  // Patient Watcher path-phase death: drop Unblinking Eye
+  if (e.watcher && e.watcherPhase === 'path') {
+    const eye = ARTIFACTS.find(a => a.id === 'unblinking_eye');
+    if (eye) {
+      dropLoot(e.x, e.y, 'artifacts', { ...eye, cdWavesLeft: 0 });
+      mkGain(e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, '👁️', 1, '#c084fc');
+    }
+    if (window.bgm && isSoundOn()) window.bgm.volume = 0.3;
+  }
   // Wave 10 boss: drop blueprint on the ground
   if (e.boss && state.wave === 10 && state.worldGenChoices?.wave10Blueprint) {
     const bpType = state.worldGenChoices.wave10Blueprint;
@@ -101,19 +119,34 @@ bus.on('enemyDeath', e => {
     }
   }
 });
+// Patient Watcher: teleport to path start, begin path phase
+bus.on('watcherTransition', ({ watcher }) => {
+  sfxBoss();
+  addFeed('boss', '🔮 The Patient Watcher moves. It is angry now.');
+  if (window.bgm && isSoundOn()) window.bgm.volume = 0.3;
+});
+
+// Patient Watcher escaped (ceasefire held for 30s)
+bus.on('watcherEscaped', () => {
+  state.watcherEscaped = true;
+  if (window.bgm && isSoundOn()) window.bgm.volume = 0.3;
+  showBanner('🔮 The Patient Watcher walked away.');
+  addFeed('boss', '🔮 It left. The ceasefire held long enough. You will not see it again.');
+});
+
 import { buildResearchGraph, tickResearch } from './research.js';
 import { tickCraft, updateTraps, cleanupBarricades } from './craft.js';
 import { addFeed, clearFeed } from './feed.js';
 import { getScribeEntry } from './bestiary.js';
 import { TOWER_SKILLS, HOARD_LEVELS, TD, ETYPES } from './data.js';
-import { updateEnemies, genWave, mkE, isBossWave } from './enemies.js';
+import { updateEnemies, genWave, mkE, isBossWave, previewWave } from './enemies.js';
 import { updateTowers } from './towers.js';
-import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser } from './support.js';
+import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser, spawnSpiderMother, updateSpiderMother } from './support.js';
 import { updateMonkeys } from './monkeys.js';
 import { render, invalidateBg, clearFogParticles } from './render.js';
 import { ARTIFACTS } from './artifacts.js';
 import { triggerEvent } from './events.js';
-import { sfxBoss, sfxWave, sfxKill, sfxHit, startHum, stopHum } from './audio.js';
+import { sfxBoss, sfxWave, sfxKill, sfxHit, startHum, stopHum, isSoundOn } from './audio.js';
 import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, resetResPos, initInventoryUI, initCraftUI, showLedger } from './ui.js';
 import { initInput, updateCameraKeys } from './input.js';
 import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
@@ -156,7 +189,7 @@ export const state = {
   heraldWarn: null, hasHeraldHorn: false,
   pip: null,
   research: null, researchUnlocks: {},
-  traps: [],
+  traps: [], webs: [],
   inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} },
   unlockedTowers: new Set(['squirrel', 'lion', 'penguin']),
   sel: null, tab: 'towers',
@@ -174,6 +207,14 @@ export const state = {
   totalGoblinsKilled: 0, totalGoldEarned: 0,
   frequencyPlayed: false,
   patternRecDone: false, translationStep: 0, _translationWaveCount: 0,
+  namedBossIndex: 0,
+  auditorActive: false,
+  watcherEscaped: false,
+  spiderRitualDone: false,
+  spiderMother: null,
+  ceasefire: false,
+  seedStone: null,
+  cameraShake: 0,
   _Σ: 0, _Ω: 0,  // frame consistency markers (internal use)
 };
 // Protected accessors — console writes are silently discarded
@@ -276,7 +317,7 @@ function update() {
     state.spawnTimer--;
     if (state.spawnTimer <= 0) {
       const e = state.spawnQueue.shift();
-      e.x = state.path[0].x; e.y = state.path[0].y; e.pi = 0;
+      if (!e.watcher) { e.x = state.path[0].x; e.y = state.path[0].y; e.pi = 0; }
       state.enemies.push(e);
       if (e.boss) { sfxBoss(); showBL(e.line); }
       state.spawnTimer = e.spawnDelay ?? (state.wave <= 4 ? Math.max(40, 90 - state.wave * 8) : Math.max(20, 50 - state.wave * 0.7));
@@ -302,6 +343,12 @@ function update() {
   }
 
   updateClam(); updateClown(); updateRobot(); updateBees(); updateMonkeys(); updateTowers();
+  updateSpiderMother();
+  // Silence BGM during Patient Watcher roam phase
+  const _watcherRoaming = state.enemies.some(e => e.watcher && e.watcherPhase === 'roam');
+  if (window.bgm) window.bgm.volume = _watcherRoaming ? 0 : (isSoundOn() ? 0.3 : 0);
+  // Camera shake
+  if (state.cameraShake > 0) state.cameraShake--;
   updateProjectiles();
 
   // Kill check
@@ -336,7 +383,7 @@ function update() {
   }
 
   // Wave complete
-  if (state.phase === 'active' && state.spawnQueue.length === 0 && state.enemies.length === 0) {
+  if (state.phase === 'active' && state.spawnQueue.length === 0 && state.enemies.length === 0 && !state.spiderMother) {
     if (state.volcanoActive) { state.volcanoActive.rds--; if (state.volcanoActive.rds <= 0) state.volcanoActive = null; }
     let hInc = 0;
     state.towers.forEach(tw => {
@@ -360,6 +407,15 @@ function update() {
     refreshResearch();
     // Craft tick
     cleanupBarricades();
+    // Seed stone erosion
+    if (state.seedStone && !state.seedStone.carried) {
+      state.seedStone.wavesLeft--;
+      if (state.seedStone.wavesLeft <= 0) { state.seedStone = null; addFeed('event', '🪨 The Seed Stone crumbled.'); }
+    }
+    // Reset grateful spider once-per-wave web ability
+    state.towers.forEach(tw => { if (tw.type === 'grateful_spider') tw.webUsed = false; });
+    // Clear expired webs
+    if (state.webs?.length) state.webs = [];
     const _craftDone = tickCraft();
     for (const { recipe } of _craftDone) showBanner('⚒️ ' + recipe.name + ' crafted!');
     // Clear wildfire-disabled towers whose disable wave just ended
@@ -374,7 +430,7 @@ function update() {
       clearFogParticles();
       const _inv = state.inventory;
       const _owned = new Set([..._inv.artifacts.map(a => a?.id), ..._inv.equipped.map(a => a?.id)].filter(Boolean));
-      const _avail = ARTIFACTS.filter(a => !_owned.has(a.id));
+      const _avail = ARTIFACTS.filter(a => !a.unique && !_owned.has(a.id));
       const art = _avail.length ? _avail[Math.floor(Math.random() * _avail.length)] : null;
       if (art) {
         const exit = state.path[state.path.length - 1];
@@ -411,7 +467,9 @@ function update() {
     const _scribe = getScribeEntry(state.wave, state);
     if (_scribe) addFeed('scribe', 'The scribe has written in the journal.');
     if (Math.random() < 0.4 && state.wave > 1) setTimeout(() => triggerEvent(), 500);
-    showBanner(_wasFog ? '🌫️ The fog clears. An artifact glints at the castle gate.' : '✅ Wave ' + state.wave + ' Complete!');
+    const _hasLedger = state.inventory?.equipped?.some(a => a?.id === 'auditors_ledger');
+    const _nextPreview = _hasLedger ? ' — Next: ' + previewWave(state.wave + 1) : '';
+    showBanner(_wasFog ? '🌫️ The fog clears. An artifact glints at the castle gate.' : '✅ Wave ' + state.wave + ' Complete!' + _nextPreview);
     // Herald / Horn warning — announce upcoming boss wave during prep
     const _nextW = state.wave + 1;
     const _isHeraldNext = _nextW === 5;
@@ -475,6 +533,17 @@ export function startWave() {
     showBanner('🧪 Lab Unlocked');
   }
   for (const tw of state.towers) tw.wavesAlive = (tw.wavesAlive || 0) + 1;
+  // Spider Mother event: if ceasefire raised + seed stone placed + spider wave incoming
+  const _spiderWave = state.wave >= 24 && !state.spiderRitualDone && !isBossWave(state.wave);
+  if (_spiderWave && state.ceasefire && state.seedStone && !state.seedStone.carried) {
+    state.spawnQueue = [];
+    state.spawnTimer = 30; state.phase = 'active';
+    spawnSpiderMother();
+    showBanner('🕷️ Spider Mother');
+    addFeed('event', '🕷️ The Spider Mother approaches. Towers are standing down.');
+    hideOv(); hudU(); panelU();
+    return;
+  }
   state.spawnQueue = genWave(state.wave); // may set state.fogWave for wave 15
   state.spawnTimer = 30; state.phase = 'active';
   hideOv();
@@ -489,9 +558,24 @@ export function startWave() {
       showBanner('📯 Proud Herald');
       sfxBoss();
     } else {
-      showBanner(boss ? '👑 BOSS W' + state.wave : '⚔️ Wave ' + state.wave);
-      addFeed(boss ? 'boss' : 'wave', boss ? 'Boss Wave ' + state.wave + '!' : 'Wave ' + state.wave + ' begins.');
-      if (boss) sfxBoss();
+      // Check if this is an auditor wave
+      const _auditorWave = state.spawnQueue.some(e => e.auditor);
+      const _watcherWave = state.spawnQueue.some(e => e.watcher);
+      if (_auditorWave) {
+        showBanner('🏛️ Curious Auditor');
+        addFeed('boss', '🏛️ The Auditor arrives. Every shot will cost you.');
+        sfxBoss();
+        // Schedule auditor voice lines via addFeed
+        const _lines = ['🏛️ "How much did that one cost you?"', '🏛️ "And that one? And that one?"', '🏛️ "All quite expensive. Fascinating."', '🏛️ "I will need a full accounting when this is over."'];
+        _lines.forEach((line, i) => setTimeout(() => { if (state.auditorActive) addFeed('boss', line); }, (5000 + i * 5000)));
+      } else if (_watcherWave) {
+        showBanner('🔮 The Patient Watcher');
+        addFeed('boss', '🔮 Something is here. It is not attacking. It is watching.');
+      } else {
+        showBanner(boss ? '👑 BOSS W' + state.wave : '⚔️ Wave ' + state.wave);
+        addFeed(boss ? 'boss' : 'wave', boss ? 'Boss Wave ' + state.wave + '!' : 'Wave ' + state.wave + ' begins.');
+        if (boss) sfxBoss();
+      }
     }
   }
   hudU(); panelU();
@@ -511,7 +595,8 @@ export function resetGame() {
     spawnQueue: [], volcanoActive: null, freezeActive: 0,
     gameOver: false, started: false, pathReady: false, paused: false, sel: null, ttTower: null,
     nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, fogWave: false, fogStartTick: 0, heraldWarn: null, hasHeraldHorn: false, pip: null, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin']), bSen: new Set(['sleepy_door']), age: 'stone', weightOfBones: false,
-    traps: [],
+    traps: [], webs: [],
+    namedBossIndex: 0, auditorActive: false, watcherEscaped: false, spiderRitualDone: false, spiderMother: null, ceasefire: false, seedStone: null, cameraShake: 0,
     inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} },
     worldGenChoices: {}, totalGoblinsKilled: 0, totalGoldEarned: 0,
     frequencyPlayed: false, patternRecDone: false, translationStep: 0, _translationWaveCount: 0,

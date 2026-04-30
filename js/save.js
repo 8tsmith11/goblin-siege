@@ -5,7 +5,7 @@ import { spawnBees } from './support.js';
 import { hudU, panelU, showBanner, showOv, hideOv, hideTT, resetResPos } from './ui.js';
 import { getFeedLog, restoreFeed } from './feed.js';
 import { reinitMonkeys } from './monkeys.js';
-import { FIXED_RESEARCH, VARIABLE_RESEARCH, RESEARCH_JSON, refreshStatuses } from './research.js';
+import { FIXED_RESEARCH, VARIABLE_RESEARCH, RESEARCH_JSON, refreshStatuses, buildResearchGraph } from './research.js';
 
 // ─── Encode / decode ──────────────────────────────────────────────────────────
 const _ψ = [0x47,0x6f,0x62,0x53,0x69,0x65,0x39,0x31,0x78,0x6b,0x37,0x5a];
@@ -30,7 +30,7 @@ function _χ(s) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const _SK = new Set(['cd','_buffed','_rateBuff','laserCD','clownCD','robotCD','_monkeyBoosted','_monkeyBoostCount']);
+const _SK = new Set(['cd','_buffed','_rateBuff','laserCD','clownCD','robotCD','_monkeyBoosted','_monkeyBoostCount','webUsed']);
 const _MK_SK = new Set(['st','x','y','carrying','patrolAngle','targetX','targetY','waitCd','_itemTarget']);
 function _st(tw) {
   const o = {};
@@ -62,7 +62,9 @@ function _build() {
     _no: state.nodes.map(n => ({ type: n.type, x: n.x, y: n.y })),
     _bSen: Array.from(state.bSen || ['sleepy_door']),
     _rs: { ...state.resources },
-    _res: state.research ? JSON.parse(JSON.stringify(state.research)) : null,
+    _res: state.research ? Object.fromEntries(Object.entries(state.research).map(([id, n]) =>
+      [id, { status: n.status, wavesLeft: n.wavesLeft, x: n.x, y: n.y, ...(n._sourceId ? { _sourceId: n._sourceId } : {}) }]
+    )) : null,
     _rUnlocks: { ...(state.researchUnlocks || {}) },
     _unlocked: Array.from(state.unlockedTowers || []),
     _traps: (state.traps || []).filter(t => t.type !== 'sap'),
@@ -82,6 +84,11 @@ function _build() {
     _prd: state.patternRecDone || false,
     _trs: state.translationStep || 0,
     _trwc: state._translationWaveCount || 0,
+    _nbi: state.namedBossIndex || 0,
+    _aud: state.auditorActive || false,
+    _we: state.watcherEscaped || false,
+    _srd: state.spiderRitualDone || false,
+    _ss: state.seedStone || null,
   };
 }
 
@@ -132,39 +139,30 @@ function _apply(d) {
   // silently diverge.  This single pass re-unifies them.
   _reconnectGrid(state.grid, state.towers, state.nodes);
   state.resources = { ...(d._rs || {}) };
-  state.research = d._res || null;
-  // Merge any new fixed research nodes added since this save was created,
-  // and prune stale nodes whose IDs no longer exist in the current tree.
-  if (state.research && FIXED_RESEARCH) {
-    const knownVarIds = new Set((VARIABLE_RESEARCH || []).map(n => n.id));
-    for (const id of Object.keys(state.research)) {
-      if (!FIXED_RESEARCH[id] && !id.startsWith('pool_') && !knownVarIds.has(id)) {
-        delete state.research[id];
-      }
+  // Rebuild the research graph fresh from current data, then overlay saved
+  // progress (status, wavesLeft) and positions for matching nodes.
+  // Pool slot content is restored via saved _sourceId before graph generation.
+  const _savedRes = d._res || null;
+  if (_savedRes) {
+    // Collect saved pool slot assignments so buildResearchGraph can use them
+    state._savedPoolSlots = {};
+    for (const [id, s] of Object.entries(_savedRes)) {
+      if (id.startsWith('pool_') && s._sourceId) state._savedPoolSlots[id] = s._sourceId;
     }
-    for (const [id, def] of Object.entries(FIXED_RESEARCH)) {
-      if (!state.research[id]) {
-        state.research[id] = { ...def, id, status: 'locked', wavesLeft: def.waves, wavesTotal: def.waves };
-      }
-    }
-    refreshStatuses(state.research);
   }
-  // Refresh pool slot positions and prereqs from current pool config.
-  // Saved pool nodes may have stale x/y/prereqs from a layout rework.
-  if (state.research && RESEARCH_JSON?.pools) {
-    for (const [poolId, poolCfg] of Object.entries(RESEARCH_JSON.pools)) {
-      const positions = poolCfg.positions || [];
-      positions.forEach((pos, i) => {
-        const slotId = `pool_${poolId}_${i}`;
-        const slot = state.research[slotId];
-        if (!slot) return;
-        const src = (VARIABLE_RESEARCH || []).find(n => n.id === slot._sourceId);
-        if (src) { slot.prereqs = [...src.prereqs]; slot.x = pos.x; slot.y = pos.y; }
-        else delete state.research[slotId];
-      });
-      // Drop extra slots beyond current pool size
-      for (let i = positions.length; state.research[`pool_${poolId}_${i}`]; i++)
-        delete state.research[`pool_${poolId}_${i}`];
+  state.research = buildResearchGraph();
+  delete state._savedPoolSlots;
+  // Overlay saved status/wavesLeft and positions onto the fresh graph
+  if (_savedRes && state.research) {
+    for (const [id, saved] of Object.entries(_savedRes)) {
+      const node = state.research[id];
+      if (!node) continue;
+      if (saved.status === 'complete' || saved.status === 'active') {
+        node.status = saved.status;
+        node.wavesLeft = saved.wavesLeft ?? node.wavesLeft;
+      }
+      if (saved.x !== undefined) node.x = saved.x;
+      if (saved.y !== undefined) node.y = saved.y;
     }
     refreshStatuses(state.research);
   }
@@ -199,6 +197,12 @@ function _apply(d) {
   state.patternRecDone = d._prd || false;
   state.translationStep = d._trs || 0;
   state._translationWaveCount = d._trwc || 0;
+  state.namedBossIndex = d._nbi ?? 0;
+  state.auditorActive = d._aud || false;
+  state.watcherEscaped = d._we || false;
+  state.spiderRitualDone = d._srd || false;
+  state.seedStone = d._ss || null;
+  state.ceasefire = state.towers.some(t => t.type === 'ceasefire_flag' && t.raised);
   state.sel = null; state.ttTower = null; state.gameOver = false;
   state.started = true; state.wave = d._w; state.phase = 'idle';
   state.ticks = 0; state.prepTicks = 0;

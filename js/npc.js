@@ -1,5 +1,5 @@
 'use strict';
-import { state, getCell } from './main.js';
+import { state, getCell, dropLoot } from './main.js';
 import { bus } from './bus.js';
 import { addFeed } from './feed.js';
 
@@ -36,6 +36,41 @@ const NPC_LINES = {
       wave: 10,
       cond: s => !s.towers?.some(t => t.type === 'lab'),
       text: "No lab yet. That's interesting. Most build one. You haven't. I wonder what you know that they didn't."
+    },
+    {
+      trigger: 'wave_prep',
+      wave: 25,
+      cond: s => {
+        const hasSeahorse = Object.values(s.research || {}).some(n => n.unlocks === 'seahorse' || n.id === 'insightful_seahorse');
+        const hasLens = Object.values(s.research || {}).some(n => n.unlocks === 'insightful_lens_recipe' || n.id === 'insightful_lens');
+        return hasSeahorse || hasLens || s.unlockedTowers?.has('seahorse');
+      },
+      text: s => {
+        const seahorseUnlocked = s.unlockedTowers?.has('seahorse');
+        const hasLens = Object.values(s.research || {}).some(n => n.id === 'insightful_lens');
+        if (seahorseUnlocked) return "The shadows have started moving differently. I've seen this before — goblins that your towers cannot see. You have a Seahorse. Place one in their path.";
+        if (hasLens) return "The shadows have started moving differently. I've seen this before — goblins that your towers cannot see. The Insightful Lens in your research web will help — and quickly.";
+        return "The shadows have started moving differently. I've seen this before — goblins that your towers cannot see. The Seahorse research in your web will reveal them.";
+      }
+    },
+    {
+      trigger: 'wave_prep',
+      cond: s => s.bSen?.has('spider') && !s.firedTriggerLines?.has('elderberry:spider_lore'),
+      text: "The one with many children. She is not hunting you — she is looking for a Seed Stone. Her brood cannot grow without it. You can make one at the Workbench. And build a Ceasefire Flag to stand down your towers. Let her come, let her take it, and she will never lay siege again. I was here when the old builders did this. It worked.",
+      onFire: (npc) => {
+        setTimeout(() => {
+          if (!npc) return;
+          if (!state.researchUnlocks) state.researchUnlocks = {};
+          state.researchUnlocks['ceasefire_flag_bp_recipe'] = 1;
+          dropLoot(npc.x, npc.y, 'blueprints', { id: 'ceasefire_flag_bp', icon: '🟦', bpOverlay: '🏳️', name: 'Ceasefire Flag Blueprint', unlocks: 'ceasefire_flag' });
+          dropLoot(npc.x, npc.y, 'blueprints', { id: 'seed_stone_bp', icon: '🟦', bpOverlay: '🪨', name: 'Seed Stone Blueprint', desc: 'Unlocks the Seed Stone recipe at any Workbench.', recipeUnlock: 'seed_stone_recipe' });
+        }, 9500);
+      }
+    },
+    {
+      trigger: 'wave_prep',
+      cond: s => s.bSen?.has('spider'),
+      text: "I've left the blueprints at my feet. A Ceasefire Flag, and the recipe for the Seed Stone. The rest is yours."
     }
   ]
 };
@@ -149,9 +184,11 @@ function _handleTrigger(type, ctx) {
       if (line.wave !== undefined && line.wave !== ctx.wave) continue;
       if (line.cond && !line.cond(state)) continue;
       state.firedTriggerLines.add(key);
-      _bubbleQueue.push({ npc, text: line.text });
-      addFeed('npc', line.text);
+      const text = typeof line.text === 'function' ? line.text(state) : line.text;
+      _bubbleQueue.push({ npc, text });
+      addFeed('npc', text);
       _processQueue();
+      if (line.onFire) line.onFire(npc);
     }
   }
 }

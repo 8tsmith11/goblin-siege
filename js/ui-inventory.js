@@ -368,6 +368,13 @@ export function activateArtifact(art) {
     renderInventory();
     panelU();
   }
+  if (art.id === 'spider_staff') {
+    state.sel = { type: 'spider_staff_pick', art };
+    showTip('Click a path tile to place spider webs.');
+    art.cdWavesLeft = art.cooldownWaves || 1;
+    renderInventory();
+    panelU();
+  }
 }
 
 export function openInventoryForAugment(tw, onApplied) {

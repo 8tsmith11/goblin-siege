@@ -90,10 +90,19 @@ export function buildResearchGraph() {
   }
 
   const pools = RESEARCH_JSON?.pools || {};
+  const savedSlots = state._savedPoolSlots || {};
   for (const [poolId, poolCfg] of Object.entries(pools)) {
     const candidates = VARIABLE_RESEARCH.filter(n => n.pool === poolId && !n.hidden);
     let picks;
-    if (poolId === 'parity_1') {
+    // If we have saved slot assignments for this pool, restore them
+    const savedForPool = Object.entries(savedSlots)
+      .filter(([sid]) => sid.startsWith(`pool_${poolId}_`))
+      .map(([sid, srcId]) => ({ idx: +sid.split('_').pop(), src: VARIABLE_RESEARCH.find(n => n.id === srcId) }))
+      .filter(s => s.src)
+      .sort((a, b) => a.idx - b.idx);
+    if (savedForPool.length) {
+      picks = savedForPool.map(s => s.src);
+    } else if (poolId === 'parity_1') {
       picks = candidates.filter(n => n.unlocks !== bpTower);
       picks = picks.length ? [picks[Math.floor(Math.random() * picks.length)]] : [];
     } else {

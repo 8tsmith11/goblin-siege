@@ -140,7 +140,7 @@ export function canTileAccept(gx, gy, type) {
 // ─── Ground Loot Drop ─────────────────────────────────────────────────────
 export function dropItem(cx, cy, type) {
   const cell = getCell(cx, cy);
-  if (!cell || cell.type === 'forest') return false;
+  if (!cell) return false;
   // Tower-aware routing: deliver directly to tower if applicable
   const tw = cell.content;
   if (tw?.type === 'stockpile') {

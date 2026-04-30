@@ -11,6 +11,8 @@ export function iA() {
   startMusic();
 }
 
+export function isSoundOn() { return sOn; }
+
 export function toggleSound() {
   sOn = !sOn;
   document.getElementById('snd').textContent = sOn ? '🔊' : '🔇';

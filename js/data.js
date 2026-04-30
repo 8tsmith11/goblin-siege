@@ -2,7 +2,7 @@ export const TD = {
   squirrel: { name:'Thoughtful Squirrel', icon:'🐿️', clr:'#8b5cf6', cost:40,  resCost:{stone:5},         dmg:10, range:3.2, rate:44, pClr:'#a78bfa', pSpd:4,   splash:0,   slow:0,  target:'weakest', cat:'tower', desc:'Long range · targets weakest enemy' },
   lion:     { name:'Rash Lion',           icon:'🦁',  clr:'#ef4444', cost:60,  resCost:{wood:4},          dmg:15, range:2.0, rate:25, pClr:'#f87171', pSpd:6,   splash:0,   slow:0,  target:'first',   cat:'tower', desc:'Very fast · high single-target DPS' },
   penguin:  { name:'Ambitious Penguin',   icon:'🐧',  clr:'#06b6d4', cost:55,  resCost:{stone:3},         dmg:5,  range:2.8, rate:35, pClr:'#67e8f9', pSpd:3,   splash:0,   slow:.4, target:'first',   cat:'tower', desc:'Slows enemies on hit' },
-  lab:      { name:'Lab',                icon:'🧪', clr:'#a78bfa', cost:80, resCost:{stone:10}, cat:'support', obsRange: 3, desc:'Gathers Dust 🔮 from enemies slain within 3 tiles · Available at Wave 5' },
+  lab:      { name:'Lab',                icon:'🧪', clr:'#a78bfa', cost:50, resCost:{stone:10}, cat:'support', obsRange: 3, desc:'Gathers Dust 🔮 from enemies slain within 3 tiles · Available at Wave 5' },
   hoard:    { name:'Hoard Pile',         icon:'🏺', clr:'#10b981', cost:60, cat:'support', desc:'Deposit resources to earn gold each wave. The pile decays slowly — boost with a monkey to slow the loss.' },
   fish:     { name:'Arrogant Fish',       icon:'🐟',  clr:'#f59e0b', cost:75,  resCost:{wood:2},          dmg:12, range:2.5, rate:60, pClr:'#fcd34d', pSpd:3.5, splash:1.2, slow:0,  target:'first',   cat:'tower', desc:'Splash damage · hits nearby enemies' },
   seahorse: { name:'Insightful Seahorse', icon:'🦑',  clr:'#ec4899', cost:65,  resCost:{stone:2},         dmg:6,  range:3.5, rate:40, pClr:'#f472b6', pSpd:3,   splash:0,   slow:0,  target:'strongest',pierce:3, cat:'tower', seeInvis:true, invisPriority:true, desc:'Piercing shots · targets stealth enemies' },
@@ -16,6 +16,8 @@ export const TD = {
   workbench:{ name:'Workbench',          icon:'🛠️', clr:'#a16207', cost:80, resCost:{ wood:10, stone:5 }, cat:'support', desc:'Crafts augments and consumables over waves' },
   robot:    { name:'AI Agent',           icon:'🤖', clr:'#38bdf8', cost:110, cat:'support', autoSpell:true, reqAge: 'iron', desc:'Automatically casts spells during waves' },
   campfire: { name:'Warm Campfire',      icon:'🔥', clr:'#f97316', cost:50,  resCost:{wood:4}, cat:'support', range:1.5, warmRange:1.5, warmRate:0.8, desc:'Boosts fire rate of adjacent towers by 20%' },
+  ceasefire_flag: { name:'Ceasefire Flag', icon:'🏳️', clr:'#f0f0f0', cost:0, cat:'support', desc:'Click to raise or lower. When raised, all towers hold their fire. Consumable traps still work.' },
+  grateful_spider: { name:'Grateful Spider', icon:'🕷️', clr:'#8b5cf6', cost:0, cat:'tower', dmg:12, range:3, rate:40, pClr:'#c4b5fd', pSpd:4, splash:0, slow:0.4, target:'first', desc:'Shoots slowing webs · Once per wave: webs a path tile in range (slows + damages) · Blueprint only' },
 };
 
 export const TOWER_SKILLS = {
@@ -73,6 +75,13 @@ export const TOWER_SKILLS = {
     B: { name:'Focus Fire',    icon:'🎯', desc:'No chain, but x4 damage',           excludes:'A', cost:{dust:25,gold:50},  owned:false,              apply:tw=>{ tw.chain=0; tw.dmg*=4; } },
     C: { name:'Thunderstrike', icon:'⚡', desc:'Chain hits stun 30 ticks',          excludes:'D', cost:{dust:50,gold:100}, owned:false, req:'any',   apply:tw=>{ tw.chainStun=30; } },
     D: { name:'Overcharge',    icon:'🔋', desc:'+70% DMG, -20% range',              excludes:'C', cost:{dust:50,gold:100}, owned:false, req:'any',   apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.7); tw.range*=0.8; } },
+    E: { name:'Mastery',       desc:'+25% DMG, range, and rate. Purple aura.', cost:{dust:60}, owned:false, req:'either_cd', apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.25); tw.range=Math.round(tw.range*1.25*10)/10; tw.rate=Math.max(1,Math.round(tw.rate*0.8)); tw._mastery=true; } },
+  },
+  grateful_spider: {
+    A: { name:'Sticky',       icon:'🕸️', desc:'Web slow increased to 80%',                  excludes:'B', cost:{dust:20,gold:40},  owned:false,            apply:tw=>{ tw.webSlowBonus=true; } },
+    B: { name:'Venom Web',    icon:'☠️', desc:'Web tiles deal 3 dmg/tick',                   excludes:'A', cost:{dust:20,gold:40},  owned:false,            apply:tw=>{ tw.webVenom=true; } },
+    C: { name:'Wide Weave',   icon:'🌐', desc:'Once-per-wave web covers 5 tiles',             excludes:'D', cost:{dust:40,gold:80},  owned:false, req:'any', apply:tw=>{ tw.webSpread=true; } },
+    D: { name:'Lasting Web',  icon:'⌛', desc:'Once-per-wave web lasts 2 waves',              excludes:'C', cost:{dust:40,gold:80},  owned:false, req:'any', apply:tw=>{ tw.webLasting=true; } },
     E: { name:'Mastery',       desc:'+25% DMG, range, and rate. Purple aura.', cost:{dust:60}, owned:false, req:'either_cd', apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.25); tw.range=Math.round(tw.range*1.25*10)/10; tw.rate=Math.max(1,Math.round(tw.rate*0.8)); tw._mastery=true; } },
   },
 };

@@ -1,6 +1,7 @@
 'use strict';
-import { state } from './main.js';
+import { state, dropLoot } from './main.js';
 import { dropItem, _itemRegistry } from './resources.js';
+import { TD } from './data.js';
 
 export const RECIPES = [
   {
@@ -47,6 +48,22 @@ export const RECIPES = [
     cost: { dust: 15, stone: 8 }, waves: 2, output: 'augment',
     desc: 'Apply to a Lab to let all towers in its radius target stealth enemies.',
     unlockKey: 'insightful_lens_recipe',
+  },
+  {
+    id: 'seed_stone', name: 'Seed Stone', icon: '🪨',
+    rarity: 'rare',
+    cost: { stone: 8, wood: 4 }, waves: 2, output: 'consumable',
+    desc: 'Place on a path tile. Invisible to enemies. Only the Spider Mother will notice.',
+    trapType: 'seed_stone',
+    unlockKey: 'seed_stone_recipe',
+  },
+  {
+    id: 'ceasefire_flag_bp', name: 'Ceasefire Flag Blueprint', icon: '🏳️',
+    rarity: 'rare',
+    cost: { wood: 5, stone: 3 }, waves: 1, output: 'blueprint',
+    desc: 'Unlocks the Ceasefire Flag. When raised, towers stand down.',
+    unlockKey: 'ceasefire_flag_bp_recipe',
+    buildKey: 'ceasefire_flag',
   },
 ];
 
@@ -110,7 +127,11 @@ export function tickCraft() {
       const recipe = RECIPES.find(r => r.id === tw.craftQueue.recipeId);
       tw.craftQueue = null;
       if (recipe) {
-        dropItem(tw.x, tw.y, recipe.id);
+        if (recipe.output === 'blueprint' && recipe.buildKey) {
+          dropLoot(tw.x, tw.y, 'blueprints', { id: recipe.buildKey + '_bp', icon: '🟦', bpOverlay: TD[recipe.buildKey]?.icon || recipe.icon, name: recipe.name, unlocks: recipe.buildKey });
+        } else {
+          dropItem(tw.x, tw.y, recipe.id);
+        }
         results.push({ tw, recipe });
       }
     }
@@ -153,6 +174,10 @@ export function placeConsumable(item, gx, gy) {
   const recipe = RECIPES.find(r => r.id === item.id);
   if (!recipe || recipe.output !== 'consumable') return false;
   if (!state.pathSet?.has(gx + ',' + gy)) return false;
+  if (recipe.trapType === 'seed_stone') {
+    state.seedStone = { x: gx, y: gy, wavesLeft: 10, carried: false };
+    return true;
+  }
   const trap = { type: recipe.trapType, x: gx, y: gy };
   if (recipe.trapType === 'trap') {
     trap.dmg = 9999; // insta-kill non-bosses; capped vs bosses in updateTraps
