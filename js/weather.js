@@ -4,8 +4,8 @@ import { state, getCell } from './main.js';
 // ─── Weather type definitions ─────────────────────────────────────────────────
 
 export const WEATHER_TYPES = [
-  { id: 'clear', name: 'Clear Skies', icon: '☀️',  weight: 40, min: 1, max: 3, desc: 'No effects.' },
-  { id: 'rain',  name: 'Heavy Rain',  icon: '🌧️', weight: 30, min: 2, max: 4, desc: 'Monkeys slow. Items may wash away.' },
+  { id: 'clear', name: 'Clear Skies', icon: '☀️',  weight: 40, min: 4, max: 4, desc: 'No effects.' },
+  { id: 'rain',  name: 'Heavy Rain',  icon: '🌧️', weight: 30, min: 4, max: 4, desc: 'Monkeys slow. Items may wash away.' },
 ];
 
 const _TOTAL_W = WEATHER_TYPES.reduce((s, w) => s + w.weight, 0);
