@@ -35,17 +35,31 @@ export function updateProjectiles() {
         enemies.forEach(e => { if (e !== p.tgt && !e.dead && Math.hypot(e.x - p.tgt.x, e.y - p.tgt.y) <= p.splash) e.hp -= Math.floor(p.dmg * 0.5); });
       }
       if (p.chain > 0) {
-        const nx = enemies.filter(e => !e.dead && e !== p.tgt && !p.hits.includes(e) && Math.hypot(e.x - p.tgt.x, e.y - p.tgt.y) < 2.5);
-        if (nx.length) {
-          const nt = nx[0]; p.hits.push(nt);
-          const b = getBeam(); b.x1=p.tgt.x*CELL+CELL/2; b.y1=p.tgt.y*CELL+CELL/2; b.x2=nt.x*CELL+CELL/2; b.y2=nt.y*CELL+CELL/2; b.life=8; b.clr='#818cf8'; b.w=5; beams.push(b);
-          const chainEff = p.chainEfficiency ?? 0.6;
+        // Path-index-based alternating chain: spread backward and forward from the primary target
+        const pi0 = p.tgt.pi ?? 0;
+        const unchained = enemies.filter(e => !e.dead && e !== p.tgt && !p.hits.includes(e));
+        const before = unchained.filter(e => (e.pi ?? 0) < pi0).sort((a, b) => (b.pi ?? 0) - (a.pi ?? 0));
+        const after  = unchained.filter(e => (e.pi ?? 0) > pi0).sort((a, b) => (a.pi ?? 0) - (b.pi ?? 0));
+        let bi = 0, ai = 0, remaining = p.chain, turn = 0;
+        const chainEff = p.chainEfficiency ?? 0.6;
+        const beamClr = p.mastery ? '#38bdf8' : '#818cf8'; // tempest: electric cyan-blue
+        const beamW   = p.mastery ? 7 : 5;
+        while (remaining > 0 && (bi < before.length || ai < after.length)) {
+          let nt = null;
+          if (turn === 0 && bi < before.length) { nt = before[bi++]; turn = 1; }
+          else if (turn === 1 && ai < after.length) { nt = after[ai++]; turn = 0; }
+          else if (bi < before.length) { nt = before[bi++]; }
+          else { nt = after[ai++]; }
+          if (!nt) break;
+          p.hits.push(nt);
+          const b = getBeam(); b.x1=p.tgt.x*CELL+CELL/2; b.y1=p.tgt.y*CELL+CELL/2; b.x2=nt.x*CELL+CELL/2; b.y2=nt.y*CELL+CELL/2; b.life=10; b.clr=beamClr; b.w=beamW; beams.push(b);
           nt.hp -= Math.floor(p.dmg * chainEff);
           if (p.chainStun && !nt.boss) nt.stunned = Math.max(nt.stunned, p.chainStun);
           if (p.chainSlowAmt && !nt.boss) { nt.slow = Math.max(nt.slow, p.chainSlowAmt); nt.st = Math.max(nt.st, p.chainSlowDur || 30); }
           if (p.chainSparks) spawnChainSparks(particles, nt, CELL);
-          p.chain--;
+          remaining--;
         }
+        p.chain = 0;
       }
       if (p.pierce > 0) {
         p.hits.push(p.tgt); p.pierce--;
@@ -60,6 +74,7 @@ export function updateProjectiles() {
         particles.push(np);
       }
       if (p.bloodlust && p.tgt.hp <= 0) state.lives = Math.min(30, state.lives + 1);
+      if (p._beeHive && p.tgt.hp <= 0) p._beeHive._beeFrenzyEnd = (state.ticks || 0) + 300; // 5s frenzy
       freeProj(p); projectiles.splice(i, 1);
     } else {
       p.x += dx / d * p.spd; p.y += dy / d * p.spd;

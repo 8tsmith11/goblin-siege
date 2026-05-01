@@ -607,9 +607,25 @@ export function render() {
   // Bees
   bees.forEach(bee => {
     if (bee.dead) return;
-    cx.font = Math.floor(CELL * 0.3) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    const hive = bee.hive;
+    const frenzy = hive?._supercolony && hive?._beeFrenzyEnd > ticks;
+    cx.font = Math.floor(CELL * (frenzy ? 0.38 : 0.3)) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    if (frenzy) {
+      // Frenzy glow ring
+      cx.save();
+      cx.globalAlpha = 0.5 + 0.3 * Math.sin(ticks * 0.3);
+      cx.beginPath(); cx.arc(bee.x, bee.y, CELL * 0.22, 0, Math.PI * 2);
+      cx.fillStyle = '#fef08a'; cx.fill();
+      cx.restore();
+      // Golden pollen particles every frame during frenzy
+      if (ticks % 2 === 0) state.particles.push({ x: bee.x, y: bee.y, vx: (Math.random()-0.5)*2.5, vy: (Math.random()-0.5)*2.5, life: 14, clr: '#fbbf24', sz: 2.5 });
+    } else if (hive?._supercolony) {
+      // Supercolony: persistent golden pollen trail
+      if (ticks % 3 === 0) state.particles.push({ x: bee.x, y: bee.y, vx: (Math.random()-0.5)*1.2, vy: -0.8 - Math.random()*0.8, life: 18, clr: '#fde68a', sz: 2 });
+    } else {
+      if (ticks % 4 === 0) state.particles.push({ x: bee.x, y: bee.y, vx: 0, vy: 0, life: 8, clr: '#fbbf2444', sz: 1.5 });
+    }
     cx.fillText('🐝', bee.x, bee.y);
-    if (ticks % 4 === 0) state.particles.push({ x: bee.x, y: bee.y, vx: 0, vy: 0, life: 8, clr: '#fbbf2444', sz: 1.5 });
   });
 
   // Orbital brood (grateful spider D skill)
@@ -656,11 +672,13 @@ export function render() {
       cx.globalAlpha = a; cx.strokeStyle = clr; cx.lineWidth = lw;
       cx.beginPath(); pts.forEach((p, i) => i ? cx.lineTo(p.x, p.y) : cx.moveTo(p.x, p.y)); cx.stroke();
     };
+    const isTemp = b.clr === '#38bdf8'; // tempest mastery beam
     drawPts(w + 7, b.clr + '44', alpha * 0.5);  // outer glow
     drawPts(w + 3, b.clr, alpha * 0.7);          // mid color
-    drawPts(w, '#ffffff', alpha);                 // bright core
+    drawPts(w, isTemp ? '#0a0a1a' : '#ffffff', alpha); // dark core for tempest, white for normal
+    if (isTemp) drawPts(w - 2, b.clr, alpha * 0.6); // inner color shimmer for tempest
     // Spark dots at endpoints
-    cx.globalAlpha = alpha * 0.9; cx.fillStyle = '#ffffff';
+    cx.globalAlpha = alpha * 0.9; cx.fillStyle = isTemp ? b.clr : '#ffffff';
     cx.beginPath(); cx.arc(b.x1, b.y1, w + 1.5, 0, Math.PI * 2); cx.fill();
     cx.beginPath(); cx.arc(b.x2, b.y2, w + 1.5, 0, Math.PI * 2); cx.fill();
   });

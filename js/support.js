@@ -137,18 +137,20 @@ export function updateBees() {
       }
       if (!hive._beeTarget) continue;
       let bProj = getProj();
-      Object.assign(bProj, { x: bee.x / CELL - .5, y: bee.y / CELL - .5, tgt: hive._beeTarget, dmg: bee.dmg, spd: .08, clr: '#fbbf24', splash: 0, slow: 0, pierce: 0, chain: 0, speedUp: false, hits: [], poison: hive.beeVenom ? { dmg: 3, dur: 90 } : null });
+      const frenzyMult = (hive._supercolony && hive._beeFrenzyEnd > ticks) ? 2 : 1;
+      Object.assign(bProj, { x: bee.x / CELL - .5, y: bee.y / CELL - .5, tgt: hive._beeTarget, dmg: bee.dmg * frenzyMult, spd: .08, clr: '#fbbf24', splash: 0, slow: 0, pierce: 0, chain: 0, speedUp: false, hits: [], poison: hive.beeVenom ? { dmg: 3, dur: 90 } : null, _beeHive: hive._supercolony ? hive : null });
       projectiles.push(bProj);
-      bee.cd = bee.rate; sfxBee();
+      bee.cd = Math.round(bee.rate / frenzyMult); sfxBee();
       continue;
     }
     const wx = (bee.x - CELL / 2) / CELL, wy = (bee.y - CELL / 2) / CELL;
     const inR = getEnemiesInRadius(grid, wx, wy, bee.range, true, false);
     if (!inR.length) continue;
     let bProj = getProj();
-    Object.assign(bProj, { x: bee.x / CELL - .5, y: bee.y / CELL - .5, tgt: inR[0], dmg: bee.dmg, spd: .08, clr: '#fbbf24', splash: 0, slow: 0, pierce: 0, chain: 0, speedUp: false, hits: [], poison: hive.beeVenom ? { dmg: 3, dur: 90 } : null });
+    const frenzyMult2 = (hive._supercolony && hive._beeFrenzyEnd > ticks) ? 2 : 1;
+    Object.assign(bProj, { x: bee.x / CELL - .5, y: bee.y / CELL - .5, tgt: inR[0], dmg: bee.dmg * frenzyMult2, spd: .08, clr: '#fbbf24', splash: 0, slow: 0, pierce: 0, chain: 0, speedUp: false, hits: [], poison: hive.beeVenom ? { dmg: 3, dur: 90 } : null, _beeHive: hive._supercolony ? hive : null });
     projectiles.push(bProj);
-    bee.cd = bee.rate; sfxBee();
+    bee.cd = Math.round(bee.rate / frenzyMult2); sfxBee();
   }
 }
 

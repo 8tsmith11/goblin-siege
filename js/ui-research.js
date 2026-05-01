@@ -17,15 +17,15 @@ function fmtCost(cost) {
 
 function isNodeVisible(node) {
   if (!node.hidden) return true;
-  return state.bSen?.has(node.trigger);
+  return node.status === 'available' || node.status === 'active' || node.status === 'complete';
 }
 
 function shouldShowNode(id, nodes) {
   const node = nodes[id];
   if (!node) return false;
   if (node.hidden) {
-    if (node.trigger === 'frequency_played' && !state.frequencyPlayed) return false;
-    else if (node.trigger !== 'frequency_played' && !state.bSen?.has(node.trigger)) return false;
+    const triggered = node.status === 'available' || node.status === 'active' || node.status === 'complete';
+    if (!triggered) return false;
   }
   if (!checkGamePrereq(node)) return false;
   return node.prereqs.every(p => nodes[p]?.status !== 'locked');
