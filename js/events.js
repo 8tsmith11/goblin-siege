@@ -3,6 +3,7 @@ import { state, _ΨΔ, getCell } from './main.js';
 import { mkE } from './enemies.js';
 import { ETYPES, TD } from './data.js';
 import { sfxEvent } from './audio.js';
+import { addFeed } from './feed.js';
 
 export const EVENTS = [
   // ── Good ──────────────────────────────────────────────────────────────────
@@ -74,6 +75,8 @@ export function triggerEvent() {
   if (!available.length) return;
   const ev = available[Math.floor(Math.random() * available.length)];
   _ΨΔ(() => ev.fn()); sfxEvent();
+  const evIcon = ev.name.match(/^\p{Emoji}/u)?.[0] || (ev.good ? '🎉' : '⚠️');
+  addFeed(ev.good ? 'event_good' : 'event_bad', ev.name + ' — ' + ev.desc, evIcon);
   const el = document.getElementById('evBanner');
   el.innerHTML = (ev.good ? '🎉' : '⚠️') + ' <b>' + ev.name + '</b><br>' + ev.desc;
   el.style.borderColor = ev.good ? '#22c55e' : '#ef4444';
