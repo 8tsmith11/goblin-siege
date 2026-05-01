@@ -457,9 +457,6 @@ export function initResearchUI() {
 
   const resHeader = document.getElementById('resH');
   if (resHeader) {
-    const h2 = resHeader.querySelector('h2');
-    if (h2) h2.remove();
-
     // Dev: Unlock All button
     const devUnlockBtn = document.createElement('button');
     devUnlockBtn.id = 'resDevUnlockBtn';
