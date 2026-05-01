@@ -282,8 +282,7 @@
       "waves": 4,
       "unlocks": "monkey_logistics",
       "prereqs": [
-        "monkey_training",
-        "the_forge"
+        "monkey_training"
       ],
       "desc": "Advanced primate training: rotating deliveries and forest foraging.",
       "tooltip": "Unlocks Round Robin (cycle up to 5 delivery targets) and Harvest (mine rock nodes or forage wood from forest) roles for monkeys.",
