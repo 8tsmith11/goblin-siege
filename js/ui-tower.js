@@ -22,7 +22,7 @@ import { sfxPlace } from './audio.js';
 import { RECIPES, removeAugment } from './craft.js';
 import { getFeedLog, FEED_TYPES } from './feed.js';
 import { dropItem, RTYPES, getItemDef, _itemRegistry } from './resources.js';
-import { hudU, panelU, hideTT, hideTdesc, showOv, hideOv, showBanner } from './ui.js';
+import { hudU, panelU, hideTT, hideTdesc, showOv, hideOv, showBanner, syncPause } from './ui.js';
 import { addToInventory, openInventoryForAugment } from './ui-inventory.js';
 import { showResearch } from './ui-research.js';
 import { openCraftPanel } from './ui-craft.js';
@@ -31,9 +31,15 @@ import { buildMonkeyTT } from './ui-monkey.js';
 let _ttPx = 0, _ttPy = 0;
 function refreshTT(tw) { hudU(); panelU(); showTT(tw, _ttPx, _ttPy); }
 
-const SORT_OPTIONS = ['all', 'obs', 'npc', 'boss', 'research', 'scribe', 'weather'];
-const SORT_LABELS  = { all: 'All', obs: '🔮 Obs', npc: '🌳 NPC', boss: '👑 Boss', research: '🔬 Research', scribe: '📓 Scribe', weather: '🌤️ Weather' };
+const SORT_OPTIONS = ['all', 'obs', 'npc', 'translations', 'boss', 'research', 'event', 'weather'];
+const SORT_LABELS  = { all: 'All', obs: '🔮 Observations', npc: '👤 NPC', translations: '🐜 Translations', boss: '👑 Boss', research: '🔬 Research', event: '🎉 Events', weather: '🌤️ Weather' };
 let _labNoteSort = 'all';
+
+function _closeLabNotes() {
+  const panel = document.getElementById('obsLogP');
+  if (panel) panel.classList.remove('sh');
+  syncPause();
+}
 
 function _showLabNotes() {
   const log = getFeedLog();
@@ -41,30 +47,38 @@ function _showLabNotes() {
   if (!panel) return;
 
   const sorted = _labNoteSort === 'all' ? log : log.filter(e => e.type === _labNoteSort);
-  const rows = [...sorted].reverse().map(e => {
+  const rows = sorted.map(e => {
     const def = FEED_TYPES[e.type] || FEED_TYPES.system;
-    return `<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid rgba(168,85,247,.15)">
-      <span style="font-size:13px;flex-shrink:0">${def.icon}</span>
-      <div>
-        <span style="font-size:9px;color:#6b7280;font-variant:tabular-nums">W${e.wave ?? '?'}</span>
-        <span style="font-size:12px;color:${def.color};margin-left:4px">${e.text}</span>
+    return `<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(168,85,247,.12)">
+      <span style="font-size:16px;flex-shrink:0;line-height:1.4">${def.icon}</span>
+      <div style="flex:1;min-width:0">
+        <span style="font-size:10px;color:#6b7280;font-variant:tabular-nums">W${e.wave ?? '?'}</span>
+        <span style="font-size:13px;color:${def.color};margin-left:6px;line-height:1.5">${e.text}</span>
       </div>
     </div>`;
   }).join('');
 
   const sortBtns = SORT_OPTIONS.map(s =>
-    `<button onclick="window._labSetSort('${s}')" style="padding:3px 8px;border-radius:4px;font-size:10px;border:1px solid rgba(168,85,247,.4);background:${_labNoteSort===s?'#a78bfa':'#0d1520'};color:${_labNoteSort===s?'#0d1520':'#a78bfa'};cursor:pointer">${SORT_LABELS[s]}</button>`
+    `<button onclick="window._labSetSort('${s}')" style="padding:4px 10px;border-radius:4px;font-size:11px;border:1px solid rgba(168,85,247,.4);background:${_labNoteSort===s?'#a78bfa':'rgba(13,21,32,.8)'};color:${_labNoteSort===s?'#0d1520':'#a78bfa'};cursor:pointer;white-space:nowrap">${SORT_LABELS[s]}</button>`
   ).join('');
 
-  panel.innerHTML = `<div style="background:#0d1520;border:2px solid #a78bfa;border-radius:12px;padding:20px;max-width:480px;width:90vw;max-height:70vh;display:flex;flex-direction:column;gap:10px">
-    <div style="font-size:14px;font-weight:800;color:#a78bfa">📋 Lab Notes</div>
-    <div style="display:flex;gap:5px;flex-wrap:wrap">${sortBtns}</div>
-    <div style="overflow-y:auto;flex:1;padding-right:4px">${rows || '<div style="color:#6b7280;font-size:12px;font-style:italic">No entries yet.</div>'}</div>
-    <button onclick="document.getElementById('obsLogP').style.display='none'" style="padding:6px 16px;background:#1a1a3a;border:1px solid #a78bfa;border-radius:6px;color:#a78bfa;cursor:pointer">Close</button>
+  panel.innerHTML = `<div style="background:rgba(8,12,22,0.97);border:1.5px solid #a78bfa;border-radius:14px;padding:28px 32px;width:min(800px,90vw);height:min(640px,82vh);display:flex;flex-direction:column;gap:12px;box-shadow:0 0 60px rgba(167,139,250,0.15)">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div style="font-size:18px;font-weight:800;color:#a78bfa;letter-spacing:.5px">📋 Lab Notes</div>
+      <button onclick="window._labClose()" style="background:transparent;border:none;color:#6b7280;font-size:20px;cursor:pointer;line-height:1;padding:2px 6px" title="Close">✕</button>
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;flex-shrink:0">${sortBtns}</div>
+    <div id="labNotesScroll" style="overflow-y:auto;flex:1;padding-right:8px">${rows || '<div style="color:#6b7280;font-size:13px;font-style:italic;padding:20px 0">No entries yet.</div>'}</div>
   </div>`;
   window._labSetSort = (s) => { _labNoteSort = s; _showLabNotes(); };
-  panel.style.display = 'flex';
-  panel.onclick = e => { if (e.target === panel) panel.style.display = 'none'; };
+  window._labClose = _closeLabNotes;
+  panel.classList.add('sh');
+  panel.onclick = e => { if (e.target === panel) _closeLabNotes(); };
+  syncPause();
+  requestAnimationFrame(() => {
+    const scroll = document.getElementById('labNotesScroll');
+    if (scroll) scroll.scrollTop = scroll.scrollHeight;
+  });
 }
 
 function buildStockpileTT(tw, a) {

@@ -2,15 +2,12 @@
 import { state } from './main.js';
 import { canAfford, spendResources, layoutNodes, UNLOCK_DESC, checkGamePrereq, applyUnlock, refreshStatuses, RESEARCH_JSON, FIXED_RESEARCH, VARIABLE_RESEARCH } from './research.js';
 import { hudU, syncPause } from './ui.js';
-import { TRANSLATIONS } from './bestiary.js';
-
 const RES_ICONS = { dust: '🔮', stone: '🪨', wood: '🪵', flint: '🗿' };
 const NODE_R = 22;
 let _rPos = null;
 const _rCam = { panX: 0, panY: 0, zoom: 1 };
 const R_ZOOM_MIN = 0.4, R_ZOOM_MAX = 3;
 let _openNodeId = null;
-let _resView = 'web'; // 'web' | 'translations'
 
 const RES_GRID_STEP = () => RESEARCH_JSON?.gridStep ?? 120;
 
@@ -278,30 +275,14 @@ function fitResCv() {
   renderResearch();
 }
 
-function renderTranslations() {
-  const el = document.getElementById('resTranslations');
-  if (!el) return;
-  const step = Math.min(state.translationStep || 0, TRANSLATIONS.length);
-  const entries = TRANSLATIONS.slice(0, step).reverse();
-  el.innerHTML = `<div style="padding:20px;font-family:'Courier New',monospace;font-size:14px;color:#c4b5fd;max-height:60vh;overflow-y:auto">
-    <div style="font-size:15px;font-weight:800;color:#a78bfa;margin-bottom:16px">📜 Goblin Translations — Observation Log</div>
-    ${entries.length ? entries.map((t, i) => `<div style="font-style:italic;padding:8px 0;border-bottom:1px solid rgba(168,85,247,.2)">Step ${step - i}: ${t}</div>`).join('') : '<div style="color:#6b7280;font-style:italic">No translations recorded yet.</div>'}
-  </div>`;
-}
-
 function setResView(view) {
-  _resView = view;
   const cv = document.getElementById('resCv');
-  const tr = document.getElementById('resTranslations');
-  if (cv) cv.style.display = view === 'web' ? '' : 'none';
-  if (tr) { tr.style.display = view === 'translations' ? '' : 'none'; if (view === 'translations') renderTranslations(); }
-  // Update tab highlight styles
-  for (const [id, active] of [['resWebBtn', view === 'web'], ['resTransBtn', view === 'translations']]) {
-    const btn = document.getElementById(id);
-    if (!btn) continue;
-    btn.style.color = active ? '#c4b5fd' : '#64748b';
-    btn.style.borderBottom = active ? '2px solid #a78bfa' : '2px solid transparent';
-    btn.style.background = active ? 'rgba(124,58,237,0.15)' : 'transparent';
+  if (cv) cv.style.display = '';
+  const webBtn = document.getElementById('resWebBtn');
+  if (webBtn) {
+    webBtn.style.color = '#c4b5fd';
+    webBtn.style.borderBottom = '2px solid #a78bfa';
+    webBtn.style.background = 'rgba(124,58,237,0.15)';
   }
 }
 
@@ -316,10 +297,8 @@ export function showResearch() {
   if (saveBtn) saveBtn.style.display = state._devMode ? '' : 'none';
   const devUnlockBtn = document.getElementById('resDevUnlockBtn');
   if (devUnlockBtn) devUnlockBtn.style.display = state._devMode ? '' : 'none';
-  const transBtn = document.getElementById('resTransBtn');
-  if (transBtn) transBtn.style.display = state.patternRecDone ? 'flex' : 'none';
-  setResView(_resView);
-  if (_resView === 'web') requestAnimationFrame(fitResCv);
+  setResView();
+  requestAnimationFrame(fitResCv);
 }
 
 export function refreshResearch() {
@@ -476,38 +455,10 @@ export function initResearchUI() {
     }
   }, true);
 
-  // Create translations view container (inserted after canvas)
-  const cv2 = document.getElementById('resCv');
-  if (cv2 && !document.getElementById('resTranslations')) {
-    const trDiv = document.createElement('div');
-    trDiv.id = 'resTranslations';
-    trDiv.style.cssText = 'display:none;flex:1;overflow:hidden';
-    cv2.parentElement.insertBefore(trDiv, cv2.nextSibling);
-  }
-
   const resHeader = document.getElementById('resH');
   if (resHeader) {
-    // Replace h2 with evenly-split section tab headings
     const h2 = resHeader.querySelector('h2');
-    const tabBar = document.createElement('div');
-    tabBar.style.cssText = 'display:flex;flex:1;align-self:stretch;margin:0 8px 0 -16px';
-
-    const makeTab = (id, icon, label, view) => {
-      const btn = document.createElement('button');
-      btn.id = id;
-      btn.style.cssText = 'flex:1;background:transparent;border:none;border-bottom:2px solid transparent;color:#64748b;cursor:pointer;padding:0 8px;font-size:13px;font-weight:700;font-family:MedievalSharp,cursive;display:flex;align-items:center;justify-content:center;gap:6px;transition:color .15s,border-color .15s,background .15s';
-      btn.innerHTML = `<span style="font-size:15px">${icon}</span><span>${label}</span>`;
-      btn.onclick = () => setResView(view);
-      tabBar.appendChild(btn);
-      return btn;
-    };
-
-    makeTab('resWebBtn', '🔬', 'Research Web', 'web');
-    const transTab = makeTab('resTransBtn', '📜', 'Goblin Translations', 'translations');
-    transTab.style.display = 'none';
-
-    if (h2) h2.replaceWith(tabBar);
-    else resHeader.prepend(tabBar);
+    if (h2) h2.remove();
 
     // Dev: Unlock All button
     const devUnlockBtn = document.createElement('button');
@@ -521,12 +472,21 @@ export function initResearchUI() {
     });
     devUnlockBtn.onclick = () => {
       if (!state.research) return;
-      // Unlock nodes in the graph (they appear and are complete)
+      // Set trigger flags so hidden nodes unlock
+      state._acAnomalyDone = true;
+      state.watcherAppeared = true;
+      // Force hidden variable nodes into the graph
+      for (const def of VARIABLE_RESEARCH.filter(n => n.hidden)) {
+        if (!state.research[def.id]) {
+          state.research[def.id] = { ...def, status: 'available', wavesLeft: def.waves ?? 1, wavesTotal: def.waves ?? 1 };
+        }
+      }
+      // Complete all nodes in the graph
       for (const node of Object.values(state.research)) {
         node.status = 'complete'; node.wavesLeft = 0;
         applyUnlock(node);
       }
-      // Apply effects of all fixed/variable nodes NOT in the graph (no graph entry added)
+      // Apply effects of all fixed/variable nodes NOT in the graph
       const inGraph = new Set(Object.values(state.research).map(n => n._sourceId || n.id));
       for (const [id, def] of Object.entries(FIXED_RESEARCH)) {
         if (!inGraph.has(id)) applyUnlock({ ...def, id });

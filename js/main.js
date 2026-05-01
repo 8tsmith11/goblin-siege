@@ -189,6 +189,8 @@ const _BOSS_STRIP_DESC = {
 function _updateBossStrip(nextW) {
   const el = document.getElementById('bossStrip');
   if (!el) return;
+  const hornEquipped = state.inventory?.equipped?.some(a => a?.id === 'heralds_horn');
+  if (!hornEquipped) { el.style.display = 'none'; return; }
   let desc = null;
   if (nextW === 5) desc = _BOSS_STRIP_DESC.herald;
   else if (nextW === 15) desc = _BOSS_STRIP_DESC.fog;
@@ -519,7 +521,7 @@ function update() {
     }
     autoSave();
     const _scribe = getScribeEntry(state.wave, state);
-    if (_scribe) addFeed('scribe', 'The scribe has written in the journal.');
+    if (_scribe) addFeed('npc', 'The scribe has written in the journal.');
     if (Math.random() < 0.4 && state.wave > 1) setTimeout(() => triggerEvent(), 500);
     const _hasLedger = state.inventory?.equipped?.some(a => a?.id === 'auditors_ledger');
     const _nextPreview = _hasLedger ? ' — Next: ' + previewWave(state.wave + 1) : '';

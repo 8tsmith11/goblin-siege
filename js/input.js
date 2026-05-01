@@ -1,5 +1,6 @@
 'use strict';
 import { state, _ΨΔ, clampCam, minZoom, getCell, setCell } from './main.js';
+import { bus } from './bus.js';
 import { iA, sfxPlace, sfxLizard, speak } from './audio.js';
 import { TD } from './data.js';
 import { spawnBees } from './support.js';
@@ -306,6 +307,9 @@ function handleTap(e) {
     // Drop 3–6 wood on the newly cleared tile
     const woodCount = 3 + Math.floor(Math.random() * 4);
     for (let i = 0; i < woodCount; i++) dropItem(c.x, c.y, 'wood');
+    // Track cleared trees
+    state._treesCleared = (state._treesCleared || 0) + 1;
+    if (state._treesCleared === 10) bus.emit('trigger', { type: 'trees_cleared_10' });
     // Consume one axe
     const axe = state.inventory?.consumables?.[invIndex];
     if (axe) {

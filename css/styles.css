@@ -106,7 +106,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 #scribeBtn { top:110px; border-color:#a855f7; box-shadow:0 0 10px rgba(168,85,247,0.4); }
 #beastP, #scribeP { position:absolute; inset:30px; background:rgba(11,14,23,0.98); border:2px solid #3b5bdb; border-radius:12px; z-index:80; display:none; flex-direction:column; box-shadow:0 0 40px rgba(59,91,219,0.4); overflow:hidden; backdrop-filter:blur(5px); max-width: 600px; margin: 0 auto; width: calc(100% - 60px) }
 #scribeP { border-color:#a855f7; box-shadow:0 0 40px rgba(168,85,247,0.4); }
-#beastP.sh, #scribeP.sh { display:flex }
+#beastP.sh, #scribeP.sh, #obsLogP.sh { display:flex }
 #beastH, #scribeH { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #1e3a6e; background:rgba(59,91,219,0.1); flex-shrink: 0 }
 #scribeH { border-bottom-color:#4c1d95; background:rgba(168,85,247,0.1); }
 #beastH h2, #scribeH h2 { font-family:'MedievalSharp',cursive; color:#93c5fd; font-size:20px; text-shadow:0 0 10px #3b5bdb88 }

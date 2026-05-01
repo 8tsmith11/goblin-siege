@@ -75,6 +75,10 @@ const NPC_LINES = {
       cond: s => s.bSen?.has('spider') && s.wave >= 25 && !isBossWave(s.wave + 1),
       text: "I've left them at my feet. A Ceasefire Flag, and the recipe for the Seed Stone. The rest is yours."
     },
+    {
+      trigger: 'trees_cleared_10',
+      text: "...hm. The forest used to come right up to the wall."
+    },
     // Translation lines — unlocked by Pattern Recognition research, fire in order
     {
       trigger: 'wave_prep',
@@ -82,7 +86,7 @@ const NPC_LINES = {
       text: "We walk because she waits.",
       onFire: (npc) => {
         if (!state.translationStep) state.translationStep = 1;
-        addFeed('obs', 'Translation #9 decoded. "The goblins are not attacking. They are walking. The walk is purposive. \'She\' is the destination. We do not know who \'she\' is. The castle may be in her way."');
+        addFeed('translations', 'Translation #9 decoded. "The goblins are not attacking. They are walking. The walk is purposive. \'She\' is the destination. We do not know who \'she\' is. The castle may be in her way."');
         const el = document.getElementById('bossStrip');
         if (el) { el.textContent = '📜 Translation: "We walk because she waits."'; el.style.display = 'block'; setTimeout(() => { el.style.display = 'none'; }, 15000); }
       }
@@ -105,7 +109,7 @@ const NPC_LINES = {
       text: "They are afraid of us.",
       onFire: () => {
         state.translationStep = 4;
-        addFeed('obs', 'They are afraid of us. The towers. The fire. The stones we sharpen. Fear is not a thing enemies have. It is a thing people have.');
+        addFeed('translations', 'They are afraid of us. The towers. The fire. The stones we sharpen. Fear is not a thing enemies have. It is a thing people have.');
       }
     }
   ]

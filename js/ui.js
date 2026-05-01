@@ -415,7 +415,8 @@ export function syncPause() {
   const welcomeOpen = !document.getElementById('welcome')?.classList.contains('hid');
   const invOpen = document.getElementById('invP')?.classList.contains('sh');
   const craftOpen = document.getElementById('craftP')?.classList.contains('sh');
-  state.paused = !!(resOpen || beastOpen || scribeOpen || welcomeOpen || invOpen || craftOpen);
+  const labNotesOpen = document.getElementById('obsLogP')?.classList.contains('sh');
+  state.paused = !!(resOpen || beastOpen || scribeOpen || welcomeOpen || invOpen || craftOpen || labNotesOpen);
 }
 
 export function toggleBestiary() {
