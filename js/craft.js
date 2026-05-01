@@ -56,6 +56,13 @@ export const RECIPES = [
     trapType: 'seed_stone',
     unlockKey: 'seed_stone_recipe',
   },
+  {
+    id: 'resonating_gem', name: 'Resonating Gem', icon: '💎',
+    rarity: 'rare',
+    cost: { stone: 10, dust: 5 }, waves: 2, output: 'consumable',
+    desc: 'Place on any empty tile. Its purpose is unclear.',
+    unlockKey: 'resonating_gem',
+  },
 ];
 
 // Register items into the shared registry so resources.js can look them up
