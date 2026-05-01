@@ -14,7 +14,7 @@ function _waveComposition(w) {
   if (!parts.length) return '';
   // Single special entry (fog, watcher, herald)
   if (parts[0].label) return parts.map(p => (p.seen ? p.em : '❓') + ' ' + (p.label || '')).join('  ');
-  return parts.map(p => (p.seen ? p.em : '❓') + (p.count > 1 ? ' ×' + p.count : '')).join('  ');
+  return parts.map(p => (p.seen ? p.em : '❓') + (p.count > 1 ? ' x' + p.count : '')).join('  ');
 }
 
 // ── Sub-module re-exports (keeps external import sites unchanged) ──────────────
