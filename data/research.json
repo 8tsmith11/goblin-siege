@@ -3,7 +3,7 @@
   "fixed": {
     "craftsmanship": {
       "name": "Craftsmanship",
-      "icon": "\ud83d\udee0\ufe0f",
+      "icon": "🛠️",
       "cost": {
         "wood": 8,
         "stone": 4
@@ -12,13 +12,13 @@
       "unlocks": "workbench",
       "prereqs": [],
       "desc": "Lashes together a rough workbench from salvaged materials.",
-      "tooltip": "Unlocks the Workbench \u2014 crafts augments and consumables over waves.",
+      "tooltip": "Unlocks the Workbench — crafts augments and consumables over waves.",
       "x": 480,
       "y": 720
     },
     "basic_obs": {
       "name": "Basic Observation",
-      "icon": "\ud83d\udc41\ufe0f",
+      "icon": "👁️",
       "cost": {
         "dust": 10
       },
@@ -34,7 +34,7 @@
     },
     "beekeeping": {
       "name": "Apiculture",
-      "icon": "\ud83d\udc1d",
+      "icon": "🐝",
       "cost": {
         "dust": 20,
         "wood": 15
@@ -46,12 +46,12 @@
       ],
       "desc": "Cultivates hives whose swarms harry goblin raiders.",
       "tooltip": "Unlocks the Beehive building, which sends bees to sting and slow nearby enemies.",
-      "x": 720,
-      "y": 720
+      "x": 600,
+      "y": 600
     },
     "honey_production": {
       "name": "Sweet Harvest",
-      "icon": "\ud83c\udf6f",
+      "icon": "🍯",
       "cost": {
         "dust": 15,
         "wood": 10
@@ -63,12 +63,12 @@
       ],
       "desc": "The hive produces more than just stings.",
       "tooltip": "Beehives produce 1 Honey per wave. Honey slows enemies on path tiles, same as Sticky Sap.",
-      "x": 840,
-      "y": 720
+      "x": 720,
+      "y": 600
     },
     "settling_basics": {
       "name": "Settl. Basics",
-      "icon": "\ud83c\udfd8\ufe0f",
+      "icon": "🏘️",
       "cost": {
         "wood": 10,
         "stone": 10
@@ -85,7 +85,7 @@
     },
     "pattern_rec": {
       "name": "Pattern Recognition",
-      "icon": "\ud83d\udcdc",
+      "icon": "📜",
       "cost": {
         "dust": 30,
         "stone": 5
@@ -102,7 +102,7 @@
     },
     "avian": {
       "name": "Avian Mastery",
-      "icon": "\ud83e\udda9",
+      "icon": "🦩",
       "cost": {
         "dust": 35,
         "wood": 20
@@ -119,7 +119,7 @@
     },
     "combat_training": {
       "name": "Combat Training",
-      "icon": "\u2694\ufe0f",
+      "icon": "⚔️",
       "cost": {
         "dust": 15,
         "stone": 5
@@ -130,13 +130,13 @@
         "basic_obs"
       ],
       "desc": "Establishes a formal training regimen for your tower crews.",
-      "tooltip": "Unlocks the tower skill upgrade system \u2014 spend Dust to upgrade individual towers.",
+      "tooltip": "Unlocks the tower skill upgrade system — spend Dust to upgrade individual towers.",
       "x": 0,
       "y": 960
     },
     "structural": {
       "name": "Structural Analysis",
-      "icon": "\ud83e\udea8",
+      "icon": "🪨",
       "cost": {
         "dust": 20,
         "wood": 5
@@ -149,12 +149,12 @@
       ],
       "desc": "Studies how goblins wear down fortifications over time.",
       "tooltip": "Displays age counters on towers. Allows upgrading Hoard Piles.",
-      "x": 720,
-      "y": 960
+      "x": 360,
+      "y": 1080
     },
     "monkey_business": {
       "name": "Monkey Business",
-      "icon": "\ud83d\udc35",
+      "icon": "🐵",
       "cost": {
         "dust": 15,
         "wood": 10
@@ -166,12 +166,12 @@
       ],
       "desc": "Domesticates local primates for resource logistics.",
       "tooltip": "Unlocks the Monkey Hut (assigns monkeys to gather, courier, or boost) and the Stockpile.",
-      "x": 480,
-      "y": 1200
+      "x": 600,
+      "y": 1080
     },
     "artifact_slot": {
       "name": "Runic Harness",
-      "icon": "\ud83c\udf92",
+      "icon": "🎒",
       "cost": {
         "dust": 20,
         "stone": 10
@@ -184,11 +184,11 @@
       "desc": "Crafts an additional harness mount for carrying a second artifact.",
       "tooltip": "Adds +1 equipped artifact slot.",
       "x": -120,
-      "y": 1080
+      "y": 840
     },
     "neuron_activation": {
       "name": "Neuron Activation",
-      "icon": "\ud83e\udde0",
+      "icon": "🧠",
       "cost": {
         "dust": 30,
         "wood": 10
@@ -200,12 +200,12 @@
       ],
       "desc": "Monkeys learn to recognize and deploy path items autonomously.",
       "tooltip": "Courier and Round Robin monkeys automatically place consumable traps/sap when delivering to a path tile.",
-      "x": 360,
+      "x": 720,
       "y": 1200
     },
     "monkey_training": {
       "name": "Monkey Training",
-      "icon": "\ud83d\udc12",
+      "icon": "🐒",
       "cost": {
         "dust": 20,
         "wood": 10
@@ -217,12 +217,12 @@
       ],
       "desc": "Refines training regimens to house an extra monkey.",
       "tooltip": "Each existing and future Monkey Hut gains +1 monkey capacity.",
-      "x": 600,
-      "y": 1320
+      "x": 720,
+      "y": 960
     },
     "stockpile_iface": {
       "name": "Resource Interface",
-      "icon": "\ud83d\udcec",
+      "icon": "📬",
       "cost": {
         "dust": 25,
         "wood": 10
@@ -233,13 +233,13 @@
         "monkey_business"
       ],
       "desc": "Reroutes the stockpile directly into the settlement ledger.",
-      "tooltip": "Unlocks Interface Mode on Stockpiles \u2014 deposited items go straight to your inventory.",
-      "x": 360,
-      "y": 1320
+      "tooltip": "Unlocks Interface Mode on Stockpiles — deposited items go straight to your inventory.",
+      "x": 720,
+      "y": 1080
     },
     "the_forge": {
       "name": "The Forge",
-      "icon": "\u2692\ufe0f",
+      "icon": "⚒️",
       "cost": {
         "dust": 50,
         "stone": 20
@@ -252,12 +252,12 @@
       ],
       "desc": "Harnesses steam and iron to push beyond the stone age.",
       "tooltip": "Advances the settlement to the Steam Age, enabling industrial buildings.",
-      "x": 960,
+      "x": 480,
       "y": 1200
     },
     "automation": {
       "name": "AI Automation",
-      "icon": "\ud83e\udd16",
+      "icon": "🤖",
       "cost": {
         "dust": 60,
         "stone": 40
@@ -269,12 +269,12 @@
       ],
       "desc": "Constructs a mechanical agent that never sleeps.",
       "tooltip": "Unlocks the Robot support, which automatically casts spells during waves.",
-      "x": 1080,
-      "y": 1200
+      "x": 480,
+      "y": 1320
     },
     "monkey_logistics": {
       "name": "Monkey Logistics",
-      "icon": "\ud83d\udd04",
+      "icon": "🔄",
       "cost": {
         "dust": 35,
         "wood": 20
@@ -286,28 +286,28 @@
       ],
       "desc": "Advanced primate training: rotating deliveries and forest foraging.",
       "tooltip": "Unlocks Round Robin (cycle up to 5 delivery targets) and Harvest (mine rock nodes or forage wood from forest) roles for monkeys.",
-      "x": 960,
-      "y": 1320
+      "x": 840,
+      "y": 960
     },
     "frequency_analysis": {
       "name": "Frequency Analysis",
-      "icon": "\u3030\ufe0f",
+      "icon": "〰️",
       "cost": {
         "dust": 20
       },
       "waves": 2,
       "prereqs": [],
       "desc": "We designed a crystal that intends to capture this frequency.",
-      "tooltip": "Unlocks the Resonating Gem \u2014 a placeable structure. Its purpose is unclear.",
+      "tooltip": "Unlocks the Resonating Gem — a placeable structure. Its purpose is unclear.",
       "hidden": true,
       "trigger": "frequency_played",
-      "x": 0,
-      "y": 1500,
+      "x": 120,
+      "y": 1200,
       "unlocks": "resonating_gem_consumable"
     },
     "knowledge_otherworldly": {
       "name": "Knowledge of the Otherworldly",
-      "icon": "\ud83d\udc41\ufe0f",
+      "icon": "👁️",
       "cost": {
         "dust": 40
       },
@@ -321,7 +321,7 @@
       "hidden": true,
       "trigger": "watcher_appeared",
       "x": 120,
-      "y": 1620
+      "y": 1440
     }
   },
   "variable": [
@@ -329,7 +329,7 @@
       "id": "reptilian",
       "pool": "parity_1",
       "name": "Reptilian Lore",
-      "icon": "\ud83e\udd8e",
+      "icon": "🦎",
       "cost": {
         "dust": 30,
         "stone": 20
@@ -346,7 +346,7 @@
       "id": "entertainment",
       "pool": "parity_1",
       "name": "Magnificent Show",
-      "icon": "\ud83e\udd21",
+      "icon": "🤡",
       "cost": {
         "dust": 25,
         "stone": 10
@@ -363,7 +363,7 @@
       "id": "crude_optics",
       "pool": "general",
       "name": "Crude Optics",
-      "icon": "\ud83d\udd2d",
+      "icon": "🔭",
       "cost": {
         "dust": 20,
         "stone": 3
@@ -380,7 +380,7 @@
       "id": "bonfire",
       "pool": "general",
       "name": "Bonfire Theory",
-      "icon": "\ud83d\udd25",
+      "icon": "🔥",
       "cost": {
         "dust": 20,
         "wood": 8
@@ -397,7 +397,7 @@
       "id": "aquatic",
       "pool": "general",
       "name": "Aquatic Studies",
-      "icon": "\ud83d\udc1f",
+      "icon": "🐟",
       "cost": {
         "dust": 25,
         "stone": 15
@@ -408,13 +408,13 @@
         "basic_obs"
       ],
       "desc": "Catalogues creatures lurking in the coastal shallows.",
-      "tooltip": "Unlocks the Fish tower \u2014 fast-firing with splash damage."
+      "tooltip": "Unlocks the Fish tower — fast-firing with splash damage."
     },
     {
       "id": "insightful_seahorse",
       "pool": "parity_2",
       "name": "Insightful Seahorse",
-      "icon": "\ud83e\udd91",
+      "icon": "🦑",
       "cost": {
         "dust": 30,
         "stone": 10
@@ -425,13 +425,13 @@
         "basic_obs"
       ],
       "desc": "An enigmatic seahorse that instinctively hunts what others cannot see.",
-      "tooltip": "Unlocks the Seahorse tower \u2014 piercing shots that prioritize and reveal stealth enemies by default."
+      "tooltip": "Unlocks the Seahorse tower — piercing shots that prioritize and reveal stealth enemies by default."
     },
     {
       "id": "insightful_lens",
       "pool": "parity_2",
       "name": "Insightful Lens",
-      "icon": "\ud83d\udd2d",
+      "icon": "🔭",
       "cost": {
         "dust": 25,
         "stone": 8
@@ -441,7 +441,7 @@
       "prereqs": [
         "basic_obs"
       ],
-      "desc": "Theoretical optics for seeing the unseen \u2014 must still be ground and assembled at a workbench.",
+      "desc": "Theoretical optics for seeing the unseen — must still be ground and assembled at a workbench.",
       "tooltip": "Unlocks the Insightful Lens recipe at the Workbench. Apply the crafted lens to a Lab to let all towers in its radius target stealth enemies."
     }
   ],
@@ -468,12 +468,12 @@
       "size": 2,
       "positions": [
         {
-          "x": 480,
+          "x": 360,
           "y": 600
         },
         {
-          "x": 480,
-          "y": 480
+          "x": 240,
+          "y": 600
         }
       ]
     }

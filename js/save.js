@@ -2,7 +2,7 @@
 import { state, _ΨΔ, clampCam, startPrep, getCell } from './main.js';
 import { TOWER_SKILLS } from './data.js';
 import { spawnBees } from './support.js';
-import { hudU, panelU, showBanner, showOv, hideOv, hideTT, resetResPos } from './ui.js';
+import { hudU, panelU, showBanner, showOv, hideOv, hideTT, resetResPos, getRPos, setRPos } from './ui.js';
 import { getFeedLog, restoreFeed } from './feed.js';
 import { reinitMonkeys } from './monkeys.js';
 import { FIXED_RESEARCH, VARIABLE_RESEARCH, RESEARCH_JSON, refreshStatuses, buildResearchGraph } from './research.js';
@@ -91,6 +91,7 @@ function _build() {
     _aad: state._acAnomalyDone || false,
     _srd: state.spiderRitualDone || false,
     _ss: state.seedStone || null,
+    _rpos: getRPos() ? { ...getRPos() } : null,
   };
 }
 
@@ -172,6 +173,7 @@ function _apply(d) {
     refreshStatuses(state.research);
   }
   resetResPos();
+  if (d._rpos) setRPos(d._rpos);
   state.researchUnlocks = { ...(d._rUnlocks || {}) };
   state.unlockedTowers = new Set(d._unlocked || ['squirrel','lion','penguin']);
   state.bSen = new Set(d._bSen || ['sleepy_door']);

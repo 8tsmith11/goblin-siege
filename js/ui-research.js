@@ -319,6 +319,8 @@ export function refreshResearch() {
 }
 
 export function resetResPos() { _rPos = null; }
+export function getRPos() { return _rPos; }
+export function setRPos(pos) { _rPos = pos ? { ...pos } : null; }
 
 export function initResearchUI() {
   const cv = document.getElementById('resCv');

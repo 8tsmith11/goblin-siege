@@ -37,7 +37,7 @@ let _labNoteSort = 'all';
 
 function _closeLabNotes() {
   const panel = document.getElementById('obsLogP');
-  if (panel) panel.classList.remove('sh');
+  if (panel) { panel.classList.remove('sh'); panel.style.display = 'none'; }
   syncPause();
 }
 
@@ -73,6 +73,7 @@ function _showLabNotes() {
   window._labSetSort = (s) => { _labNoteSort = s; _showLabNotes(); };
   window._labClose = _closeLabNotes;
   panel.classList.add('sh');
+  panel.style.display = 'flex';
   panel.onclick = e => { if (e.target === panel) _closeLabNotes(); };
   syncPause();
   requestAnimationFrame(() => {

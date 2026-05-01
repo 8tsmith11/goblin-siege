@@ -19,7 +19,7 @@ function _waveComposition(w) {
 
 // ── Sub-module re-exports (keeps external import sites unchanged) ──────────────
 export { showTT, refreshActiveTT } from './ui-tower.js';
-export { showResearch, refreshResearch, initResearchUI, resetResPos } from './ui-research.js';
+export { showResearch, refreshResearch, initResearchUI, resetResPos, getRPos, setRPos } from './ui-research.js';
 export { initInventoryUI, addToInventory } from './ui-inventory.js';
 import { activateArtifact } from './ui-inventory.js';
 export { openCraftPanel, renderCraftPanel, initCraftUI } from './ui-craft.js';
