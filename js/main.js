@@ -173,7 +173,7 @@ import { initWeather, tickWeather, updateWeather } from './weather.js';
 import { refreshPipStock, syncPipBtn, updatePipPanel, initPipUI } from './ui-pip.js';
 import { syncInvBtn, addToInventory } from './ui-inventory.js';
 
-export const VERSION = 'v1.8';
+export const VERSION = 'v1.9';
 export const WORLD_COLS = 32;
 export const WORLD_ROWS = 24;
 
