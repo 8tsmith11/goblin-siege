@@ -237,7 +237,7 @@ function _handleTrigger(type, ctx) {
       const _waveMismatch = line.wave !== undefined && line.wave !== state.wave + 1;
       const displayText = _waveMismatch ? `[Wave ${line.wave}] ${text}` : text;
       if (_bubbleQueue.length < 3) _bubbleQueue.push({ npc, text: displayText });
-      addFeed('npc', displayText);
+      addFeed('npc', displayText, npc.icon);
       _processQueue();
       if (line.onFire) line.onFire(npc);
     }

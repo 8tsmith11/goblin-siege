@@ -242,14 +242,14 @@ export function updateSpiderMother() {
       if (state.seedStone && !sm.stonePickedUp && target.x === state.seedStone.x && target.y === state.seedStone.y) {
         sm.stonePickedUp = true;
         state.seedStone.carried = true;
-        addFeed('npc', '🕷️ The Spider Mother takes the Seed Stone.');
+        addFeed('npc', '🕷️ The Spider Mother takes the Seed Stone.', '🕷️');
       }
       sm.x = target.x; sm.y = target.y;
       sm.pi++;
       if (sm.pi >= path.length) {
         sm.phase = 'return';
         sm.pi = path.length - 1;
-        addFeed('npc', '🕷️ "Thank you." The Spider Mother turns to leave.');
+        addFeed('npc', '🕷️ "Thank you." The Spider Mother turns to leave.', '🕷️');
         speak('Thank you.');
       }
     } else {
@@ -286,7 +286,7 @@ export function updateSpiderMother() {
       state.seedStone = null;
       state.spiderRitualDone = true;
       showBanner('🕷️ The Spider Mother has gone. Spiders will come no more.');
-      addFeed('npc', '🕷️ The ritual is complete. The spiders are done here.');
+      addFeed('npc', '🕷️ The ritual is complete. The spiders are done here.', '🕷️');
       return;
     }
     const dx = target.x - sm.x, dy = target.y - sm.y;

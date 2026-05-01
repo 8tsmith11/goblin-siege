@@ -23,8 +23,8 @@ export const FEED_TYPES = {
 
 let _log = [];
 
-export function addFeed(type, text) {
-  _log.push({ type, text, wave: state?.wave ?? 0 });
+export function addFeed(type, text, icon) {
+  _log.push({ type, text, wave: state?.wave ?? 0, ...(icon ? { icon } : {}) });
 }
 
 export function getFeedLog() { return _log; }

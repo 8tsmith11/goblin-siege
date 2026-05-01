@@ -49,8 +49,9 @@ function _showLabNotes() {
   const sorted = _labNoteSort === 'all' ? log : log.filter(e => e.type === _labNoteSort);
   const rows = sorted.map(e => {
     const def = FEED_TYPES[e.type] || FEED_TYPES.system;
+    const icon = e.icon || def.icon;
     return `<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(168,85,247,.12)">
-      <span style="font-size:16px;flex-shrink:0;line-height:1.4">${def.icon}</span>
+      <span style="font-size:16px;flex-shrink:0;line-height:1.4">${icon}</span>
       <div style="flex:1;min-width:0">
         <span style="font-size:10px;color:#6b7280;font-variant:tabular-nums">W${e.wave ?? '?'}</span>
         <span style="font-size:13px;color:${def.color};margin-left:6px;line-height:1.5">${e.text}</span>
