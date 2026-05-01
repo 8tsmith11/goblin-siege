@@ -451,7 +451,7 @@ export function initResearchUI() {
         RESEARCH_JSON.fixed[_pinnedNodeId].x = nx;
         RESEARCH_JSON.fixed[_pinnedNodeId].y = ny;
       } else {
-        const pm = _pinnedNodeId.match(/^pool_([^_]+)_(\d+)$/);
+        const pm = _pinnedNodeId.match(/^pool_(.+)_(\d+)$/);
         if (pm && RESEARCH_JSON.pools?.[pm[1]]?.positions?.[+pm[2]]) {
           RESEARCH_JSON.pools[pm[1]].positions[+pm[2]].x = nx;
           RESEARCH_JSON.pools[pm[1]].positions[+pm[2]].y = ny;
@@ -528,7 +528,7 @@ export function initResearchUI() {
             RESEARCH_JSON.fixed[id].x = pos.x;
             RESEARCH_JSON.fixed[id].y = pos.y;
           } else {
-            const pm = id.match(/^pool_([^_]+)_(\d+)$/);
+            const pm = id.match(/^pool_(.+)_(\d+)$/);
             if (pm && RESEARCH_JSON.pools?.[pm[1]]?.positions?.[+pm[2]]) {
               RESEARCH_JSON.pools[pm[1]].positions[+pm[2]].x = pos.x;
               RESEARCH_JSON.pools[pm[1]].positions[+pm[2]].y = pos.y;
