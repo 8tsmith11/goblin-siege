@@ -39,7 +39,8 @@ export function hudU() {
   // Wave makeup — shows to the right of Start button during prep only
   const makeupEl = document.getElementById('waveMakeup');
   if (makeupEl) {
-    if (phase === 'prep' && wave > 0) {
+    const _hasHorn = state.inventory?.equipped?.some(a => a?.id === 'heralds_horn');
+    if (phase === 'prep' && wave > 0 && _hasHorn) {
       const makeup = _waveComposition(wave + 1);
       makeupEl.textContent = makeup;
       makeupEl.style.display = makeup ? '' : 'none';
