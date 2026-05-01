@@ -20,6 +20,7 @@ import { spawnBees } from './support.js';
 import { showTowerSkill } from './skills.js';
 import { sfxPlace } from './audio.js';
 import { RECIPES, removeAugment } from './craft.js';
+import { getFeedLog, FEED_TYPES } from './feed.js';
 import { dropItem, RTYPES, getItemDef, _itemRegistry } from './resources.js';
 import { hudU, panelU, hideTT, hideTdesc, showOv, hideOv, showBanner } from './ui.js';
 import { addToInventory, openInventoryForAugment } from './ui-inventory.js';
@@ -29,6 +30,42 @@ import { buildMonkeyTT } from './ui-monkey.js';
 
 let _ttPx = 0, _ttPy = 0;
 function refreshTT(tw) { hudU(); panelU(); showTT(tw, _ttPx, _ttPy); }
+
+const SORT_OPTIONS = ['all', 'obs', 'npc', 'boss', 'research', 'scribe', 'weather'];
+const SORT_LABELS  = { all: 'All', obs: '🔮 Obs', npc: '🌳 NPC', boss: '👑 Boss', research: '🔬 Research', scribe: '📓 Scribe', weather: '🌤️ Weather' };
+let _labNoteSort = 'all';
+
+function _showLabNotes() {
+  const log = getFeedLog();
+  const panel = document.getElementById('obsLogP');
+  if (!panel) return;
+
+  const sorted = _labNoteSort === 'all' ? log : log.filter(e => e.type === _labNoteSort);
+  const rows = [...sorted].reverse().map(e => {
+    const def = FEED_TYPES[e.type] || FEED_TYPES.system;
+    return `<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid rgba(168,85,247,.15)">
+      <span style="font-size:13px;flex-shrink:0">${def.icon}</span>
+      <div>
+        <span style="font-size:9px;color:#6b7280;font-variant:tabular-nums">W${e.wave ?? '?'}</span>
+        <span style="font-size:12px;color:${def.color};margin-left:4px">${e.text}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const sortBtns = SORT_OPTIONS.map(s =>
+    `<button onclick="window._labSetSort('${s}')" style="padding:3px 8px;border-radius:4px;font-size:10px;border:1px solid rgba(168,85,247,.4);background:${_labNoteSort===s?'#a78bfa':'#0d1520'};color:${_labNoteSort===s?'#0d1520':'#a78bfa'};cursor:pointer">${SORT_LABELS[s]}</button>`
+  ).join('');
+
+  panel.innerHTML = `<div style="background:#0d1520;border:2px solid #a78bfa;border-radius:12px;padding:20px;max-width:480px;width:90vw;max-height:70vh;display:flex;flex-direction:column;gap:10px">
+    <div style="font-size:14px;font-weight:800;color:#a78bfa">📋 Lab Notes</div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap">${sortBtns}</div>
+    <div style="overflow-y:auto;flex:1;padding-right:4px">${rows || '<div style="color:#6b7280;font-size:12px;font-style:italic">No entries yet.</div>'}</div>
+    <button onclick="document.getElementById('obsLogP').style.display='none'" style="padding:6px 16px;background:#1a1a3a;border:1px solid #a78bfa;border-radius:6px;color:#a78bfa;cursor:pointer">Close</button>
+  </div>`;
+  window._labSetSort = (s) => { _labNoteSort = s; _showLabNotes(); };
+  panel.style.display = 'flex';
+  panel.onclick = e => { if (e.target === panel) panel.style.display = 'none'; };
+}
 
 function buildStockpileTT(tw, a) {
   if (!tw.slots) tw.slots = [null, null, null, null];
@@ -248,7 +285,7 @@ export function showTT(tw, px, py) {
   }
   if (tw.type === 'stockpile') buildStockpileTT(tw, a);
   if (tw.type === 'lab') {
-    addTTB(a, 'Lab', 'tts2', !!state.research, () => { hideTT(); state.ttTower = null; showResearch(); });
+    addTTB(a, 'Research', 'tts2', !!state.research, () => { hideTT(); state.ttTower = null; showResearch(); });
     const labAugs = tw.augments || [];
     if (labAugs.length > 0) {
       addTTB(a, '🔧 ' + labAugs[0].icon + ' ' + labAugs[0].name + ' ✕', 'tts2', true, () => {
@@ -259,6 +296,8 @@ export function showTT(tw, px, py) {
       const hasLabAug = state.inventory?.augments?.some(a => a?.id === 'insightful_lens');
       if (hasLabAug) addTTB(a, '🔧 + Augment', 'tts2', true, () => openInventoryForAugment(tw, () => refreshTT(tw)));
     }
+    // Lab Notes tab
+    addTTB(a, '📋 Lab Notes', 'tts2', true, () => _showLabNotes());
   }
   if (tw.type === 'monkey') buildMonkeyTT(tw, a, () => refreshTT(tw));
   if (tw.type === 'workbench') {
@@ -347,11 +386,11 @@ function addTTB(parent, txt, cls, ok, fn) {
 
 const TOWER_UPGS = {
   squirrel: [
-    { name:'+6 DMG',               cost: 30,  apply: tw => { tw.dmg += 6; } },
-    { name:'+1.0 Range',            cost: 55,  apply: tw => { tw.range += 1.0; } },
-    { name:'-14 Cooldown',          cost: 85,  apply: tw => { tw.rate = Math.max(5, tw.rate - 14); } },
-    { name:'+10 DMG',               cost: 130, apply: tw => { tw.dmg += 10; } },
-    { name:'+1.4 Range  −12 CD',    cost: 200, apply: tw => { tw.range += 1.4; tw.rate = Math.max(5, tw.rate - 12); } },
+    { name:'+6 DMG',               cost: 24,  apply: tw => { tw.dmg += 6; } },
+    { name:'+1.0 Range',            cost: 44,  apply: tw => { tw.range += 1.0; } },
+    { name:'-14 Cooldown',          cost: 68,  apply: tw => { tw.rate = Math.max(5, tw.rate - 14); } },
+    { name:'+10 DMG',               cost: 104, apply: tw => { tw.dmg += 10; } },
+    { name:'+1.4 Range  −12 CD',    cost: 160, apply: tw => { tw.range += 1.4; tw.rate = Math.max(5, tw.rate - 12); } },
   ],
   lion: [
     { name:'+10 DMG',               cost: 45,  apply: tw => { tw.dmg += 10; } },

@@ -54,6 +54,13 @@ export function sfxBee() { pT(1400, 0.02, 'sawtooth', 0.03); }
 export function sfxHeal() { pT(440, 0.15, 'sine', 0.12); }
 export function sfxGoldBoost() { pT(660, 0.1, 'triangle', 0.1); }
 export function sfxRage() { pT(300, 0.2, 'sawtooth', 0.15); }
+export function sfxResearch() {
+  // Upbeat ascending arpeggio: 4 notes, sine, curious tone
+  pT(523, 0.12, 'sine', 0.12);
+  setTimeout(() => pT(659, 0.12, 'sine', 0.11), 90);
+  setTimeout(() => pT(784, 0.14, 'sine', 0.10), 180);
+  setTimeout(() => pT(1047, 0.18, 'sine', 0.13), 270);
+}
 
 export function sfxElderSpeak() {
   if (!AC || !sOn) return;

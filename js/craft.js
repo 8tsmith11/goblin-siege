@@ -162,6 +162,25 @@ export function removeAugment(tower, index) {
 
 // Place a consumable at grid position (gx, gy). Returns true on success.
 export function placeConsumable(item, gx, gy) {
+  // Special case: resonating_gem places as a tower on any empty tile
+  if (item.id === 'resonating_gem') {
+    const cell = getCell(gx, gy);
+    if (!cell || cell.type !== 'empty') return false;
+    cell.type = 'tower';
+    const tw = { type: 'resonating_gem', x: gx, y: gy, level: 0, cd: 0, _buffed: false, _rateBuff: 1,
+      dmg: 0, range: 0, rate: 999, splash: 0, slow: 0, pierce: 0, chain: 0,
+      stun: 0, poison: null, blind: false, seeInvis: false, ownedSkills: {} };
+    cell.content = tw;
+    state.towers.push(tw);
+    return true;
+  }
+  // Honey: produced by beehives, not a crafting recipe — place directly on path
+  if (item.id === 'honey') {
+    if (!state.pathSet?.has(gx + ',' + gy)) return false;
+    if (!state.traps) state.traps = [];
+    state.traps.push({ type: 'sap', x: gx, y: gy, expiry: Infinity, slow: 0.4 });
+    return true;
+  }
   const recipe = RECIPES.find(r => r.id === item.id);
   if (!recipe || recipe.output !== 'consumable') return false;
   if (recipe.trapType === 'seed_stone') {

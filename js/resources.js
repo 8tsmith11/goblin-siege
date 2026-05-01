@@ -131,7 +131,8 @@ export function canTileAccept(gx, gy, type) {
     const cap = (HOARD_LEVELS[tw.level || 0] ?? HOARD_LEVELS[0]).cap;
     return (tw.stored || 0) < cap;
   }
-  if (tw?.type === 'workbench') return !!RTYPES[type] && (tw.inv?.[type] || 0) < 20;
+  const dustOk = type === 'dust' && state.researchUnlocks?.dust_courier;
+  if (tw?.type === 'workbench') return (!!RTYPES[type] || dustOk) && (tw.inv?.[type] || 0) < 20;
   const stacks = cell.stacks;
   if (!stacks) return true;
   return stacks.some(s => !s) || stacks.some(s => s && (!type || s.type === type) && s.count < 64);
@@ -159,7 +160,7 @@ export function dropItem(cx, cy, type) {
       return true;
     }
     // Storage mode — deposit into slots
-    if (type === 'dust') return false;
+    if (type === 'dust' && !state.researchUnlocks?.dust_courier) return false;
     if (!tw.slots) tw.slots = [null, null, null, null];
     const cap = 64 << (tw.level || 0);
     const def = getItemDef(type);
@@ -180,12 +181,12 @@ export function dropItem(cx, cy, type) {
     mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, '🏺', 1, '#10b981');
     return true;
   }
-  if (tw?.type === 'workbench' && RTYPES[type]) {
+  if (tw?.type === 'workbench' && (RTYPES[type] || (type === 'dust' && state.researchUnlocks?.dust_courier))) {
     if (!tw.inv) tw.inv = {};
     if ((tw.inv[type] || 0) >= 20) return false;
     tw.inv[type] = (tw.inv[type] || 0) + 1;
     const rt = RTYPES[type];
-    mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr);
+    if (rt) mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr);
     return true;
   }
   // Non-RTYPE items (crafted items) on workbench tiles fall through to ground stacks below

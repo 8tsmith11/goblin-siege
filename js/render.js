@@ -242,16 +242,37 @@ export function render() {
     }
   }
 
-  // Web tiles (spider staff / grateful spider)
+  // Web tiles (spider staff / grateful spider) — drawn web + glow tint
   if (state.webs?.length) {
     cx.save();
-    cx.font = Math.floor(CELL * 0.55) + 'px serif';
-    cx.textAlign = 'center'; cx.textBaseline = 'middle';
     for (const web of state.webs) {
       const px = web.x * CELL + CELL / 2, py = web.y * CELL + CELL / 2;
-      cx.globalAlpha = 0.8;
-      cx.font = Math.floor(CELL * 0.9) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
-      cx.fillText('🕸️', px, py);
+      // Purple tint over the tile
+      cx.globalAlpha = 0.22;
+      cx.fillStyle = '#a855f7';
+      cx.fillRect(web.x * CELL, web.y * CELL, CELL, CELL);
+      // Draw a simple radial web using canvas lines
+      cx.globalAlpha = 0.7;
+      cx.strokeStyle = '#e9d5ff';
+      cx.lineWidth = 0.8;
+      const r = CELL * 0.42;
+      const spokes = 8;
+      for (let s = 0; s < spokes; s++) {
+        const a = (Math.PI * 2 * s) / spokes;
+        cx.beginPath(); cx.moveTo(px, py); cx.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r); cx.stroke();
+      }
+      for (let ring = 1; ring <= 3; ring++) {
+        const rr = r * ring / 3;
+        cx.beginPath();
+        for (let s = 0; s <= spokes; s++) {
+          const a = (Math.PI * 2 * s) / spokes;
+          s === 0 ? cx.moveTo(px + Math.cos(a) * rr, py + Math.sin(a) * rr) : cx.lineTo(px + Math.cos(a) * rr, py + Math.sin(a) * rr);
+        }
+        cx.stroke();
+      }
+      // Subtle center dot
+      cx.globalAlpha = 0.9; cx.fillStyle = '#d8b4fe';
+      cx.beginPath(); cx.arc(px, py, 2, 0, Math.PI * 2); cx.fill();
     }
     cx.globalAlpha = 1;
     cx.restore();
@@ -318,6 +339,34 @@ export function render() {
         cx.fillText('🏳️', 0, 0);
         cx.restore();
       }
+      return;
+    }
+
+    // Resonating gem: no background, just gem + pedestal
+    if (tw.type === 'resonating_gem') {
+      const tx2 = tw.x * CELL, ty2 = tw.y * CELL;
+      const cx2 = tx2 + CELL / 2, cy2 = ty2 + CELL / 2;
+      const pulse = 0.7 + 0.3 * Math.sin(ticks / 24 + tw.x * 0.7);
+      // Pedestal
+      cx.fillStyle = '#44337a'; cx.globalAlpha = 0.9;
+      cx.fillRect(cx2 - CELL * 0.18, cy2 + CELL * 0.18, CELL * 0.36, CELL * 0.18);
+      cx.fillRect(cx2 - CELL * 0.12, cy2 + CELL * 0.12, CELL * 0.24, CELL * 0.08);
+      cx.globalAlpha = 1;
+      // Glow
+      cx.save();
+      cx.shadowColor = '#c084fc'; cx.shadowBlur = 14 * pulse;
+      // Diamond shape
+      const gs = CELL * 0.32;
+      cx.beginPath();
+      cx.moveTo(cx2, cy2 - gs); cx.lineTo(cx2 + gs * 0.6, cy2 - gs * 0.2);
+      cx.lineTo(cx2 + gs * 0.55, cy2 + gs * 0.3); cx.lineTo(cx2, cy2 + gs * 0.5);
+      cx.lineTo(cx2 - gs * 0.55, cy2 + gs * 0.3); cx.lineTo(cx2 - gs * 0.6, cy2 - gs * 0.2);
+      cx.closePath();
+      const grad = cx.createLinearGradient(cx2, cy2 - gs, cx2, cy2 + gs * 0.5);
+      grad.addColorStop(0, '#e9d5ff'); grad.addColorStop(0.4, '#a855f7'); grad.addColorStop(1, '#4c1d95');
+      cx.fillStyle = grad; cx.globalAlpha = 0.88 * pulse; cx.fill();
+      cx.strokeStyle = '#e9d5ff'; cx.lineWidth = 1; cx.globalAlpha = 0.7; cx.stroke();
+      cx.restore();
       return;
     }
 
@@ -563,6 +612,15 @@ export function render() {
     if (ticks % 4 === 0) state.particles.push({ x: bee.x, y: bee.y, vx: 0, vy: 0, life: 8, clr: '#fbbf2444', sz: 1.5 });
   });
 
+  // Orbital brood (grateful spider D skill)
+  cx.font = Math.floor(CELL * 0.28) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  for (const tw of towers) {
+    if (tw.type !== 'grateful_spider' || !tw._orbits) continue;
+    for (const orb of tw._orbits) {
+      if (orb.x !== undefined) cx.fillText('🕷️', orb.x, orb.y);
+    }
+  }
+
   // Projectiles
   projectiles.forEach(p => {
     const px = p.x * CELL + CELL / 2, py = p.y * CELL + CELL / 2;
@@ -577,12 +635,34 @@ export function render() {
     }
   });
 
-  // Beams
+  // Beams — jagged lightning rendering
   beams.forEach(b => {
-    cx.strokeStyle = b.clr; cx.lineWidth = b.w || 2; cx.globalAlpha = Math.min(1, b.life / 6);
-    cx.beginPath(); cx.moveTo(b.x1, b.y1); cx.lineTo(b.x2, b.y2); cx.stroke();
-    cx.strokeStyle = b.clr + '33'; cx.lineWidth = (b.w || 2) + 4;
-    cx.beginPath(); cx.moveTo(b.x1, b.y1); cx.lineTo(b.x2, b.y2); cx.stroke();
+    const alpha = Math.min(1, b.life / 6);
+    const w = b.w || 2;
+    // Build jagged polyline via midpoint displacement
+    const segs = 7;
+    const spread = Math.hypot(b.x2 - b.x1, b.y2 - b.y1) * 0.20;
+    const pts = [{ x: b.x1, y: b.y1 }];
+    for (let si = 1; si < segs; si++) {
+      const t = si / segs;
+      const mx = b.x1 + (b.x2 - b.x1) * t, my = b.y1 + (b.y2 - b.y1) * t;
+      const px = -(b.y2 - b.y1), py = (b.x2 - b.x1);
+      const pl = Math.hypot(px, py) || 1;
+      const off = (Math.random() - 0.5) * 2 * spread;
+      pts.push({ x: mx + px / pl * off, y: my + py / pl * off });
+    }
+    pts.push({ x: b.x2, y: b.y2 });
+    const drawPts = (lw, clr, a) => {
+      cx.globalAlpha = a; cx.strokeStyle = clr; cx.lineWidth = lw;
+      cx.beginPath(); pts.forEach((p, i) => i ? cx.lineTo(p.x, p.y) : cx.moveTo(p.x, p.y)); cx.stroke();
+    };
+    drawPts(w + 7, b.clr + '44', alpha * 0.5);  // outer glow
+    drawPts(w + 3, b.clr, alpha * 0.7);          // mid color
+    drawPts(w, '#ffffff', alpha);                 // bright core
+    // Spark dots at endpoints
+    cx.globalAlpha = alpha * 0.9; cx.fillStyle = '#ffffff';
+    cx.beginPath(); cx.arc(b.x1, b.y1, w + 1.5, 0, Math.PI * 2); cx.fill();
+    cx.beginPath(); cx.arc(b.x2, b.y2, w + 1.5, 0, Math.PI * 2); cx.fill();
   });
   cx.globalAlpha = 1;
 

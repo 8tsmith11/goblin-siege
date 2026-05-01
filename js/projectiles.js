@@ -3,6 +3,12 @@ import { sfxHit } from './audio.js';
 import { mkF } from './ui.js';
 import { getP, freeProj, getBeam } from './pool.js';
 
+function spawnChainSparks(particles, e, CELL) {
+  for (let i = 0; i < 5; i++) {
+    particles.push({ x: e.x*CELL+CELL/2, y: e.y*CELL+CELL/2, vx: (Math.random()-0.5)*4, vy: (Math.random()-0.5)*4, life: 10, clr: '#c7d2fe', sz: 2 });
+  }
+}
+
 export function updateProjectiles() {
   const { projectiles, enemies, particles, beams, ticks, CELL } = state;
   for (let i = projectiles.length - 1; i >= 0; i--) {
@@ -30,10 +36,15 @@ export function updateProjectiles() {
       }
       if (p.chain > 0) {
         const nx = enemies.filter(e => !e.dead && e !== p.tgt && !p.hits.includes(e) && Math.hypot(e.x - p.tgt.x, e.y - p.tgt.y) < 2.5);
-        if (nx.length) { 
-           const nt = nx[0]; p.hits.push(nt); 
-           const b = getBeam(); b.x1=p.tgt.x*CELL+CELL/2; b.y1=p.tgt.y*CELL+CELL/2; b.x2=nt.x*CELL+CELL/2; b.y2=nt.y*CELL+CELL/2; b.life=6; b.clr='#818cf8'; b.w=2; beams.push(b);
-           nt.hp -= Math.floor(p.dmg * 0.6); if (p.chainStun) nt.stunned = p.chainStun; p.chain--; 
+        if (nx.length) {
+          const nt = nx[0]; p.hits.push(nt);
+          const b = getBeam(); b.x1=p.tgt.x*CELL+CELL/2; b.y1=p.tgt.y*CELL+CELL/2; b.x2=nt.x*CELL+CELL/2; b.y2=nt.y*CELL+CELL/2; b.life=8; b.clr='#818cf8'; b.w=5; beams.push(b);
+          const chainEff = p.chainEfficiency ?? 0.6;
+          nt.hp -= Math.floor(p.dmg * chainEff);
+          if (p.chainStun && !nt.boss) nt.stunned = Math.max(nt.stunned, p.chainStun);
+          if (p.chainSlowAmt && !nt.boss) { nt.slow = Math.max(nt.slow, p.chainSlowAmt); nt.st = Math.max(nt.st, p.chainSlowDur || 30); }
+          if (p.chainSparks) spawnChainSparks(particles, nt, CELL);
+          p.chain--;
         }
       }
       if (p.pierce > 0) {

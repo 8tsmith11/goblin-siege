@@ -49,6 +49,23 @@
       "x": 720,
       "y": 720
     },
+    "honey_production": {
+      "name": "Sweet Harvest",
+      "icon": "🍯",
+      "cost": {
+        "dust": 15,
+        "wood": 10
+      },
+      "waves": 2,
+      "unlocks": "honey_consumable",
+      "prereqs": [
+        "beekeeping"
+      ],
+      "desc": "The hive produces more than just stings.",
+      "tooltip": "Beehives produce 1 Honey per wave. Honey slows enemies on path tiles, same as Sticky Sap.",
+      "x": 840,
+      "y": 720
+    },
     "settling_basics": {
       "name": "Settl. Basics",
       "icon": "🏘️",
@@ -429,6 +446,40 @@
       "trigger": "frequency_played",
       "x": 240,
       "y": 720
+    },
+    {
+      "id": "resonating_gem",
+      "name": "Resonating Gem",
+      "icon": "💎",
+      "cost": {
+        "stone": 100
+      },
+      "waves": 5,
+      "unlocks": "resonating_gem_consumable",
+      "prereqs": [],
+      "desc": "The frequency left something behind.",
+      "tooltip": "Unlocks the Resonating Gem — a placeable structure. Its purpose is unclear.",
+      "hidden": true,
+      "trigger": "acoustic_anomaly_complete",
+      "x": 360,
+      "y": 720
+    },
+    {
+      "id": "knowledge_otherworldly",
+      "name": "Knowledge of the Otherworldly",
+      "icon": "👁️",
+      "cost": {
+        "dust": 40
+      },
+      "waves": 3,
+      "unlocks": "dust_courier",
+      "prereqs": [],
+      "desc": "What the Watcher saw in you, you can now use.",
+      "tooltip": "Monkeys can now carry Dust from the Lab to Workbenches and Stockpiles.",
+      "hidden": true,
+      "trigger": "watcher_appeared",
+      "x": 360,
+      "y": 840
     }
   ],
   "pools": {

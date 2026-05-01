@@ -1,6 +1,7 @@
 'use strict';
 import { bus } from './bus.js';
 import { getP, freeP, freeBeam } from './pool.js';
+import { spawnParticles, getCenter } from './utils.js';
 import { updateProjectiles } from './projectiles.js';
 import { dropItem } from './resources.js';
 import { buildPath } from './path.js';
@@ -81,13 +82,16 @@ bus.on('enemyDeath', e => {
     const bHP = 60 + 3 * state.wave + 0.05 * state.wave * state.wave;
     const count = 2 + Math.floor(Math.random() * 3);
     state.bSen.add('spiderling');
+    spawnParticles(state.particles, e.x * state.CELL + state.CELL / 2, e.y * state.CELL + state.CELL / 2, 14,
+      { spreadX: 5, spreadY: 5, life: 18, clr: '#c4b5fd', sz: 3 });
     for (let i = 0; i < count; i++) {
-      const angle = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 0.6;
+      // Spread evenly but with random offset, biased off-path for drama
+      const angle = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 1.2;
       const sp = mkE(ETYPES.spiderling, bHP, 1.0);
       sp.spiderling = true; sp.gMode = 'exploding';
-      sp.explodeVX = Math.cos(angle) * 0.5;
-      sp.explodeVY = Math.sin(angle) * 0.5;
-      sp.explodeDist = 0.6 + Math.random() * 0.8; // 0.6–1.4 tiles
+      sp.explodeVX = Math.cos(angle) * 0.55;
+      sp.explodeVY = Math.sin(angle) * 0.55;
+      sp.explodeDist = 1.8 + Math.random() * 2.0; // 1.8–3.8 tiles off-path
       sp.x = e.x; sp.y = e.y; sp.pi = e.pi;
       state.enemies.push(sp);
     }
@@ -130,11 +134,21 @@ bus.on('watcherTransition', ({ watcher }) => {
 });
 
 // Patient Watcher escaped
+bus.on('researchComplete', ({ node }) => {
+  showBanner('🔬 ' + node.name + ' — Research Complete');
+});
+
+bus.on('firstSpider', () => {
+  addFeed('obs', 'Entity classification: arachnid. Non-hostile posture. She is looking for something. We do not know what.');
+});
+
 bus.on('watcherEscaped', () => {
   state.watcherEscaped = true;
   sfxWatcherScreech();
-  stopHum();
-  showBanner('🔮 The Patient Watcher walked away.');
+  startHum();
+  setTimeout(() => stopHum(), 11000);
+  showBanner('👁️ The Patient Watcher walked away.');
+  addFeed('obs', 'The Patient Watcher left without engaging. Its route was not random. It was methodical. It was looking at us.');
 });
 
 import { buildResearchGraph, tickResearch } from './research.js';
@@ -144,7 +158,7 @@ import { getScribeEntry } from './bestiary.js';
 import { TOWER_SKILLS, HOARD_LEVELS, TD, ETYPES } from './data.js';
 import { updateEnemies, genWave, mkE, isBossWave, previewWave } from './enemies.js';
 import { updateTowers } from './towers.js';
-import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser, spawnSpiderMother, updateSpiderMother } from './support.js';
+import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser, spawnSpiderMother, updateSpiderMother, updateOrbitalBrood } from './support.js';
 import { updateMonkeys } from './monkeys.js';
 import { render, invalidateBg, clearFogParticles } from './render.js';
 import { ARTIFACTS } from './artifacts.js';
@@ -162,6 +176,34 @@ import { syncInvBtn, addToInventory } from './ui-inventory.js';
 export const VERSION = 'v1.8';
 export const WORLD_COLS = 32;
 export const WORLD_ROWS = 24;
+
+const _BOSS_STRIP_ORDER = ['herald','vanguard','vanguard','vanguard','curious_auditor','vanguard','patient_watcher'];
+const _BOSS_STRIP_DESC = {
+  herald:          '📯 The Proud Herald — Announces itself. Flanked by minions. Does not fight.',
+  curious_auditor: '🏛️ The Curious Auditor — Counts your spending. Speaks when hurt. Slow but persistent.',
+  patient_watcher: '👁️ The Patient Watcher — Roams the map for 30 seconds. If undisturbed, it leaves. At 20% HP it joins the path.',
+  vanguard:        '👑 Vanguard — A crowned goblin chieftain. Tough, well-supplied, leading a warband.',
+  fog:             '🌫️ Considerate Fog — All tower range reduced to 1 tile. Enemies that break through deal 3 lives each.',
+  weight:          '💎 Weight of Bones — All enemies become geologists, stealing your stone and wood.',
+};
+function _updateBossStrip(nextW) {
+  const el = document.getElementById('bossStrip');
+  if (!el) return;
+  let desc = null;
+  if (nextW === 5) desc = _BOSS_STRIP_DESC.herald;
+  else if (nextW === 15) desc = _BOSS_STRIP_DESC.fog;
+  else if (nextW === 40) desc = _BOSS_STRIP_DESC.weight;
+  else if (isBossWave(nextW)) {
+    const bossType = _BOSS_STRIP_ORDER[state.namedBossIndex ?? 0] ?? 'vanguard';
+    desc = _BOSS_STRIP_DESC[bossType] ?? _BOSS_STRIP_DESC.vanguard;
+  }
+  if (desc) {
+    el.textContent = desc;
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
 
 export function getCell(x, y) { return state.grid[y]?.[x] ?? null; }
 export function setCell(x, y, updates) {
@@ -345,7 +387,7 @@ function update() {
     }
   }
 
-  updateClam(); updateClown(); updateRobot(); updateBees(); updateMonkeys(); updateTowers();
+  updateClam(); updateClown(); updateRobot(); updateBees(); updateOrbitalBrood(); updateMonkeys(); updateTowers();
   updateSpiderMother();
   // Silence BGM while Patient Watcher is alive (any phase)
   const _watcherPresent = state.enemies.some(e => e.watcher);
@@ -417,6 +459,13 @@ function update() {
     }
     // Reset grateful spider once-per-wave web ability
     state.towers.forEach(tw => { if (tw.type === 'grateful_spider') tw.webUsed = false; });
+    // Honey production: beehives produce 1 honey per wave when research is unlocked
+    if (state.researchUnlocks?.honey_production) {
+      const hives = state.towers.filter(tw => tw.type === 'beehive');
+      for (const hive of hives) {
+        addToInventory('consumables', { id: 'honey', icon: '🍯', name: 'Honey', desc: 'Place on a path tile. Slows enemies by 40%.' });
+      }
+    }
     // Clear expired webs
     if (state.webs?.length) state.webs = [];
     const _craftDone = tickCraft();
@@ -466,6 +515,7 @@ function update() {
       startHum();
       setTimeout(() => stopHum(), 10000);
       bus.emit('trigger', { type: 'frequency_played' });
+      addFeed('obs', 'During prep phase: an audio anomaly. ~40Hz. Duration: 11 seconds. Source: unknown. Towers did not respond. Goblins did not respond. The Lab recorded it anyway.');
     }
     autoSave();
     const _scribe = getScribeEntry(state.wave, state);
@@ -484,6 +534,11 @@ function update() {
       const _warnSub = _isHeraldNext ? 'Prepare for Wave ' + _nextW : 'A powerful foe comes next wave';
       state.heraldWarn = { tick: state.ticks, text: _warnTxt, sub: _warnSub };
     }
+    // Boss strip — show description at bottom of screen for all boss/special upcoming waves
+    _updateBossStrip(_nextW);
+    // Observations feed entries
+    if (state.wave === 1 && !state._obs1) { state._obs1 = true; addFeed('obs', 'Castle defense initiated. First wave approaching. Towers: ' + state.towers.filter(t=>t.type!=='castle').length + '. Lives: ' + state.lives + '. The path comes from the forest.'); }
+    if (state.wave === 5 && !state._obs5) { state._obs5 = true; addFeed('obs', 'The path continues past the castle. The path does not stop at the castle wall. It continues for several tiles and then the map ends. The map ending is not the same as the path ending. We do not know what is on the other side of the map edge. We have been assuming the goblins do not know either. We are less sure of this than we were.'); }
     hudU(); panelU();
     return;
   }
@@ -529,6 +584,8 @@ export function startGame() {
 }
 
 export function startWave() {
+  const _stripEl = document.getElementById('bossStrip');
+  if (_stripEl) _stripEl.style.display = 'none';
   if (state.wave !== 22) stopHum(); // let hum run through wave 23 (started at end of wave 22)
   state.wave++;
   // Unlock lab at wave 8
@@ -597,10 +654,11 @@ export function resetGame() {
     gameOver: false, started: false, pathReady: false, paused: false, sel: null, ttTower: null,
     nodes: [], resources: {}, npcs: [], firedTriggerLines: new Set(), weather: { id: 'clear', wavesLeft: 1 }, fogWave: false, fogStartTick: 0, heraldWarn: null, hasHeraldHorn: false, pip: null, research: null, researchUnlocks: {}, unlockedTowers: new Set(['squirrel','lion','penguin']), bSen: new Set(['sleepy_door']), age: 'stone', weightOfBones: false,
     traps: [], webs: [],
-    namedBossIndex: 0, auditorActive: false, watcherEscaped: false, spiderRitualDone: false, spiderMother: null, ceasefire: false, seedStone: null, cameraShake: 0,
+    namedBossIndex: 0, auditorActive: false, watcherEscaped: false, watcherAppeared: false, _acAnomalyDone: false, spiderRitualDone: false, spiderMother: null, ceasefire: false, seedStone: null, cameraShake: 0,
     inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} },
     worldGenChoices: {}, totalGoblinsKilled: 0, totalGoldEarned: 0,
     frequencyPlayed: false, patternRecDone: false, translationStep: 0, _translationWaveCount: 0,
+    _obs1: false, _obs5: false,
     cam: { panX: undefined, panY: undefined, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
     _Σ: 0, _Ω: 0,
   });

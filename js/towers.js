@@ -26,7 +26,7 @@ function spawnProjectile(tw, tgt, def, isFrenzySecondary = false) {
   if (isFrenzySecondary) {
      Object.assign(p, { x:tw.x, y:tw.y, tgt, dmg, spd:def.pSpd*0.06, clr:def.pClr, splash:tw.splash, slow:tw.slow, pierce:0, chain:0, speedUp:false, hits:[], stun:0, poison:null, blind:false, chainStun:0, bloodlust:tw.bloodlust, lingeringChill:false, brittleIce:false });
   } else {
-     Object.assign(p, { x:tw.x, y:tw.y, tgt, dmg, spd:def.pSpd*0.06, clr:def.pClr, splash:tw.splash, slow:tw.slow, pierce:tw.pierce||0, chain:tw.chain||0, speedUp:def.speedUp, hits:[], stun:tw.stun||0, poison:tw.poison||null, blind:tw.blind, chainStun:tw.chainStun||0, bloodlust:tw.bloodlust, lingeringChill:tw.lingeringChill||false, brittleIce:tw.brittleIce||false, mastery:tw._mastery||false });
+     Object.assign(p, { x:tw.x, y:tw.y, tgt, dmg, spd:def.pSpd*0.06, clr:def.pClr, splash:tw.splash, slow:tw.slow, pierce:tw.pierce||0, chain:tw.chain||0, speedUp:def.speedUp, hits:[], stun:tw.stun||0, poison:tw.poison||null, blind:tw.blind, chainStun:tw.chainStun||0, chainSlowAmt:tw.chainSlowAmt||0, chainSlowDur:tw.chainSlowDur||0, chainEfficiency:tw.chainEfficiency||0, chainSparks:tw.chainSparks||false, bloodlust:tw.bloodlust, lingeringChill:tw.lingeringChill||false, brittleIce:tw.brittleIce||false, mastery:tw._mastery||false });
   }
   return p;
 }
@@ -94,6 +94,11 @@ export function updateTowers() {
     // Warm Pebble: towers adjacent to Lab fire 10% faster
     let warmPebbleBoost = 1;
     if (state.inventory?.equipped?.some(a => a?.id === 'warm_pebble')) {
+      const lab = towers.find(t => t.type === 'lab');
+      if (lab && Math.abs(tw.x - lab.x) <= 1 && Math.abs(tw.y - lab.y) <= 1) warmPebbleBoost = 0.9;
+    }
+    // Chipped Mirror: one tower adjacent to Lab fires 10% faster
+    if (warmPebbleBoost === 1 && state.inventory?.equipped?.some(a => a?.id === 'chipped_mirror')) {
       const lab = towers.find(t => t.type === 'lab');
       if (lab && Math.abs(tw.x - lab.x) <= 1 && Math.abs(tw.y - lab.y) <= 1) warmPebbleBoost = 0.9;
     }

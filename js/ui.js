@@ -7,6 +7,15 @@ import { renderSk } from './skills.js';
 import { BESTIARY, getScribeLogs } from './bestiary.js';
 import { sfxPlace, iA } from './audio.js';
 import { addFeed } from './feed.js';
+import { isBossWave, waveComposition } from './enemies.js';
+
+function _waveComposition(w) {
+  const parts = waveComposition(w);
+  if (!parts.length) return '';
+  // Single special entry (fog, watcher, herald)
+  if (parts[0].label) return parts.map(p => (p.seen ? p.em : '❓') + ' ' + (p.label || '')).join('  ');
+  return parts.map(p => (p.seen ? p.em : '❓') + (p.count > 1 ? ' ×' + p.count : '')).join('  ');
+}
 
 // ── Sub-module re-exports (keeps external import sites unchanged) ──────────────
 export { showTT, refreshActiveTT } from './ui-tower.js';
@@ -26,6 +35,17 @@ export function hudU() {
     wlEl.textContent = '⚔ Prepare · ' + Math.ceil(prepTicks / 60) + 's';
   } else {
     wlEl.textContent = phase === 'active' ? 'Wave ' + wave + ' · ' + l + ' left' : 'Wave ' + wave;
+  }
+  // Wave makeup — shows to the right of Start button during prep only
+  const makeupEl = document.getElementById('waveMakeup');
+  if (makeupEl) {
+    if (phase === 'prep' && wave > 0) {
+      const makeup = _waveComposition(wave + 1);
+      makeupEl.textContent = makeup;
+      makeupEl.style.display = makeup ? '' : 'none';
+    } else {
+      makeupEl.style.display = 'none';
+    }
   }
 
   const goBtn = document.getElementById('goBtn');

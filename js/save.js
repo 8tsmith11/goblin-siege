@@ -87,6 +87,8 @@ function _build() {
     _nbi: state.namedBossIndex || 0,
     _aud: state.auditorActive || false,
     _we: state.watcherEscaped || false,
+    _wa: state.watcherAppeared || false,
+    _aad: state._acAnomalyDone || false,
     _srd: state.spiderRitualDone || false,
     _ss: state.seedStone || null,
   };
@@ -200,6 +202,8 @@ function _apply(d) {
   state.namedBossIndex = d._nbi ?? 0;
   state.auditorActive = d._aud || false;
   state.watcherEscaped = d._we || false;
+  state.watcherAppeared = d._wa || false;
+  state._acAnomalyDone = d._aad || false;
   state.spiderRitualDone = d._srd || false;
   state.seedStone = d._ss || null;
   state.ceasefire = state.towers.some(t => t.type === 'ceasefire_flag' && t.raised);

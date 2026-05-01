@@ -25,7 +25,7 @@ export function isBossWave(w) { return BOSS_WAVES.has(w) || (w > 50 && w % 5 ===
 
 // Named boss order — consumed in sequence for each regular boss wave (after Herald & Fog).
 // 'vanguard' = generic crown boss. After the list is exhausted, falls back to 'vanguard'.
-export const BOSS_ORDER = ['herald', 'curious_auditor', 'vanguard', 'vanguard', 'patient_watcher'];
+export const BOSS_ORDER = ['herald', 'vanguard', 'vanguard', 'vanguard', 'curious_auditor', 'vanguard', 'patient_watcher'];
 
 const EWEIGHTS = {
   normal: 4, fast: 3, tank: 2, berserker: 2, swarm: 3,
@@ -55,6 +55,49 @@ function buildAvail(w) {
   return a;
 }
 
+// Returns exact {em, count, seen}[] for wave w, matching genWave counts without mutating state.
+export function waveComposition(w) {
+  if (w === 15) return [{ em: '🌫️', label: 'Considerate Fog', seen: true }];
+  if (w === 40) return [{ em: '💎', label: 'Weight of Bones', seen: true }];
+  if (w === 5)  return [{ em: '📯', label: 'Proud Herald', seen: true }];
+  if (isBossWave(w)) {
+    const idx = state.namedBossIndex ?? 0;
+    const bt = BOSS_ORDER[idx] ?? 'vanguard';
+    const em = bt === 'curious_auditor' ? '🏛️' : bt === 'patient_watcher' ? '👁️' : '👑';
+    const label = bt === 'curious_auditor' ? 'Curious Auditor' : bt === 'patient_watcher' ? 'Patient Watcher' : 'Vanguard';
+    const mc = Math.floor(3 + w * 0.5);
+    const result = [{ em, label, count: 1, seen: state.bSen?.has(bt) }];
+    const minions = {};
+    for (let i = 0; i < mc; i++) {
+      const tp = ['normal', 'fast', 'berserker'][i % 3];
+      const e = ETYPES[tp]; if (!e) continue;
+      const key = e.em || tp;
+      if (!minions[key]) minions[key] = { em: key, count: 0, seen: state.bSen?.has(tp) };
+      minions[key].count++;
+    }
+    return result.concat(Object.values(minions));
+  }
+  const avail = buildAvail(w);
+  const earlyScale = w <= 4 ? 1.5 : w <= 7 ? 1.2 : 1;
+  const cnt = Math.floor((6 + w * 0.85 + Math.pow(w, 0.75)) * earlyScale);
+  const counts = {};
+  // Use weighted proportions (same weights as pickType) to estimate exact counts
+  const total = avail.reduce((s, t) => s + (EWEIGHTS[t] || 1), 0);
+  let rem = cnt;
+  for (let i = 0; i < avail.length; i++) {
+    const tp = avail[i];
+    const share = i === avail.length - 1 ? rem : Math.round(cnt * (EWEIGHTS[tp] || 1) / total);
+    if (share <= 0) continue;
+    rem -= share;
+    const em = ETYPES[tp]?.em || '?';
+    const seen = state.bSen?.has(tp) ?? false;
+    const actualCount = tp === 'swarm' ? share * 4 : share;
+    if (!counts[em]) counts[em] = { em, count: 0, seen };
+    counts[em].count += actualCount;
+  }
+  return Object.values(counts);
+}
+
 // Returns a lightweight preview of what types appear in wave w (no state mutation).
 export function previewWave(w) {
   if (w === 15) return '🌫️ Considerate Fog';
@@ -64,7 +107,7 @@ export function previewWave(w) {
     const idx = state.namedBossIndex ?? 0;
     const bt = BOSS_ORDER[idx] ?? 'vanguard';
     if (bt === 'curious_auditor') return '🏛️ Curious Auditor';
-    if (bt === 'patient_watcher') return '🔮 Patient Watcher';
+    if (bt === 'patient_watcher') return '👁️ Patient Watcher';
     return '👑 Vanguard';
   }
   const avail = buildAvail(w);
@@ -152,6 +195,8 @@ export function genWave(w) {
     if (bossType === 'patient_watcher') {
       const watchHP = Math.floor((bHP * 8 + w * 80) * 7.5); // 20% = 1.5× a normal boss
       state.bSen.add('patient_watcher');
+      state.watcherAppeared = true;
+      bus.emit('watcherAppeared');
       const corners = [
         { x: 1, y: 1 }, { x: state.COLS - 2, y: 1 },
         { x: 1, y: state.ROWS - 2 }, { x: state.COLS - 2, y: state.ROWS - 2 }
@@ -172,7 +217,7 @@ export function genWave(w) {
         pi: 0, x: corner.x, y: corner.y, slow: 0, _trapSlow: 0, st: 0, dead: false, spdBuff: 0, frozen: 0,
         stealth: false, stealthTimer: 0, healCD: 0, boss: true, watcher: true,
         watcherPhase: 'roam', watcherPoints, watcherTargetIdx: 0, damageTimer: 0, prevHp: watchHP, everAttacked: false,
-        line: '', reversed: false, reverseTimer: 0, poison: null, stunned: 0,
+        line: '', reversed: false, reverseTimer: 0, poison: null, stunned: 0, em: '👁️',
         // Eye offsets and tentacle data initialised here
         _eyes: Array.from({ length: 8 }, (_, i) => ({
           ang: (Math.PI * 2 * i / 8),
@@ -203,7 +248,9 @@ export function genWave(w) {
     const cnt = Math.floor((6 + w * 0.85 + Math.pow(w, 0.75)) * earlyScale);
     for (let i = 0; i < cnt; i++) {
       const tp = pickType(avail);
+      const _wasNewSpider = tp === 'spider' && !state.bSen.has('spider');
       state.bSen.add(tp);
+      if (_wasNewSpider) bus.emit('firstSpider');
       if (tp === 'swarm') { for (let j = 0; j < 4; j++) q.push(mkE(ETYPES.swarm, bHP, bSpd)); }
       else q.push(mkE(ETYPES[tp], bHP, bSpd));
     }
@@ -241,8 +288,20 @@ export function genWave(w) {
 export function updateEnemies() {
   const { enemies, path, freezeActive, ticks, CELL, particles, grid } = state;
   if (grid.length > 0) clearEnemiesGrid(grid);
+  // Goblin Lullaby: enemies in lab radius move 10% slower
+  const _lullaby = state.inventory?.equipped?.some(a => a?.id === 'goblin_lullaby');
+  const _lulabyLab = _lullaby ? state.towers?.find(t => t.type === 'lab') : null;
   for (const e of enemies) {
     if (e.dead) continue;
+    if (_lulabyLab) {
+      if (Math.hypot(e.x - _lulabyLab.x, e.y - _lulabyLab.y) <= (_lulabyLab.obsRange || 3)) {
+        e._labSlow = 0.1;
+      } else {
+        e._labSlow = 0;
+      }
+    } else {
+      e._labSlow = 0;
+    }
 
     // Spiderling explosion phase
     if (e.spiderling && e.gMode === 'exploding') {
@@ -266,12 +325,20 @@ export function updateEnemies() {
       if (!e._audLines) {
         e._audLines = ['How much did that one cost you?', 'And that one? And that one?', 'All quite expensive. Fascinating.', 'I will need a full accounting when this is over.'];
         e._audIndex = 0;
-        e._audDelay = 0;
-      } else if (e.hp < e.mhp && ticks >= e._audDelay) {
-        const line = e._audLines[e._audIndex % e._audLines.length];
-        e._audIndex++;
-        speak(line);
-        e._audDelay = ticks + 300; // 5 seconds
+        e._audFirstHit = false;
+        e._audDelay = Infinity;
+      } else {
+        // Only start speaking after the first confirmed hit
+        if (!e._audFirstHit && e.hp < e.mhp) {
+          e._audFirstHit = true;
+          e._audDelay = ticks + 60;
+        }
+        if (e._audFirstHit && ticks >= e._audDelay) {
+          const line = e._audLines[e._audIndex % e._audLines.length];
+          e._audIndex++;
+          speak(line);
+          e._audDelay = ticks + 300;
+        }
       }
     }
     if (e.spiderling && e.gMode === 'walking_to_path') {
@@ -559,7 +626,7 @@ function moveEnemy(e, path) {
   const t = path[nextI];
 
   const dx = t.x - e.x, dy = t.y - e.y, d = Math.sqrt(dx * dx + dy * dy);
-  let sp = e.spd * (1 - Math.max(e.slow, e._trapSlow || 0)) * 0.04;
+  let sp = e.spd * (1 - Math.max(e.slow, e._trapSlow || 0, e._labSlow || 0)) * 0.04;
   if (e.spdBuff > 0) sp *= 1.3;
   if (d < sp + 0.001) { e.x = t.x; e.y = t.y; e.pi = nextI; }
   else { e.x += dx / d * sp; e.y += dy / d * sp; }

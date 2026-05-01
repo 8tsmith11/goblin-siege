@@ -4,6 +4,9 @@ import { showTip, syncPause, panelU } from './ui.js';
 import { RARITY_COLORS } from './artifacts.js';
 import { applyAugment } from './craft.js';
 import { sfxFreeze } from './audio.js';
+import { bus } from './bus.js';
+
+bus.on('addConsumable', item => addToInventory('consumables', item));
 
 const INV_MAX = 512;
 let _invSel = null; // { source: 'inv'|'equip', section: string, index: number }

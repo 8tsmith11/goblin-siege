@@ -1,10 +1,8 @@
-// Unified game feed log
-// Usage: import { addFeed } from './feed.js';
-//        addFeed('wave', 'Wave 3 begins!');
-//
-// To add new message types, add an entry to FEED_TYPES.
+// Unified game feed log — entries stored for Lab Notes tab, no left-panel DOM rendering
+// Usage: addFeed('wave', 'Wave 3 begins!');
 
-// Type registry — extend by adding entries here
+import { state } from './main.js';
+
 export const FEED_TYPES = {
   wave:       { icon: '⚔️',  color: '#f87171' },
   boss:       { icon: '👑',  color: '#fbbf24' },
@@ -19,47 +17,21 @@ export const FEED_TYPES = {
   system:     { icon: '🏰',  color: '#64748b' },
   weather:    { icon: '🌤️', color: '#7dd3fc' },
   herald:     { icon: '📯',  color: '#f59e0b' },
+  obs:        { icon: '🔮',  color: '#c084fc' },
 };
 
 let _log = [];
 
-function _renderEntry(log, type, text, animate) {
-  const def = FEED_TYPES[type] ?? FEED_TYPES.system;
-  const el = document.createElement('div');
-  el.className = animate ? 'fe' : 'fe fe-no-anim';
-  el.innerHTML = `<span class="fe-i">${def.icon}</span><span class="fe-t" style="color:${def.color}">${text}</span>`;
-  log.appendChild(el);
-}
-
 export function addFeed(type, text) {
-  _log.push({ type, text });
-
-  const log = document.getElementById('feedLog');
-  if (!log) return;
-
-  _renderEntry(log, type, text, true);
-
-  // Auto-scroll unless player has scrolled up to read history
-  const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 60;
-  if (atBottom) log.scrollTop = log.scrollHeight;
+  _log.push({ type, text, wave: state?.wave ?? 0 });
 }
 
-// Returns the full log for saving
 export function getFeedLog() { return _log; }
 
-// Restores from a saved array and re-renders the panel
 export function restoreFeed(entries) {
-  _log = entries || [];
-  const log = document.getElementById('feedLog');
-  if (!log) return;
-  log.innerHTML = '';
-  for (const { type, text } of _log) _renderEntry(log, type, text, false);
-  log.scrollTop = log.scrollHeight;
+  _log = (entries || []).map(e => ({ wave: 0, ...e }));
 }
 
-// Clears log on reset/death
 export function clearFeed() {
   _log = [];
-  const log = document.getElementById('feedLog');
-  if (log) log.innerHTML = '';
 }

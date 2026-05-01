@@ -1,5 +1,5 @@
 export const TD = {
-  squirrel: { name:'Thoughtful Squirrel', icon:'🐿️', clr:'#8b5cf6', cost:40,  resCost:{stone:5},         dmg:10, range:3.2, rate:44, pClr:'#a78bfa', pSpd:4,   splash:0,   slow:0,  target:'weakest', cat:'tower', desc:'Long range · targets weakest enemy' },
+  squirrel: { name:'Thoughtful Squirrel', icon:'🐿️', clr:'#8b5cf6', cost:40,  resCost:{stone:5},         dmg:12, range:3.2, rate:40, pClr:'#a78bfa', pSpd:4,   splash:0,   slow:0,  target:'weakest', cat:'tower', desc:'Long range · targets weakest enemy' },
   lion:     { name:'Rash Lion',           icon:'🦁',  clr:'#ef4444', cost:60,  resCost:{wood:4},          dmg:15, range:2.0, rate:25, pClr:'#f87171', pSpd:6,   splash:0,   slow:0,  target:'first',   cat:'tower', desc:'Very fast · high single-target DPS' },
   penguin:  { name:'Ambitious Penguin',   icon:'🐧',  clr:'#06b6d4', cost:55,  resCost:{stone:3},         dmg:5,  range:2.8, rate:35, pClr:'#67e8f9', pSpd:3,   splash:0,   slow:.4, target:'first',   cat:'tower', desc:'Slows enemies on hit' },
   lab:      { name:'Lab',                icon:'🧪', clr:'#a78bfa', cost:50, resCost:{stone:10}, cat:'support', obsRange: 3, desc:'Gathers Dust 🔮 from enemies slain within 3 tiles · Available at Wave 5' },
@@ -7,17 +7,18 @@ export const TD = {
   fish:     { name:'Arrogant Fish',       icon:'🐟',  clr:'#f59e0b', cost:75,  resCost:{wood:2},          dmg:12, range:2.5, rate:60, pClr:'#fcd34d', pSpd:3.5, splash:1.2, slow:0,  target:'first',   cat:'tower', desc:'Splash damage · hits nearby enemies' },
   seahorse: { name:'Insightful Seahorse', icon:'🦑',  clr:'#ec4899', cost:65,  resCost:{stone:2},         dmg:6,  range:3.5, rate:40, pClr:'#f472b6', pSpd:3,   splash:0,   slow:0,  target:'strongest',pierce:3, cat:'tower', seeInvis:true, invisPriority:true, desc:'Piercing shots · targets stealth enemies' },
   lizard:   { name:'Abhorrent Lizard',    icon:'🦎',  clr:'#84cc16', cost:85,  resCost:{wood:3},          dmg:45, range:2.5, rate:65, pClr:'#a3e635', pSpd:5,   splash:1.0, slow:0,  target:'first',   speedUp:true, voiceLine:"I DESPISE YOU ALL!", cat:'tower', desc:'Massive damage · splash · speeds up enemies' },
-  heron:    { name:'Clever Heron',        icon:'🦩',  clr:'#6366f1', cost:70,  resCost:{stone:2,wood:2},  dmg:10, range:3.0, rate:45, pClr:'#818cf8', pSpd:4,   splash:0,   slow:0,  target:'last',    chain:3, cat:'tower', desc:'Chain lightning · hits up to 3 targets' },
+  heron:    { name:'Clever Heron',        icon:'🦩',  clr:'#6366f1', cost:70,  resCost:{stone:2,wood:2},  dmg:16, range:3.0, rate:45, pClr:'#818cf8', pSpd:4,   splash:0,   slow:0,  target:'last',    chain:3, cat:'tower', desc:'Chain lightning · arcs to 3 targets · hits rearmost first' },
   clam:     { name:'Intuitive Clam',     icon:'🐚', clr:'#14b8a6', cost:80,  resCost:{stone:3},         cat:'support', buffRange:2,  buffDmg:1.5, buffRate:.85, buffDesc:'+50% DMG, -15% CD to nearby', desc:'Buffs nearby towers: +50% DMG, -15% cooldown' },
   beehive:  { name:'Beehive',            icon:'🐝', clr:'#eab308', cost:90,  cat:'support', beeCount:3,  beeDmg:4,    beeRange:3,   beeRate:30,  desc:'Deploys bees that swarm and sting enemies' },
   clown:    { name:'Magnificent Clown',  icon:'🤡', clr:'#f472b6', cost:100, resCost:{wood:3},          cat:'support', reverseRange:2, reverseDur:80, reverseCD:150, desc:'Targets one enemy and reverses their movement direction' },
   monkey:   { name:'Monkey Hut',         icon:'🛖', clr:'#fb923c', cost:70, resCost:{ stone:8, wood:8 }, cat:'support', capacity:1, range:3, desc:'Houses Resourceful Monkeys that gather, courier, or boost nearby buildings' },
   stockpile:{ name:'Stockpile',          icon:'📦', clr:'#d97706', cost:50, resCost:{ wood:6 }, cat:'support', desc:'Interface between ground items and your inventory. Monkeys deposit/withdraw here.' },
-  workbench:{ name:'Workbench',          icon:'🛠️', clr:'#a16207', cost:80, resCost:{ wood:10, stone:5 }, cat:'support', desc:'Crafts augments and consumables over waves' },
+  workbench:{ name:'Workbench',          icon:'🛠️', clr:'#a16207', cost:40, resCost:{ wood:5 }, cat:'support', desc:'Crafts augments and consumables over waves' },
   campfire: { name:'Warm Campfire',      icon:'🔥', clr:'#f97316', cost:50,  resCost:{wood:4}, cat:'support', range:1.5, warmRange:1.5, warmRate:0.8, desc:'Boosts fire rate of adjacent towers by 20%' },
   ceasefire_flag: { name:'Ceasefire Flag', icon:'🏳️', clr:'#f0f0f0', cost:20, resCost:{wood:10}, cat:'support', desc:'Click to raise or lower. When raised, all towers hold their fire. Consumable traps still work.' },
-  grateful_spider: { name:'Grateful Spider', icon:'🕷️', clr:'#8b5cf6', cost:0, cat:'tower', dmg:12, range:3, rate:40, pClr:'#c4b5fd', pSpd:4, splash:0, slow:0.4, target:'first', desc:'Shoots slowing webs · Once per wave: webs a path tile in range (slows + damages) · Blueprint only' },
+  grateful_spider: { name:'Grateful Spider', icon:'🕷️', clr:'#8b5cf6', cost:60, resCost:{wood:3}, cat:'tower', dmg:12, range:3, rate:40, pClr:'#c4b5fd', pSpd:4, splash:0, slow:0.4, target:'first', desc:'Shoots slowing webs · Once per wave: webs a path tile in range (slows + damages) · Blueprint only' },
   robot:    { name:'AI Agent',           icon:'🤖', clr:'#38bdf8', cost:110, cat:'support', autoSpell:true, reqAge: 'iron', desc:'Automatically casts spells during waves' },
+  resonating_gem: { name:'Resonating Gem', icon:'💎', clr:'#a78bfa', cost:0, cat:'support', desc:'A gem of unknown purpose. It hums faintly.', noBackground:true },
 };
 
 export const TOWER_SKILLS = {
@@ -71,18 +72,25 @@ export const TOWER_SKILLS = {
     E: { name:"Mastery: Jester's Privilege", desc:'Swaps the strongest and weakest enemy in range by HP. +1 range, −30% CD. Purple aura.', cost:{dust:60}, owned:false, req:'either_cd', apply:tw=>{ tw.reverseRange+=1; tw.reverseCD=Math.max(40,Math.round(tw.reverseCD*0.7)); tw.jesterPriv=true; tw._mastery=true; } },
   },
   heron: {
-    A: { name:'Storm Chain',   icon:'⛓️', desc:'Chain to 5 targets',                excludes:'B', cost:{dust:25,gold:50},  owned:false,              apply:tw=>{ tw.chain=5; } },
-    B: { name:'Focus Fire',    icon:'🎯', desc:'No chain, but x4 damage',           excludes:'A', cost:{dust:25,gold:50},  owned:false,              apply:tw=>{ tw.chain=0; tw.dmg*=4; } },
-    C: { name:'Thunderstrike', icon:'⚡', desc:'Chain hits stun 30 ticks',          excludes:'D', cost:{dust:50,gold:100}, owned:false, req:'any',   apply:tw=>{ tw.chainStun=30; } },
-    D: { name:'Overcharge',    icon:'🔋', desc:'+70% DMG, -20% range',              excludes:'C', cost:{dust:50,gold:100}, owned:false, req:'any',   apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.7); tw.range*=0.8; } },
+    A: { name:'Storm Arc',     icon:'⛓️', desc:'Chain to 5 targets · chain hits deal 75% of previous',  excludes:'B', cost:{dust:25,gold:50},  owned:false,              apply:tw=>{ tw.chain=5; tw.chainEfficiency=0.75; } },
+    B: { name:'Focused Bolt',  icon:'🎯', desc:'No chain, but ×4 damage · −15% cooldown',                excludes:'A', cost:{dust:25,gold:50},  owned:false,              apply:tw=>{ tw.chain=0; tw.dmg*=4; tw.rate=Math.max(5,Math.round(tw.rate*0.85)); } },
+    C: { name:'Static Field',  icon:'⚡', desc:'Chain jumps slow each non-boss enemy 50% for 0.5s',       excludes:'D', cost:{dust:50,gold:100}, owned:false, req:'any',   apply:tw=>{ tw.chainSlowAmt=0.5; tw.chainSlowDur=30; } },
+    D: { name:'Overcharge',    icon:'🔋', desc:'+80% DMG · chain jumps release a spark particle burst',  excludes:'C', cost:{dust:50,gold:100}, owned:false, req:'any',   apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.8); tw.chainSparks=true; } },
     E: { name:'Mastery',       desc:'+25% DMG, range, and rate. Purple aura.', cost:{dust:60}, owned:false, req:'either_cd', apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.25); tw.range=Math.round(tw.range*1.25*10)/10; tw.rate=Math.max(1,Math.round(tw.rate*0.8)); tw._mastery=true; } },
   },
   grateful_spider: {
-    A: { name:'Sticky',       icon:'🕸️', desc:'Web slow increased to 80%',                  excludes:'B', cost:{dust:20,gold:40},  owned:false,            apply:tw=>{ tw.webSlowBonus=true; } },
-    B: { name:'Venom Web',    icon:'☠️', desc:'Web tiles deal 3 dmg/tick',                   excludes:'A', cost:{dust:20,gold:40},  owned:false,            apply:tw=>{ tw.webVenom=true; } },
-    C: { name:'Wide Weave',   icon:'🌐', desc:'Once-per-wave web covers 5 tiles',             excludes:'D', cost:{dust:40,gold:80},  owned:false, req:'any', apply:tw=>{ tw.webSpread=true; } },
-    D: { name:'Lasting Web',  icon:'⌛', desc:'Once-per-wave web lasts 2 waves',              excludes:'C', cost:{dust:40,gold:80},  owned:false, req:'any', apply:tw=>{ tw.webLasting=true; } },
-    E: { name:'Mastery',       desc:'+25% DMG, range, and rate. Purple aura.', cost:{dust:60}, owned:false, req:'either_cd', apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.25); tw.range=Math.round(tw.range*1.25*10)/10; tw.rate=Math.max(1,Math.round(tw.rate*0.8)); tw._mastery=true; } },
+    A: { name:'Sticky',          icon:'🕸️', desc:'Web slow increased to 80%',                          excludes:'B', cost:{dust:20,gold:40},  owned:false,            apply:tw=>{ tw.webSlowBonus=true; } },
+    B: { name:'Venom Web',       icon:'☠️', desc:'Web tiles deal 3 dmg/tick',                           excludes:'A', cost:{dust:20,gold:40},  owned:false,            apply:tw=>{ tw.webVenom=true; } },
+    C: { name:'Wide Weave',      icon:'🌐', desc:'Once-per-wave web covers 5 tiles',                    excludes:'D', cost:{dust:40,gold:80},  owned:false, req:'any', apply:tw=>{ tw.webSpread=true; } },
+    D: { name:'Brood Guard',     icon:'🕷️', desc:'3 spiderlings orbit the tower · latch onto nearby enemies · deal damage until enemy escapes', excludes:'C', cost:{dust:40,gold:80}, owned:false, req:'any', apply:tw=>{ tw.orbitalBrood=true; if (!tw._orbits) tw._orbits=[]; } },
+    E: { name:'Mastery',          desc:'+25% DMG, range, and rate. Purple aura.', cost:{dust:60}, owned:false, req:'either_cd', apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.25); tw.range=Math.round(tw.range*1.25*10)/10; tw.rate=Math.max(1,Math.round(tw.rate*0.8)); tw._mastery=true; } },
+  },
+  beehive: {
+    A: { name:'Swarm Tactics',      icon:'🐝', desc:'+1 bee',                                                  excludes:'B', cost:{dust:20,gold:40},  owned:false,            apply:tw=>{ tw.beeCount=(tw.beeCount||3)+1; } },
+    B: { name:'Venom Sting',        icon:'☠️', desc:'Bees apply poison (3 dmg/tick for 90 ticks)',              excludes:'A', cost:{dust:20,gold:40},  owned:false,            apply:tw=>{ tw.beeVenom=true; } },
+    C: { name:'Coordinated Strike', icon:'🎯', desc:'All bees from this hive target the same enemy',            excludes:'D', cost:{dust:40,gold:80},  owned:false, req:'any', apply:tw=>{ tw.beeCoordinated=true; } },
+    D: { name:'Wide Range',         icon:'📡', desc:'+1.5 bee range',                                           excludes:'C', cost:{dust:40,gold:80},  owned:false, req:'any', apply:tw=>{ tw.beeRange=(tw.beeRange||3)+1.5; } },
+    E: { name:'Mastery',             desc:'+25% bee DMG, range, and rate. Purple aura.', cost:{dust:60}, owned:false, req:'either_cd', apply:tw=>{ tw.beeDmg=Math.round((tw.beeDmg||4)*1.25); tw.beeRange=Math.round((tw.beeRange||3)*1.25*10)/10; tw.beeRate=Math.max(5,Math.round((tw.beeRate||30)*0.8)); tw._mastery=true; } },
   },
 };
 

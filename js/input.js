@@ -243,7 +243,8 @@ function handleTap(e) {
       panelU();
     } else {
       const isPathItem = state.sel.item?.id?.includes('trap') || state.sel.item?.id?.includes('sap');
-      showTip(isPathItem ? 'Must place on a path tile!' : 'Cannot use that here!');
+      const isGemItem = state.sel.item?.id === 'resonating_gem';
+      showTip(isGemItem ? 'Place on an empty (dark) tile!' : isPathItem ? 'Must place on a path tile!' : 'Cannot use that here!');
     }
     return;
   }

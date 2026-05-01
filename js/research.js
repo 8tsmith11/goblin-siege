@@ -2,6 +2,8 @@
 import { state } from './main.js';
 import { TD } from './data.js';
 import { bus } from './bus.js';
+import { addFeed } from './feed.js';
+import { sfxResearch } from './audio.js';
 
 bus.on('trigger', ({ type }) => {
   if (type === 'frequency_played' && state.research) {
@@ -11,6 +13,19 @@ bus.on('trigger', ({ type }) => {
     }
   }
 });
+
+// When watcher appears after acoustic_anomaly done, unlock knowledge_otherworldly
+bus.on('watcherAppeared', () => {
+  if (state.research && state._acAnomalyDone) {
+    _unlockHiddenNode(state.research, 'knowledge_otherworldly');
+  }
+});
+
+function _unlockHiddenNode(nodes, id) {
+  if (nodes[id]) return;
+  const def = VARIABLE_RESEARCH.find(n => n.id === id);
+  if (def) nodes[id] = { ...def, status: 'available', wavesLeft: def.waves, wavesTotal: def.waves };
+}
 
 // Populated from data/research.json at startup
 export let FIXED_RESEARCH = {};
@@ -57,6 +72,9 @@ export const UNLOCK_DESC = {
   'workbench':          'Workbench available',
   'seahorse_aura_auto': 'Seahorse auto-aura (2-tile invis detection)',
   'insightful_lens_recipe': 'Insightful Lens recipe unlocked at Workbench',
+  'resonating_gem_consumable': 'Resonating Gem placeable structure',
+  'honey_consumable': 'Honey produced by Beehives each wave',
+  'dust_courier': 'Monkeys can carry Dust',
 };
 
 // Evaluate a game-state prerequisite string against current state.
@@ -134,6 +152,10 @@ export function buildResearchGraph() {
       nodes[def.id] = { ...def, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
     } else if (def.trigger === 'tremor_event_seen' && state.bSen?.has('tremor_event')) {
       nodes[def.id] = { ...def, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
+    } else if (def.trigger === 'acoustic_anomaly_complete' && state._acAnomalyDone) {
+      nodes[def.id] = { ...def, status:'available', wavesLeft:def.waves, wavesTotal:def.waves };
+    } else if (def.trigger === 'watcher_appeared' && state.watcherAppeared && state._acAnomalyDone) {
+      nodes[def.id] = { ...def, status:'available', wavesLeft:def.waves, wavesTotal:def.waves };
     }
   }
   refreshStatuses(nodes);
@@ -170,6 +192,21 @@ export function tickResearch() {
     active.status = 'complete';
     applyUnlock(active);
     refreshStatuses(nodes);
+    // Announce research completion
+    addFeed('research', '🔬 ' + active.name + ' — Research Complete');
+    bus.emit('researchComplete', { node: active });
+    sfxResearch();
+    // Forge obs entry
+    if (active.id === 'the_forge') {
+      addFeed('obs', 'The Forge completed at wave ' + state.wave + '. The Stone Age is over. Stone-Age systems persist. The Age-label of \'Stone\' is now a memory. Memories persist, too.');
+    }
+    // Unlock resonating_gem and knowledge_otherworldly when acoustic_anomaly completes
+    if (active.id === 'acoustic_anomaly' || active._sourceId === 'acoustic_anomaly') {
+      state._acAnomalyDone = true;
+      _unlockHiddenNode(nodes, 'resonating_gem');
+      if (state.watcherAppeared) _unlockHiddenNode(nodes, 'knowledge_otherworldly');
+    }
+    // Unlock knowledge_otherworldly when watcher appears (if acoustic_anomaly already done)
     return active;
   }
   return null;
@@ -257,6 +294,19 @@ export function applyUnlock(node) {
     }
     case 'insightful_lens_recipe': {
       state.researchUnlocks.insightful_lens_recipe = true;
+      break;
+    }
+    case 'resonating_gem_consumable': {
+      state.researchUnlocks.resonating_gem = true;
+      bus.emit('addConsumable', { id: 'resonating_gem', icon: '💎', name: 'Resonating Gem', desc: 'Place on any empty tile. Its purpose is unclear.' });
+      break;
+    }
+    case 'honey_consumable': {
+      state.researchUnlocks.honey_production = true;
+      break;
+    }
+    case 'dust_courier': {
+      state.researchUnlocks.dust_courier = true;
       break;
     }
     case 'artifact_slot_+1': {

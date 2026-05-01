@@ -96,4 +96,22 @@ export const ARTIFACTS = [
     cooldownWaves: 1,
     pipShop: false,
   },
+  {
+    id: 'goblin_lullaby',
+    name: 'Goblin Lullaby',
+    icon: '🎵',
+    rarity: 'common',
+    desc: 'Enemies in the Lab\'s observation radius move 10% slower.',
+    flavor: '"Old. Older than the castle."',
+    cost: 25,
+  },
+  {
+    id: 'chipped_mirror',
+    name: 'Chipped Mirror',
+    icon: '🪞',
+    rarity: 'uncommon',
+    desc: 'One tower adjacent to the Lab fires 10% faster.',
+    flavor: '"One side reflects. The other doesn\'t."',
+    cost: 40,
+  },
 ];

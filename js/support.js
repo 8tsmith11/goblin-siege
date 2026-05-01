@@ -119,7 +119,7 @@ export function updateRobot() {
 }
 
 export function updateBees() {
-  const { bees, enemies, projectiles, CELL, grid } = state;
+  const { bees, enemies, projectiles, CELL, grid, ticks } = state;
   for (const bee of bees) {
     const hive = state.towers.find(t => t === bee.hive);
     if (!hive) { bee.dead = true; continue; }
@@ -128,14 +128,67 @@ export function updateBees() {
     bee.y = getCenter(hive.y, CELL) + Math.sin(bee.angle) * CELL * 1.5;
     if (bee.cd > 0) { bee.cd--; continue; }
     if (state.ceasefire) continue;
+    // Coordinated Strike: all bees lock onto the same hive-chosen target
+    if (hive.beeCoordinated) {
+      if (!hive._beeTarget || hive._beeTarget.dead || ticks % 60 === 0) {
+        const wx2 = hive.x, wy2 = hive.y;
+        const pool = getEnemiesInRadius(grid, wx2, wy2, (hive.beeRange || 3) + 1.5, true, false);
+        hive._beeTarget = pool.length ? pool.reduce((a, b) => a.pi > b.pi ? a : b) : null;
+      }
+      if (!hive._beeTarget) continue;
+      let bProj = getProj();
+      Object.assign(bProj, { x: bee.x / CELL - .5, y: bee.y / CELL - .5, tgt: hive._beeTarget, dmg: bee.dmg, spd: .08, clr: '#fbbf24', splash: 0, slow: 0, pierce: 0, chain: 0, speedUp: false, hits: [], poison: hive.beeVenom ? { dmg: 3, dur: 90 } : null });
+      projectiles.push(bProj);
+      bee.cd = bee.rate; sfxBee();
+      continue;
+    }
     const wx = (bee.x - CELL / 2) / CELL, wy = (bee.y - CELL / 2) / CELL;
     const inR = getEnemiesInRadius(grid, wx, wy, bee.range, true, false);
     if (!inR.length) continue;
     let bProj = getProj();
-    Object.assign(bProj, { x: bee.x / CELL - .5, y: bee.y / CELL - .5, tgt: inR[0], dmg: bee.dmg, spd: .08, clr: '#fbbf24', splash: 0, slow: 0, pierce: 0, chain: 0, speedUp: false, hits: [] });
+    Object.assign(bProj, { x: bee.x / CELL - .5, y: bee.y / CELL - .5, tgt: inR[0], dmg: bee.dmg, spd: .08, clr: '#fbbf24', splash: 0, slow: 0, pierce: 0, chain: 0, speedUp: false, hits: [], poison: hive.beeVenom ? { dmg: 3, dur: 90 } : null });
     projectiles.push(bProj);
     bee.cd = bee.rate; sfxBee();
   }
+}
+
+export function updateOrbitalBrood() {
+  const { towers, enemies, CELL, particles, ticks } = state;
+  towers.filter(tw => tw.type === 'grateful_spider' && tw.orbitalBrood).forEach(tw => {
+    if (!tw._orbits) tw._orbits = [];
+    // Initialise 3 orbital spiderlings if not present
+    while (tw._orbits.length < 3) {
+      const i = tw._orbits.length;
+      tw._orbits.push({ angle: i * Math.PI * 2 / 3, orbitSpd: 0.04, latched: null, x: getCenter(tw.x, CELL), y: getCenter(tw.y, CELL), cd: 0 });
+    }
+    for (const orb of tw._orbits) {
+      // If latched onto an enemy, follow and damage it
+      if (orb.latched) {
+        const e = orb.latched;
+        if (e.dead || Math.hypot(e.x - tw.x, e.y - tw.y) > 8) {
+          orb.latched = null; // return to orbit
+        } else {
+          orb.x = getCenter(e.x, CELL) + (Math.random() - 0.5) * 4;
+          orb.y = getCenter(e.y, CELL) + (Math.random() - 0.5) * 4;
+          orb.cd++;
+          if (orb.cd >= 30) {
+            e.hp -= 2;
+            orb.cd = 0;
+            spawnParticles(particles, orb.x, orb.y, 2, { spreadX: 2, spreadY: 2, life: 6, clr: '#c4b5fd', sz: 1 });
+          }
+        }
+      } else {
+        // Orbit the tower
+        orb.angle += orb.orbitSpd;
+        orb.x = getCenter(tw.x, CELL) + Math.cos(orb.angle) * CELL * 1.2;
+        orb.y = getCenter(tw.y, CELL) + Math.sin(orb.angle) * CELL * 1.2;
+        // Check for nearby enemies to latch onto
+        const latchRange = 1.5;
+        const candidate = enemies.find(e => !e.dead && !e.boss && Math.hypot(e.x - tw.x, e.y - tw.y) <= latchRange && !tw._orbits.some(o => o.latched === e));
+        if (candidate) { orb.latched = candidate; orb.cd = 0; }
+      }
+    }
+  });
 }
 
 export function updateFactoryLaser() {

@@ -6,7 +6,7 @@ import { mkGain } from './ui.js';
 import { placeConsumable } from './craft.js';
 
 // Items that can be auto-placed on path tiles by monkeys (neuron_activation research)
-const AUTO_PLACE_IDS = new Set(['stone_trap', 'sticky_sap']);
+const AUTO_PLACE_IDS = new Set(['stone_trap', 'sticky_sap', 'honey']);
 
 function tryAutoPlace(mk, gx, gy) {
   if (!state.researchUnlocks?.monkey_auto_place) return false;
