@@ -412,57 +412,21 @@
       "tooltip": "Unlocks the Insightful Lens recipe at the Workbench. Apply the crafted lens to a Lab to let all towers in its radius target stealth enemies."
     },
     {
-      "id": "tremor_study",
-      "name": "Tremor Analysis",
-      "icon": "\ud83c\udf0b",
-      "cost": {
-        "dust": 15
-      },
-      "waves": 2,
-      "unlocks": "lore_tremor",
-      "prereqs": [
-        "basic_obs"
-      ],
-      "desc": "Documents the rumbling patterns beneath the settlement.",
-      "tooltip": "Unlocks a secret lore entry about the tremors in the Bestiary.",
-      "hidden": true,
-      "trigger": "tremor_event_seen",
-      "x": -120,
-      "y": 1500
-    },
-    {
-      "id": "acoustic_anomaly",
-      "name": "Frequency Research",
+      "id": "frequency_analysis",
+      "name": "Frequency Analysis",
       "icon": "\u3030\ufe0f",
       "cost": {
         "dust": 20
       },
       "waves": 2,
-      "unlocks": "lab_radius_+1",
       "prereqs": [],
-      "desc": "A 40Hz resonance was detected during wave 3 prep. Something responded.",
-      "tooltip": "Unlocks a passive Lab radius bonus from the anomalous frequency. Requires hearing the hum.",
+      "desc": "We designed a crystal that intends to capture this frequency.",
+      "tooltip": "Unlocks the Resonating Gem \u2014 a placeable structure. Its purpose is unclear.",
       "hidden": true,
       "trigger": "frequency_played",
       "x": 0,
-      "y": 1500
-    },
-    {
-      "id": "resonating_gem",
-      "name": "Resonating Gem",
-      "icon": "\ud83d\udc8e",
-      "cost": {
-        "stone": 100
-      },
-      "waves": 5,
-      "unlocks": "resonating_gem_consumable",
-      "prereqs": [],
-      "desc": "The frequency left something behind.",
-      "tooltip": "Unlocks the Resonating Gem \u2014 a placeable structure. Its purpose is unclear.",
-      "hidden": true,
-      "trigger": "acoustic_anomaly_complete",
-      "x": 120,
-      "y": 1500
+      "y": 1500,
+      "unlocks": "resonating_gem_consumable"
     },
     {
       "id": "knowledge_otherworldly",
@@ -473,7 +437,9 @@
       },
       "waves": 3,
       "unlocks": "dust_courier",
-      "prereqs": [],
+      "prereqs": [
+        "frequency_analysis"
+      ],
       "desc": "What the Watcher saw in you, you can now use.",
       "tooltip": "Monkeys can now carry Dust from the Lab to Workbenches and Stockpiles.",
       "hidden": true,

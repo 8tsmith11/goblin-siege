@@ -7,14 +7,14 @@ import { sfxResearch } from './audio.js';
 
 bus.on('trigger', ({ type }) => {
   if (type === 'frequency_played' && state.research) {
-    const def = VARIABLE_RESEARCH.find(n => n.id === 'acoustic_anomaly');
-    if (def && !state.research['acoustic_anomaly']) {
-      state.research['acoustic_anomaly'] = { ...def, status: 'available', wavesLeft: def.waves, wavesTotal: def.waves };
+    const def = VARIABLE_RESEARCH.find(n => n.id === 'frequency_analysis');
+    if (def && !state.research['frequency_analysis']) {
+      state.research['frequency_analysis'] = { ...def, status: 'available', wavesLeft: def.waves, wavesTotal: def.waves };
     }
   }
 });
 
-// When watcher appears after acoustic_anomaly done, unlock knowledge_otherworldly
+// When watcher appears after frequency_analysis done, unlock knowledge_otherworldly
 bus.on('watcherAppeared', () => {
   if (state.research && state._acAnomalyDone) {
     _unlockHiddenNode(state.research, 'knowledge_otherworldly');
@@ -149,13 +149,9 @@ export function buildResearchGraph() {
   // Add triggered hidden nodes if conditions are met
   for (const def of VARIABLE_RESEARCH.filter(n => n.hidden)) {
     if (def.trigger === 'frequency_played' && state.frequencyPlayed) {
-      nodes[def.id] = { ...def, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
-    } else if (def.trigger === 'tremor_event_seen' && state.bSen?.has('tremor_event')) {
-      nodes[def.id] = { ...def, status:'locked', wavesLeft:def.waves, wavesTotal:def.waves };
-    } else if (def.trigger === 'acoustic_anomaly_complete' && state._acAnomalyDone) {
-      nodes[def.id] = { ...def, status:'available', wavesLeft:def.waves, wavesTotal:def.waves };
+      nodes[def.id] = { ...def, status: 'available', wavesLeft: def.waves, wavesTotal: def.waves };
     } else if (def.trigger === 'watcher_appeared' && state.watcherAppeared && state._acAnomalyDone) {
-      nodes[def.id] = { ...def, status:'available', wavesLeft:def.waves, wavesTotal:def.waves };
+      nodes[def.id] = { ...def, status: 'available', wavesLeft: def.waves, wavesTotal: def.waves };
     }
   }
   refreshStatuses(nodes);
@@ -200,10 +196,9 @@ export function tickResearch() {
     if (active.id === 'the_forge') {
       addFeed('obs', 'The Forge completed at wave ' + state.wave + '. The Stone Age is over. Stone-Age systems persist. The Age-label of \'Stone\' is now a memory. Memories persist, too.');
     }
-    // Unlock resonating_gem and knowledge_otherworldly when acoustic_anomaly completes
-    if (active.id === 'acoustic_anomaly' || active._sourceId === 'acoustic_anomaly') {
+    // When frequency_analysis completes, unlock knowledge_otherworldly if watcher has appeared
+    if (active.id === 'frequency_analysis' || active._sourceId === 'frequency_analysis') {
       state._acAnomalyDone = true;
-      _unlockHiddenNode(nodes, 'resonating_gem');
       if (state.watcherAppeared) _unlockHiddenNode(nodes, 'knowledge_otherworldly');
     }
     // Unlock knowledge_otherworldly when watcher appears (if acoustic_anomaly already done)

@@ -72,9 +72,21 @@ function renderResearch() {
       const from = _rPos[pid];
       if (!from) continue;
       const complete = nodes[pid]?.status === 'complete';
-      cx.strokeStyle = complete ? '#3b1878' : '#1e1e2e';
-      cx.lineWidth = 1.5 / _rCam.zoom;
+      const clr = complete ? '#3b1878' : '#1e1e2e';
+      cx.strokeStyle = clr; cx.lineWidth = 1.5 / _rCam.zoom;
       cx.beginPath(); cx.moveTo(from.x, from.y); cx.lineTo(to.x, to.y); cx.stroke();
+      // Arrow triangle at midpoint pointing toward `to`
+      const mx = (from.x + to.x) / 2, my = (from.y + to.y) / 2;
+      const dx = to.x - from.x, dy = to.y - from.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const ux = dx / len, uy = dy / len;
+      const aw = 7 / _rCam.zoom, ah = 11 / _rCam.zoom;
+      cx.fillStyle = clr;
+      cx.beginPath();
+      cx.moveTo(mx + ux * ah / 2, my + uy * ah / 2);
+      cx.lineTo(mx - ux * ah / 2 - uy * aw / 2, my - uy * ah / 2 + ux * aw / 2);
+      cx.lineTo(mx - ux * ah / 2 + uy * aw / 2, my - uy * ah / 2 - ux * aw / 2);
+      cx.closePath(); cx.fill();
     }
   }
 

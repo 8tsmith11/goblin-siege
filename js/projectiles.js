@@ -74,7 +74,7 @@ export function updateProjectiles() {
         particles.push(np);
       }
       if (p.bloodlust && p.tgt.hp <= 0) state.lives = Math.min(30, state.lives + 1);
-      if (p._beeHive && p.tgt.hp <= 0) p._beeHive._beeFrenzyEnd = (state.ticks || 0) + 300; // 5s frenzy
+      if (p._beeHive && p.tgt.hp <= 0) p._beeHive._beeFrenzyEnd = (state.ticks || 0) + 60; // 1s frenzy
       freeProj(p); projectiles.splice(i, 1);
     } else {
       p.x += dx / d * p.spd; p.y += dy / d * p.spd;

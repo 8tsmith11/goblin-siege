@@ -90,7 +90,7 @@ export const TOWER_SKILLS = {
     B: { name:'Venom Sting',        icon:'☠️', desc:'Bees apply poison (3 dmg/tick for 90 ticks)',              excludes:'A', cost:{dust:20,gold:40},  owned:false,            apply:tw=>{ tw.beeVenom=true; } },
     C: { name:'Coordinated Strike', icon:'🎯', desc:'All bees from this hive target the same enemy',            excludes:'D', cost:{dust:40,gold:80},  owned:false, req:'any', apply:tw=>{ tw.beeCoordinated=true; } },
     D: { name:'Wide Range',         icon:'📡', desc:'+1.5 bee range',                                           excludes:'C', cost:{dust:40,gold:80},  owned:false, req:'any', apply:tw=>{ tw.beeRange=(tw.beeRange||3)+1.5; } },
-    E: { name:'Mastery: Supercolony', icon:'👑', desc:'+2 bees · +50% bee DMG · bees leave golden pollen trails · on kill: frenzy burst (all bees +100% speed & DMG for 5s)', cost:{dust:60}, owned:false, req:'either_cd', apply:tw=>{ tw.beeCount=(tw.beeCount||3)+2; tw.beeDmg=Math.round((tw.beeDmg||4)*1.5); tw.beeRate=Math.max(5,Math.round((tw.beeRate||30)*0.8)); tw._mastery=true; tw._supercolony=true; } },
+    E: { name:'Mastery: Supercolony', icon:'👑', desc:'+2 bees · +10% bee DMG · bees leave golden pollen trails · on kill: 1s frenzy (1.5× speed)', cost:{dust:60}, owned:false, req:'either_cd', apply:tw=>{ tw.beeCount=(tw.beeCount||3)+2; tw.beeDmg=Math.round((tw.beeDmg||4)*1.1); tw.beeRate=Math.max(5,Math.round((tw.beeRate||30)*0.9)); tw._mastery=true; tw._supercolony=true; } },
   },
 };
 
