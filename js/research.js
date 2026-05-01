@@ -7,10 +7,8 @@ import { sfxResearch } from './audio.js';
 
 bus.on('trigger', ({ type }) => {
   if (type === 'frequency_played' && state.research) {
-    const def = VARIABLE_RESEARCH.find(n => n.id === 'frequency_analysis');
-    if (def && !state.research['frequency_analysis']) {
-      state.research['frequency_analysis'] = { ...def, status: 'available', wavesLeft: def.waves, wavesTotal: def.waves };
-    }
+    const node = state.research['frequency_analysis'];
+    if (node && node.status === 'locked') node.status = 'available';
   }
 });
 
@@ -22,9 +20,8 @@ bus.on('watcherAppeared', () => {
 });
 
 function _unlockHiddenNode(nodes, id) {
-  if (nodes[id]) return;
-  const def = VARIABLE_RESEARCH.find(n => n.id === id);
-  if (def) nodes[id] = { ...def, status: 'available', wavesLeft: def.waves, wavesTotal: def.waves };
+  const node = nodes[id];
+  if (node && node.status === 'locked') node.status = 'available';
 }
 
 // Populated from data/research.json at startup
@@ -146,13 +143,11 @@ export function buildResearchGraph() {
     }
   }
 
-  // Add triggered hidden nodes if conditions are met
-  for (const def of VARIABLE_RESEARCH.filter(n => n.hidden)) {
-    if (def.trigger === 'frequency_played' && state.frequencyPlayed) {
-      nodes[def.id] = { ...def, status: 'available', wavesLeft: def.waves, wavesTotal: def.waves };
-    } else if (def.trigger === 'watcher_appeared' && state.watcherAppeared && state._acAnomalyDone) {
-      nodes[def.id] = { ...def, status: 'available', wavesLeft: def.waves, wavesTotal: def.waves };
-    }
+  // Promote hidden fixed nodes if their trigger has already fired (e.g. loading a save)
+  for (const [id, node] of Object.entries(nodes)) {
+    if (!node.hidden || node.status !== 'locked') continue;
+    if (node.trigger === 'frequency_played' && state.frequencyPlayed) node.status = 'available';
+    else if (node.trigger === 'watcher_appeared' && state.watcherAppeared && state._acAnomalyDone) node.status = 'available';
   }
   refreshStatuses(nodes);
   return nodes;
@@ -161,6 +156,7 @@ export function buildResearchGraph() {
 export function refreshStatuses(nodes) {
   for (const node of Object.values(nodes)) {
     if (node.status === 'complete' || node.status === 'active') continue;
+    if (node.hidden && node.status !== 'available') continue; // hidden nodes only unlock via trigger
     const prereqsMet = node.prereqs.every(p => nodes[p]?.status === 'complete');
     node.status = prereqsMet ? 'available' : 'locked';
   }

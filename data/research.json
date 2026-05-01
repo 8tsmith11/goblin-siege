@@ -289,6 +289,40 @@
       "tooltip": "Unlocks Round Robin (cycle up to 5 delivery targets) and Harvest (mine rock nodes or forage wood from forest) roles for monkeys.",
       "x": 960,
       "y": 1320
+    },
+    "frequency_analysis": {
+      "name": "Frequency Analysis",
+      "icon": "\u3030\ufe0f",
+      "cost": {
+        "dust": 20
+      },
+      "waves": 2,
+      "prereqs": [],
+      "desc": "We designed a crystal that intends to capture this frequency.",
+      "tooltip": "Unlocks the Resonating Gem \u2014 a placeable structure. Its purpose is unclear.",
+      "hidden": true,
+      "trigger": "frequency_played",
+      "x": 0,
+      "y": 1500,
+      "unlocks": "resonating_gem_consumable"
+    },
+    "knowledge_otherworldly": {
+      "name": "Knowledge of the Otherworldly",
+      "icon": "\ud83d\udc41\ufe0f",
+      "cost": {
+        "dust": 40
+      },
+      "waves": 3,
+      "unlocks": "dust_courier",
+      "prereqs": [
+        "frequency_analysis"
+      ],
+      "desc": "What the Watcher saw in you, you can now use.",
+      "tooltip": "Monkeys can now carry Dust from the Lab to Workbenches and Stockpiles.",
+      "hidden": true,
+      "trigger": "watcher_appeared",
+      "x": 120,
+      "y": 1620
     }
   },
   "variable": [
@@ -410,42 +444,6 @@
       ],
       "desc": "Theoretical optics for seeing the unseen \u2014 must still be ground and assembled at a workbench.",
       "tooltip": "Unlocks the Insightful Lens recipe at the Workbench. Apply the crafted lens to a Lab to let all towers in its radius target stealth enemies."
-    },
-    {
-      "id": "frequency_analysis",
-      "name": "Frequency Analysis",
-      "icon": "\u3030\ufe0f",
-      "cost": {
-        "dust": 20
-      },
-      "waves": 2,
-      "prereqs": [],
-      "desc": "We designed a crystal that intends to capture this frequency.",
-      "tooltip": "Unlocks the Resonating Gem \u2014 a placeable structure. Its purpose is unclear.",
-      "hidden": true,
-      "trigger": "frequency_played",
-      "x": 0,
-      "y": 1500,
-      "unlocks": "resonating_gem_consumable"
-    },
-    {
-      "id": "knowledge_otherworldly",
-      "name": "Knowledge of the Otherworldly",
-      "icon": "\ud83d\udc41\ufe0f",
-      "cost": {
-        "dust": 40
-      },
-      "waves": 3,
-      "unlocks": "dust_courier",
-      "prereqs": [
-        "frequency_analysis"
-      ],
-      "desc": "What the Watcher saw in you, you can now use.",
-      "tooltip": "Monkeys can now carry Dust from the Lab to Workbenches and Stockpiles.",
-      "hidden": true,
-      "trigger": "watcher_appeared",
-      "x": 120,
-      "y": 1620
     }
   ],
   "pools": {
