@@ -32,7 +32,7 @@ let _ttPx = 0, _ttPy = 0;
 function refreshTT(tw) { hudU(); panelU(); showTT(tw, _ttPx, _ttPy); }
 
 const SORT_OPTIONS = ['all', 'obs', 'npc', 'translations', 'boss', 'research', 'event', 'weather'];
-const SORT_LABELS  = { all: 'All', obs: '🔮 Observations', npc: '👤 NPC', translations: '🐜 Translations', boss: '👑 Boss', research: '🔬 Research', event: '🎉 Events', weather: '🌤️ Weather' };
+const SORT_LABELS  = { all: 'All', obs: '🔮 Observations', npc: '👤 NPC', translations: '👺 Translations', boss: '👑 Boss', research: '🔬 Research', event: '🎉 Events', weather: '🌤️ Weather' };
 let _labNoteSort = 'all';
 
 function _closeLabNotes() {
