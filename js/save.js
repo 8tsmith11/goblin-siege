@@ -152,6 +152,9 @@ function _apply(d) {
       if (id.startsWith('pool_') && s._sourceId) state._savedPoolSlots[id] = s._sourceId;
     }
   }
+  // Restore trigger flags before building graph so hidden nodes are promoted correctly
+  state.watcherAppeared = d._wa || false;
+  state._acAnomalyDone = d._aad || false;
   state.research = buildResearchGraph();
   delete state._savedPoolSlots;
   // Overlay saved status/wavesLeft and positions onto the fresh graph
@@ -159,7 +162,7 @@ function _apply(d) {
     for (const [id, saved] of Object.entries(_savedRes)) {
       const node = state.research[id];
       if (!node) continue;
-      if (saved.status === 'complete' || saved.status === 'active') {
+      if (saved.status === 'complete' || saved.status === 'active' || (saved.status === 'available' && node.hidden)) {
         node.status = saved.status;
         node.wavesLeft = saved.wavesLeft ?? node.wavesLeft;
       }
