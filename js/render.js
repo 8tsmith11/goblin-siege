@@ -61,6 +61,7 @@ export function canPlace(cx2, cy2) {
 }
 
 let bgCache = null;
+let _forestPatternOob = null;
 
 function updateBgCache() {
   const { CELL, path, grid, COLS, ROWS } = state;
@@ -128,7 +129,7 @@ function updateBgCache() {
   }
 }
 
-export function invalidateBg() { bgCache = null; }
+export function invalidateBg() { bgCache = null; _forestPatternOob = null; }
 
 export function render() {
   const { cx, W, H, CELL, COLS, ROWS, cam, path, ticks, freezeActive, volcanoActive,
@@ -158,7 +159,8 @@ export function render() {
       cx.clip("evenodd");
       
       // Draw base repeating forest
-      cx.fillStyle = cx.createPattern(_imgForest, 'repeat');
+      if (!_forestPatternOob) _forestPatternOob = cx.createPattern(_imgForest, 'repeat');
+      cx.fillStyle = _forestPatternOob;
       cx.fillRect(vL, vT, vR - vL, vB - vT);
 
       // World-space fog wisps — rendered under camera transform, naturally follow pan/zoom

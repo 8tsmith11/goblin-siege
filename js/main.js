@@ -408,12 +408,12 @@ function update() {
   state.enemies = state.enemies.filter(e => !e.dead);
   for (let i = state.beams.length - 1; i >= 0; i--) {
     const b = state.beams[i]; b.life--;
-    if (b.life <= 0) { freeBeam(b); state.beams.splice(i, 1); }
+    if (b.life <= 0) { freeBeam(b); state.beams[i] = state.beams[state.beams.length - 1]; state.beams.pop(); }
   }
   state.bees = state.bees.filter(b => !b.dead);
   for (let i = state.particles.length - 1; i >= 0; i--) {
     const p = state.particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.03; p.life--;
-    if (p.life <= 0) { freeP(p); state.particles.splice(i, 1); }
+    if (p.life <= 0) { freeP(p); state.particles[i] = state.particles[state.particles.length - 1]; state.particles.pop(); }
   }
 
   if (state.lives <= 0) {

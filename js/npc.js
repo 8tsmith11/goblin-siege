@@ -163,11 +163,13 @@ function _elderSpeak(text, onDone) {
     || voices.find(v => v.lang.startsWith('en'))
     || voices[0];
   if (preferred) utt.voice = preferred;
-  // Fallback timer: if speech synthesis silently hangs (common in Chromium after tab blur), release the bubble anyway
-  const fallback = setTimeout(onDone, Math.max(4500, text.length * 65));
+  // Generous fallback: ~900ms per word at rate 0.78 — only fires if onend/onerror never arrive (tab blur, browser bug)
+  const wordCount = text.split(/\s+/).length;
+  const fallback = setTimeout(onDone, Math.max(10000, wordCount * 900));
   utt.onend = () => { clearTimeout(fallback); onDone(); };
   utt.onerror = () => { clearTimeout(fallback); onDone(); };
-  window.speechSynthesis.speak(utt);
+  // Defer speak() by one tick after cancel() — Chrome sometimes drops the utterance if speak() follows cancel() synchronously
+  setTimeout(() => window.speechSynthesis.speak(utt), 50);
 }
 
 export function initNpcUI() {

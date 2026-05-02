@@ -130,7 +130,7 @@ export function updateBees() {
     if (state.ceasefire) continue;
     // Coordinated Strike: all bees lock onto the same hive-chosen target
     if (hive.beeCoordinated) {
-      if (!hive._beeTarget || hive._beeTarget.dead || ticks % 60 === 0) {
+      if (!hive._beeTarget || hive._beeTarget.dead || !enemies.length || ticks % 60 === 0) {
         const wx2 = hive.x, wy2 = hive.y;
         const pool = getEnemiesInRadius(grid, wx2, wy2, (hive.beeRange || 3) + 1.5, true, false);
         hive._beeTarget = pool.length ? pool.reduce((a, b) => a.pi > b.pi ? a : b) : null;
