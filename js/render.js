@@ -359,7 +359,7 @@ export function render() {
       cx.shadowColor = '#c084fc'; cx.shadowBlur = 16 * pulse;
       // Inverted diamond (point down), shifted up slightly so point meets pedestal
       const gs = CELL * 0.46;
-      const gy = cy2 - CELL * 0.08;
+      const gy = cy2 - CELL * 0.18;
       cx.beginPath();
       cx.moveTo(cx2, gy + gs);                    // bottom point
       cx.lineTo(cx2 + gs * 0.6, gy + gs * 0.2);  // lower-right
