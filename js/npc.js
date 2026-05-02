@@ -16,7 +16,12 @@ const NPC_LINES = {
     {
       trigger: 'wave_prep',
       wave: 1,
-      text: "You'll want to put something on the path to stop the creatures. The rocks around here — try clicking on them. They give things. I used to collect things. I don't remember why I stopped."
+      text: "You'll want to put something on the path to stop the creatures. The creatures don't like it when you put things on the path, but that won't stop them from walking. Nothing will."
+    },
+    {
+      trigger: 'wave_prep',
+      wave: 1,
+      text: "The rocks around here — try clicking on them. They give things. I used to collect things. I don't remember why I stopped."
     },
     {
       trigger: 'wave_prep',
@@ -228,11 +233,10 @@ function _handleTrigger(type, ctx) {
       const text = typeof line.text === 'function' ? line.text(state) : line.text;
       const _waveMismatch = line.wave !== undefined && line.wave !== state.wave + 1;
       const displayText = _waveMismatch ? `[Wave ${line.wave}] ${text}` : text;
-      _bubbleQueue.push({ npc, text: displayText });
+      if (_bubbleQueue.length < 3) _bubbleQueue.push({ npc, text: displayText });
       addFeed('npc', displayText, npc.icon);
       _processQueue();
       if (line.onFire) line.onFire(npc);
-      return;
     }
   }
 }
