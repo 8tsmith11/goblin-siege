@@ -106,6 +106,26 @@ Jump directly to frequently-needed content:
 | Weather types & effects | `js/weather.js` — `WEATHER_TYPES`, `tickWeather`, `updateWeather` |
 | Grid accessors (unified, hide PAD offset) | `js/main.js:130` — `getCell`, `setCell` |
 
+## Adding Features — Skills & Rules
+
+Use `/project:add-tower`, `/project:add-recipe`, `/project:add-research`, `/project:add-event`, `/project:add-voice-line` for step-by-step templates. Key rules:
+
+| Feature | Primary file | Cost rule |
+|---------|-------------|-----------|
+| New tower/support | `js/data.js` — `TD` | n/a |
+| Tower skills (A–E) | `js/data.js` — `TOWER_SKILLS` | dust + gold |
+| Crafting recipe | `js/craft.js` — `RECIPES` | **stone/wood only — never dust** |
+| Research node | `data/research.json` | **dust only** (except: `the_forge`, `structural`, monkey chain nodes `monkey_training`/`neuron_activation`/`monkey_logistics`/`stockpile_iface`, variable nodes `reptilian`/`entertainment`) |
+| Random event | `js/events.js` — `EVENTS` | — |
+| NPC voice line | `js/npc.js` — `NPC_LINES.elderberry` | **one line per trigger** |
+
+**Research unlock patterns** — choose one and don't invent new ones:
+1. **Tower key** (`"unlocks": "fish"`) → auto-added to `state.unlockedTowers`, no code change
+2. **Recipe key** (`"unlocks": "my_key"`) → add `case 'my_key': state.researchUnlocks.my_key = true;` in `applyUnlock` + `unlockKey: 'my_key'` on the recipe
+3. **Named effect** (`"unlocks": "lab_radius_+1"`) → handle in `applyUnlock` switch
+
+**Workbench inventory cap**: 20 per resource type (`js/resources.js` line ~135).
+
 ## Protected State & Common Patterns
 
 `state.gold` and `state.lives` are **protected properties** — direct assignment outside the trusted executor is silently dropped (the write gate `_φ` rejects it). Always use `_ΨΔ` from `main.js`:

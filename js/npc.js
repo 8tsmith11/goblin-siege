@@ -16,12 +16,7 @@ const NPC_LINES = {
     {
       trigger: 'wave_prep',
       wave: 1,
-      text: "You'll want to put something on the path to stop the creatures. The creatures don't like it when you put things on the path, but that won't stop them from walking. Nothing will."
-    },
-    {
-      trigger: 'wave_prep',
-      wave: 1,
-      text: "The rocks around here — try clicking on them. They give things. I used to collect things. I don't remember why I stopped."
+      text: "You'll want to put something on the path to stop the creatures. The rocks around here — try clicking on them. They give things. I used to collect things. I don't remember why I stopped."
     },
     {
       trigger: 'wave_prep',
@@ -59,7 +54,7 @@ const NPC_LINES = {
       trigger: 'wave_prep',
       // Fire on the first non-boss prep after spiders have been seen (not same wave as shadow warning)
       cond: s => s.bSen?.has('spider') && s.wave >= 25 && !isBossWave(s.wave + 1),
-      text: "The one with many children. She is not hunting you — she is looking for a Seed Stone. Her brood cannot grow without it. You can make one at the Workbench. And build a Ceasefire Flag to stand down your towers. Let her come, let her take it, and she will never lay siege again. I was here when the old builders did this. It worked.",
+      text: "The one with many children. She is not hunting you — she is looking for a Seed Stone. Her brood cannot grow without it. You can make one at the Workbench. And build a Ceasefire Flag to stand down your towers. Let her come, let her take it, and she will never lay siege again. I was here when the old builders did this. It worked. I've left the blueprints at my feet.",
       onFire: (npc) => {
         setTimeout(() => {
           if (!npc) return;
@@ -69,11 +64,6 @@ const NPC_LINES = {
           dropLoot(npc.x, npc.y, 'blueprints', { id: 'seed_stone_bp', icon: '🟦', bpOverlay: '🪨', name: 'Seed Stone Blueprint', desc: 'Unlocks the Seed Stone recipe at any Workbench.', recipeUnlock: 'seed_stone_recipe' });
         }, 9500);
       }
-    },
-    {
-      trigger: 'wave_prep',
-      cond: s => s.bSen?.has('spider') && s.wave >= 25 && !isBossWave(s.wave + 1),
-      text: "I've left them at my feet. A Ceasefire Flag, and the recipe for the Seed Stone. The rest is yours."
     },
     {
       trigger: 'trees_cleared_10',
@@ -238,10 +228,11 @@ function _handleTrigger(type, ctx) {
       const text = typeof line.text === 'function' ? line.text(state) : line.text;
       const _waveMismatch = line.wave !== undefined && line.wave !== state.wave + 1;
       const displayText = _waveMismatch ? `[Wave ${line.wave}] ${text}` : text;
-      if (_bubbleQueue.length < 3) _bubbleQueue.push({ npc, text: displayText });
+      _bubbleQueue.push({ npc, text: displayText });
       addFeed('npc', displayText, npc.icon);
       _processQueue();
       if (line.onFire) line.onFire(npc);
+      return;
     }
   }
 }

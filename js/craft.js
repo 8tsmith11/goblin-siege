@@ -47,6 +47,7 @@ export const RECIPES = [
     rarity: 'rare',
     cost: { stone: 8 }, waves: 2, output: 'augment',
     desc: 'Equip on a Lab. Towers within Lab range can target invisible enemies. Also grants +1 Range to Lab.',
+    unlockKey: 'insightful_lens_recipe',
   },
   {
     id: 'seed_stone', name: 'Seed Stone', icon: '🪨',
@@ -59,7 +60,7 @@ export const RECIPES = [
   {
     id: 'resonating_gem', name: 'Resonating Gem', icon: '💎',
     rarity: 'rare',
-    cost: { stone: 10, dust: 5 }, waves: 2, output: 'consumable',
+    cost: { stone: 20 }, waves: 2, output: 'consumable',
     desc: 'Place on any empty tile. Its purpose is unclear.',
     unlockKey: 'resonating_gem',
   },

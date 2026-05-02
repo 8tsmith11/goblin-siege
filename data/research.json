@@ -5,8 +5,7 @@
       "name": "Craftsmanship",
       "icon": "🛠️",
       "cost": {
-        "wood": 8,
-        "stone": 4
+        "dust": 10
       },
       "waves": 1,
       "unlocks": "workbench",
@@ -36,8 +35,7 @@
       "name": "Apiculture",
       "icon": "🐝",
       "cost": {
-        "dust": 20,
-        "wood": 15
+        "dust": 20
       },
       "waves": 2,
       "unlocks": "beehive",
@@ -53,8 +51,7 @@
       "name": "Sweet Harvest",
       "icon": "🍯",
       "cost": {
-        "dust": 15,
-        "wood": 10
+        "dust": 15
       },
       "waves": 2,
       "unlocks": "honey_consumable",
@@ -70,8 +67,7 @@
       "name": "Settl. Basics",
       "icon": "🏘️",
       "cost": {
-        "wood": 10,
-        "stone": 10
+        "dust": 10
       },
       "waves": 1,
       "unlocks": "hoard",
@@ -87,8 +83,7 @@
       "name": "Pattern Recognition",
       "icon": "📜",
       "cost": {
-        "dust": 30,
-        "stone": 5
+        "dust": 30
       },
       "waves": 3,
       "unlocks": "goblin_translations",
@@ -104,8 +99,7 @@
       "name": "Avian Mastery",
       "icon": "🦩",
       "cost": {
-        "dust": 35,
-        "wood": 20
+        "dust": 35
       },
       "waves": 4,
       "unlocks": "heron",
@@ -121,8 +115,7 @@
       "name": "Combat Training",
       "icon": "⚔️",
       "cost": {
-        "dust": 15,
-        "stone": 5
+        "dust": 15
       },
       "waves": 2,
       "unlocks": "tower_skills",
@@ -156,8 +149,7 @@
       "name": "Monkey Business",
       "icon": "🐵",
       "cost": {
-        "dust": 15,
-        "wood": 10
+        "dust": 15
       },
       "waves": 2,
       "unlocks": "monkey,stockpile",
@@ -173,8 +165,7 @@
       "name": "Runic Harness",
       "icon": "🎒",
       "cost": {
-        "dust": 20,
-        "stone": 10
+        "dust": 20
       },
       "waves": 2,
       "unlocks": "artifact_slot_+1",
@@ -259,8 +250,7 @@
       "name": "AI Automation",
       "icon": "🤖",
       "cost": {
-        "dust": 60,
-        "stone": 40
+        "dust": 60
       },
       "waves": 5,
       "unlocks": "robot",
@@ -365,8 +355,7 @@
       "name": "Crude Optics",
       "icon": "🔭",
       "cost": {
-        "dust": 20,
-        "stone": 3
+        "dust": 20
       },
       "waves": 2,
       "unlocks": "lab_radius_+2",
@@ -382,8 +371,7 @@
       "name": "Bonfire Theory",
       "icon": "🔥",
       "cost": {
-        "dust": 20,
-        "wood": 8
+        "dust": 20
       },
       "waves": 2,
       "unlocks": "tower_campfire",
@@ -399,8 +387,7 @@
       "name": "Aquatic Studies",
       "icon": "🐟",
       "cost": {
-        "dust": 25,
-        "stone": 15
+        "dust": 25
       },
       "waves": 3,
       "unlocks": "fish",
@@ -416,8 +403,7 @@
       "name": "Insightful Seahorse",
       "icon": "🦑",
       "cost": {
-        "dust": 30,
-        "stone": 10
+        "dust": 30
       },
       "waves": 3,
       "unlocks": "seahorse",
@@ -433,8 +419,7 @@
       "name": "Insightful Lens",
       "icon": "🔭",
       "cost": {
-        "dust": 25,
-        "stone": 8
+        "dust": 25
       },
       "waves": 2,
       "unlocks": "insightful_lens_recipe",

@@ -133,11 +133,6 @@ bus.on('watcherTransition', ({ watcher }) => {
   startHum();
 });
 
-// Patient Watcher escaped
-bus.on('researchComplete', ({ node }) => {
-  showBanner('🔬 ' + node.name + ' — Research Complete');
-});
-
 bus.on('firstSpider', () => {
   addFeed('obs', 'Entity classification: arachnid. Non-hostile posture. She is looking for something. We do not know what.');
 });

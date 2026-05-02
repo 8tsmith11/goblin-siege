@@ -185,7 +185,6 @@ export function tickResearch() {
     applyUnlock(active);
     refreshStatuses(nodes);
     // Announce research completion
-    addFeed('research', '🔬 ' + active.name + ' — Research Complete');
     bus.emit('researchComplete', { node: active });
     sfxResearch();
     // Forge obs entry
@@ -289,7 +288,6 @@ export function applyUnlock(node) {
     }
     case 'resonating_gem_consumable': {
       state.researchUnlocks.resonating_gem = true;
-      bus.emit('addConsumable', { id: 'resonating_gem', icon: '💎', name: 'Resonating Gem', desc: 'Place on any empty tile. Its purpose is unclear.' });
       break;
     }
     case 'honey_consumable': {
