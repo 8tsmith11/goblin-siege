@@ -77,8 +77,9 @@ const NPC_LINES = {
     // Translation lines — unlocked by Pattern Recognition research, fire in order
     {
       trigger: 'wave_prep',
+      silent: true,
       cond: s => s.patternRecDone && (s.translationStep || 0) === 0,
-      text: "We walk because she waits.",
+      text: '',
       onFire: (npc) => {
         if (!state.translationStep) state.translationStep = 1;
         addFeed('translations', 'Translation #9 decoded. "The goblins are not attacking. They are walking. The walk is purposive. \'She\' is the destination. We do not know who \'she\' is. The castle may be in her way."');
@@ -88,23 +89,32 @@ const NPC_LINES = {
     },
     {
       trigger: 'wave_prep',
+      silent: true,
       cond: s => (s.translationStep || 0) === 1 && s.wave >= 35,
-      text: "...not enemies...",
-      onFire: () => { state.translationStep = 2; }
+      text: '',
+      onFire: () => {
+        state.translationStep = 2;
+        addFeed('translations', '"...not enemies..."');
+      }
     },
     {
       trigger: 'wave_prep',
+      silent: true,
       cond: s => (s.translationStep || 0) === 2 && s.wave >= 40,
-      text: "...do not look at the towers...",
-      onFire: () => { state.translationStep = 3; }
+      text: '',
+      onFire: () => {
+        state.translationStep = 3;
+        addFeed('translations', '"...do not look at the towers..."');
+      }
     },
     {
       trigger: 'wave_prep',
+      silent: true,
       cond: s => (s.translationStep || 0) === 3 && s.wave >= 45,
-      text: "They are afraid of us.",
+      text: '',
       onFire: () => {
         state.translationStep = 4;
-        addFeed('translations', 'They are afraid of us. The towers. The fire. The stones we sharpen. Fear is not a thing enemies have. It is a thing people have.');
+        addFeed('translations', '"They are afraid of us." The towers. The fire. The stones we sharpen. Fear is not a thing enemies have. It is a thing people have.');
       }
     }
   ]
@@ -230,13 +240,14 @@ function _handleTrigger(type, ctx) {
       if (line.wave !== undefined && line.wave !== ctx.wave) continue;
       if (line.cond && !line.cond(state)) continue;
       state.firedTriggerLines.add(key);
+      if (line.onFire) line.onFire(npc);
+      if (line.silent) continue;
       const text = typeof line.text === 'function' ? line.text(state) : line.text;
       const _waveMismatch = line.wave !== undefined && line.wave !== state.wave + 1;
       const displayText = _waveMismatch ? `[Wave ${line.wave}] ${text}` : text;
       if (_bubbleQueue.length < 3) _bubbleQueue.push({ npc, text: displayText });
       addFeed('npc', displayText, npc.icon);
       _processQueue();
-      if (line.onFire) line.onFire(npc);
     }
   }
 }

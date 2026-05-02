@@ -42,6 +42,7 @@ export function renderCraftPanel() {
       depBtn.textContent = '+1';
       depBtn.onclick = () => {
         if ((state.resources[k] || 0) <= 0) return;
+        if ((tw.inv?.[k] || 0) >= 20) return;
         state.resources[k]--;
         if (!tw.inv) tw.inv = {};
         tw.inv[k] = (tw.inv[k] || 0) + 1;
