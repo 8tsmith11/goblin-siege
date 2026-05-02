@@ -349,22 +349,26 @@ export function render() {
       const tx2 = tw.x * CELL, ty2 = tw.y * CELL;
       const cx2 = tx2 + CELL / 2, cy2 = ty2 + CELL / 2;
       const pulse = 0.7 + 0.3 * Math.sin(ticks / 24 + tw.x * 0.7);
-      // Pedestal
-      cx.fillStyle = '#44337a'; cx.globalAlpha = 0.9;
+      // Pedestal (dark gray)
+      cx.fillStyle = '#484848'; cx.globalAlpha = 0.9;
       cx.fillRect(cx2 - CELL * 0.18, cy2 + CELL * 0.18, CELL * 0.36, CELL * 0.18);
       cx.fillRect(cx2 - CELL * 0.12, cy2 + CELL * 0.12, CELL * 0.24, CELL * 0.08);
       cx.globalAlpha = 1;
       // Glow
       cx.save();
-      cx.shadowColor = '#c084fc'; cx.shadowBlur = 14 * pulse;
-      // Diamond shape
-      const gs = CELL * 0.32;
+      cx.shadowColor = '#c084fc'; cx.shadowBlur = 16 * pulse;
+      // Inverted diamond (point down), shifted up slightly so point meets pedestal
+      const gs = CELL * 0.38;
+      const gy = cy2 - CELL * 0.05;
       cx.beginPath();
-      cx.moveTo(cx2, cy2 - gs); cx.lineTo(cx2 + gs * 0.6, cy2 - gs * 0.2);
-      cx.lineTo(cx2 + gs * 0.55, cy2 + gs * 0.3); cx.lineTo(cx2, cy2 + gs * 0.5);
-      cx.lineTo(cx2 - gs * 0.55, cy2 + gs * 0.3); cx.lineTo(cx2 - gs * 0.6, cy2 - gs * 0.2);
+      cx.moveTo(cx2, gy + gs);                    // bottom point
+      cx.lineTo(cx2 + gs * 0.6, gy + gs * 0.2);  // lower-right
+      cx.lineTo(cx2 + gs * 0.55, gy - gs * 0.3); // upper-right
+      cx.lineTo(cx2, gy - gs * 0.5);             // top center
+      cx.lineTo(cx2 - gs * 0.55, gy - gs * 0.3); // upper-left
+      cx.lineTo(cx2 - gs * 0.6, gy + gs * 0.2);  // lower-left
       cx.closePath();
-      const grad = cx.createLinearGradient(cx2, cy2 - gs, cx2, cy2 + gs * 0.5);
+      const grad = cx.createLinearGradient(cx2, gy - gs * 0.5, cx2, gy + gs);
       grad.addColorStop(0, '#e9d5ff'); grad.addColorStop(0.4, '#a855f7'); grad.addColorStop(1, '#4c1d95');
       cx.fillStyle = grad; cx.globalAlpha = 0.88 * pulse; cx.fill();
       cx.strokeStyle = '#e9d5ff'; cx.lineWidth = 1; cx.globalAlpha = 0.7; cx.stroke();
