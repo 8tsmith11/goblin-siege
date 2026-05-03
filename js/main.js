@@ -19,7 +19,7 @@ import { render, invalidateBg, clearFogParticles } from './render.js';
 import { ARTIFACTS } from './artifacts.js';
 import { triggerEvent } from './events.js';
 import { sfxBoss, sfxWave, sfxKill, sfxHit, startHum, stopHum, isSoundOn, sfxWatcherScreech, speak, resetMusic } from './audio.js';
-import { hudU, showOv, hideOv, showBanner, showBL, showResearchPop, showForgeAnnounce, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, resetResPos, initInventoryUI, initCraftUI, showLedger } from './ui.js';
+import { hudU, showOv, hideOv, showBanner, showBL, showResearchPop, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, resetResPos, initInventoryUI, initCraftUI, showLedger } from './ui.js';
 import { initInput, updateCameraKeys } from './input.js';
 import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
 import { placeNodes, updateNodes } from './resources.js';
@@ -251,7 +251,7 @@ export const state = {
   worldGenChoices: {},
   totalGoblinsKilled: 0, totalGoldEarned: 0,
   maxLives: 3,
-  frequencyPlayed: false, _forgeScriberFired: false,
+  frequencyPlayed: false, _forgeScriberFired: false, forgeAnnounce: null,
   patternRecDone: false, translationStep: 0, _translationWaveCount: 0,
   namedBossIndex: 0,
   auditorActive: false,
@@ -450,7 +450,7 @@ function update() {
     // Research tick
     const _done = tickResearch();
     if (_done) {
-      if (_done.id === 'the_forge') { setTimeout(() => showForgeAnnounce(), 100); } else { showBanner('🔬 ' + _done.name + ' complete!'); }
+      if (_done.id === 'the_forge') { state.forgeAnnounce = { tick: state.ticks }; } else { showBanner('🔬 ' + _done.name + ' complete!'); }
       showResearchPop(_done.name);
       addFeed('research', _done.name + ' complete.');
     }
@@ -676,7 +676,7 @@ export function resetGame() {
     namedBossIndex: 0, auditorActive: false, watcherEscaped: false, watcherAppeared: false, _acAnomalyDone: false, spiderRitualDone: false, spiderMother: null, ceasefire: false, seedStone: null, cameraShake: 0,
     inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} },
     worldGenChoices: {}, totalGoblinsKilled: 0, totalGoldEarned: 0, maxLives: 3,
-    frequencyPlayed: false, patternRecDone: false, translationStep: 0, _translationWaveCount: 0, _forgeScriberFired: false, _pendingBSen: null,
+    frequencyPlayed: false, patternRecDone: false, translationStep: 0, _translationWaveCount: 0, _forgeScriberFired: false, _pendingBSen: null, forgeAnnounce: null,
     _obs1: false, _obs5: false,
     cam: { panX: undefined, panY: undefined, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
     _Σ: 0, _Ω: 0,

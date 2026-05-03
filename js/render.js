@@ -862,6 +862,28 @@ export function render() {
     }
   }
 
+  // Steam Age announcement — full-screen canvas overlay, gold, lasts 10s
+  if (state.forgeAnnounce) {
+    const elapsed = ticks - state.forgeAnnounce.tick;
+    const dur = 600;
+    if (elapsed < dur) {
+      const alpha = elapsed < 60 ? elapsed / 60 : elapsed > 480 ? (dur - elapsed) / 120 : 1;
+      cx.save();
+      cx.fillStyle = `rgba(10,8,2,${0.75 * alpha})`;
+      cx.fillRect(0, 0, W, H);
+      cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.font = `bold ${Math.floor(H * 0.08)}px serif`;
+      cx.fillStyle = `rgba(245,158,11,${alpha})`;
+      cx.fillText('⚙️ The Age of Steam', W / 2, H / 2 - Math.floor(H * 0.04));
+      cx.font = `${Math.floor(H * 0.036)}px serif`;
+      cx.fillStyle = `rgba(253,224,130,${alpha * 0.85})`;
+      cx.fillText('You have left the Stone Age. You did not know you were in it.', W / 2, H / 2 + Math.floor(H * 0.045));
+      cx.restore();
+    } else {
+      state.forgeAnnounce = null;
+    }
+  }
+
   // Rain overlay — screen space, drawn after camera restore
   if (state.weather?.id === 'rain') {
     _ensureRain(W, H);
