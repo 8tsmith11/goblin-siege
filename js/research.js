@@ -3,7 +3,7 @@ import { state } from './main.js';
 import { TD } from './data.js';
 import { bus } from './bus.js';
 import { addFeed } from './feed.js';
-import { sfxResearch } from './audio.js';
+import { sfxResearch, switchToMidnight } from './audio.js';
 
 bus.on('trigger', ({ type }) => {
   if (type === 'frequency_played' && state.research) {
@@ -190,6 +190,7 @@ export function tickResearch() {
     // Forge obs entry
     if (active.id === 'the_forge') {
       addFeed('obs', 'The Forge completed at wave ' + state.wave + '. The Stone Age is over. Stone-Age systems persist. The Age-label of \'Stone\' is now a memory. Memories persist, too.');
+      switchToMidnight();
     }
     // When frequency_analysis completes, unlock knowledge_otherworldly if watcher has appeared
     if (active.id === 'frequency_analysis' || active._sourceId === 'frequency_analysis') {

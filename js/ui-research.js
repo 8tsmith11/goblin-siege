@@ -2,6 +2,7 @@
 import { state } from './main.js';
 import { canAfford, spendResources, layoutNodes, UNLOCK_DESC, checkGamePrereq, applyUnlock, refreshStatuses, RESEARCH_JSON, FIXED_RESEARCH, VARIABLE_RESEARCH } from './research.js';
 import { hudU, syncPause } from './ui.js';
+import { addFeed } from './feed.js';
 const RES_ICONS = { dust: '🔮', stone: '🪨', wood: '🪵', flint: '🗿' };
 const NODE_R = 22;
 let _rPos = null;
@@ -244,6 +245,10 @@ function showResearchDetail(id) {
         } else {
           spendResources(node.cost);
           node.status = 'active';
+          if ((node.id === 'the_forge' || node._sourceId === 'the_forge') && !state._forgeScriberFired) {
+            state._forgeScriberFired = true;
+            addFeed('npc', "The age is ending. Whatever comes next will be louder. It's always louder.");
+          }
         }
         renderResearch();
         showResearchDetail(id);

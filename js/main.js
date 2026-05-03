@@ -215,7 +215,7 @@ let _gg = 100, _ll = 20, _φ = false;
 let _ηG = (_gg * 0x9E3779B9) >>> 16; // integrity markers — updated alongside every write
 let _ηL = (_ll * 0xC2B2AE35) >>> 16;
 function _wG(v) { _gg = v | 0; _ηG = (_gg * 0x9E3779B9) >>> 16; }
-function _wL(v) { _ll = Math.max(0, v | 0); _ηL = (_ll * 0xC2B2AE35) >>> 16; }
+function _wL(v) { _ll = Math.max(0, Math.min(state?.maxLives || 3, v | 0)); _ηL = (_ll * 0xC2B2AE35) >>> 16; }
 // Trusted write executor — pass a fn that may read/write gold/lives
 export function _ΨΔ(fn) { const p = _φ; _φ = true; try { fn(); } finally { _φ = p; } }
 
@@ -247,7 +247,8 @@ export const state = {
   gCell: null,
   worldGenChoices: {},
   totalGoblinsKilled: 0, totalGoldEarned: 0,
-  frequencyPlayed: false,
+  maxLives: 3,
+  frequencyPlayed: false, _forgeScriberFired: false,
   patternRecDone: false, translationStep: 0, _translationWaveCount: 0,
   namedBossIndex: 0,
   auditorActive: false,
@@ -455,7 +456,7 @@ function update() {
       if (state.seedStone.wavesLeft <= 0) { state.seedStone = null; addFeed('event', '🪨 The Seed Stone crumbled.'); }
     }
     // Reset grateful spider once-per-wave web ability
-    state.towers.forEach(tw => { if (tw.type === 'grateful_spider') tw.webUsed = false; });
+    state.towers.forEach(tw => { if (tw.type === 'grateful_spider') { tw.webUsed = false; tw._web2Used = false; tw._web2Tick = 0; } });
     // Honey production: beehives produce 1 honey per wave when research is unlocked
     if (state.researchUnlocks?.honey_production) {
       const hives = state.towers.filter(tw => tw.type === 'beehive');
@@ -503,6 +504,8 @@ function update() {
     }
     // Ledger overlay at wave 20
     if (state.wave === 20) { _φ = false; showLedger(); _φ = true; }
+    // Heal to max lives at end of each wave
+    _ΨΔ(() => { state.lives = state.maxLives || 3; });
     // Transition seamlessly into the prep phase without a blocking modal.
     bus.emit('trigger', { type: 'wave_prep', wave: state.wave + 1 });
     state.phase = 'prep'; state.prepTicks = 1800; sfxWave(); _φ = false;
@@ -516,7 +519,10 @@ function update() {
     }
     autoSave();
     const _scribe = getScribeEntry(state.wave, state);
-    if (_scribe) addFeed('npc', 'The scribe has written in the journal.');
+    if (_scribe) {
+      addFeed('npc', 'The scribe has written in the journal.');
+      showBanner('📓 The scribe has written in the journal.');
+    }
     if (Math.random() < 0.4 && state.wave > 1) setTimeout(() => triggerEvent(), 500);
     const _hasLedger = state.inventory?.equipped?.some(a => a?.id === 'auditors_ledger');
     const _nextPreview = _hasLedger ? ' — Next: ' + previewWave(state.wave + 1) : '';
@@ -566,7 +572,7 @@ export function dropLoot(x, y, section, item) {
 
 /* ═══ Game flow ═══ */
 export function startGame() {
-  _ΨΔ(() => { _wG(100); _wL(20); });
+  _ΨΔ(() => { _wG(100); _wL(state.maxLives || 3); });
   if (!state.worldGenChoices.wave10Blueprint)
     state.worldGenChoices.wave10Blueprint = Math.random() < 0.5 ? 'clown' : 'lizard';
   if (!state.research) state.research = buildResearchGraph();
@@ -624,6 +630,8 @@ export function startWave() {
         sfxBoss();
         // Speak initial arrival line
         speak("I have arrived to audit your expenditures.");
+        addFeed('boss', '🏛️ "I have arrived to audit your expenditures."');
+        { const _el = document.getElementById('bossStrip'); if (_el) { _el.textContent = '🏛️ "I have arrived to audit your expenditures."'; _el.style.display = 'block'; } }
       } else if (_watcherWave) {
         showBanner('🔮 The Patient Watcher');
       } else {
@@ -643,7 +651,7 @@ export function startPrep() {
 }
 
 export function resetGame() {
-  _ΨΔ(() => { _wG(100); _wL(20); });
+  _ΨΔ(() => { _wG(100); _wL(state.maxLives || 3); });
   Object.assign(state, {
     wave: 0, phase: 'idle', ticks: 0, prepTicks: 0,
     enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
@@ -653,8 +661,8 @@ export function resetGame() {
     traps: [], webs: [],
     namedBossIndex: 0, auditorActive: false, watcherEscaped: false, watcherAppeared: false, _acAnomalyDone: false, spiderRitualDone: false, spiderMother: null, ceasefire: false, seedStone: null, cameraShake: 0,
     inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} },
-    worldGenChoices: {}, totalGoblinsKilled: 0, totalGoldEarned: 0,
-    frequencyPlayed: false, patternRecDone: false, translationStep: 0, _translationWaveCount: 0,
+    worldGenChoices: {}, totalGoblinsKilled: 0, totalGoldEarned: 0, maxLives: 3,
+    frequencyPlayed: false, patternRecDone: false, translationStep: 0, _translationWaveCount: 0, _forgeScriberFired: false,
     _obs1: false, _obs5: false,
     cam: { panX: undefined, panY: undefined, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
     _Σ: 0, _Ω: 0,

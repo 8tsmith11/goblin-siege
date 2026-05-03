@@ -192,8 +192,8 @@ export function placeConsumable(item, gx, gy) {
   const recipe = RECIPES.find(r => r.id === item.id);
   if (!recipe || recipe.output !== 'consumable') return false;
   if (recipe.trapType === 'seed_stone') {
-    const cell = getCell(gx, gy);
-    if (!cell || cell.type !== 'tower' || cell.content?.type !== 'castle') return false;
+    const lastTile = state.path?.[state.path.length - 1];
+    if (!lastTile || gx !== lastTile.x || gy !== lastTile.y) return false;
     state.seedStone = { x: gx, y: gy, wavesLeft: 10, carried: false };
     return true;
   }

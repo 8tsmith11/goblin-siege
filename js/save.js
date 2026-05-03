@@ -30,7 +30,7 @@ function _χ(s) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const _SK = new Set(['cd','_buffed','_rateBuff','laserCD','clownCD','robotCD','_monkeyBoosted','_monkeyBoostCount','webUsed']);
+const _SK = new Set(['cd','_buffed','_rateBuff','laserCD','clownCD','robotCD','_monkeyBoosted','_monkeyBoostCount','webUsed','_beeFrenzyEnd','_lastFireTick','_assaultReady']);
 const _MK_SK = new Set(['st','x','y','carrying','patrolAngle','targetX','targetY','waitCd','_itemTarget']);
 function _st(tw) {
   const o = {};

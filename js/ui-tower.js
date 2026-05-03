@@ -444,11 +444,18 @@ const TOWER_UPGS = {
     { name:'+0.5 Range  +0.6 Splash',cost:360, apply: tw => { tw.range += 0.5; tw.splash += 0.6; } },
   ],
   heron: [
-    { name:'+2 Chain',              cost: 55,  apply: tw => { tw.chain += 2; } },
+    { name:'+0.8 Chain Range',      cost: 55,  apply: tw => { tw.chainRange = +((tw.chainRange + 0.8).toFixed(1)); } },
     { name:'+8 DMG',                cost: 90,  apply: tw => { tw.dmg += 8; } },
     { name:'+0.8 Range',            cost: 135, apply: tw => { tw.range += 0.8; } },
     { name:'+2 Chain',              cost: 200, apply: tw => { tw.chain += 2; } },
     { name:'+12 DMG  −12 CD',       cost: 300, apply: tw => { tw.dmg += 12; tw.rate = Math.max(5, tw.rate - 12); } },
+  ],
+  grateful_spider: [
+    { name:'+0.8 Range',            cost: 55,  apply: tw => { tw.range += 0.8; } },
+    { name:'+10 DMG',               cost: 90,  apply: tw => { tw.dmg += 10; } },
+    { name:'+1 Web Tile',           cost: 135, apply: tw => { tw._webExtra = (tw._webExtra || 0) + 1; } },
+    { name:'-10 CD',                cost: 200, apply: tw => { tw.rate = Math.max(5, tw.rate - 10); } },
+    { name:'+20 DMG  +0.8 Range',   cost: 300, apply: tw => { tw.dmg += 20; tw.range += 0.8; } },
   ],
   clam: [
     { name:'+0.5 Buff Range',       cost: 65,  apply: tw => { tw.buffRange += 0.5; } },

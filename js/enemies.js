@@ -5,6 +5,7 @@ import { ETYPES, BOSS_LINES } from './data.js';
 import { spawnParticles, getCenter } from './utils.js';
 import { bus } from './bus.js';
 import { speak } from './audio.js';
+import { addFeed } from './feed.js';
 
 export function mkE(et, bHP, bSpd) {
   const e = {
@@ -327,16 +328,21 @@ export function updateEnemies() {
         e._audIndex = 0;
         e._audFirstHit = false;
         e._audDelay = Infinity;
+        e._audWaveStart = ticks;
       } else {
         // Only start speaking after the first confirmed hit
         if (!e._audFirstHit && e.hp < e.mhp) {
           e._audFirstHit = true;
-          e._audDelay = ticks + 60;
+          // Enforce 5s (300 tick) minimum from wave start before generated lines begin
+          e._audDelay = Math.max(ticks + 60, e._audWaveStart + 300);
         }
         if (e._audFirstHit && ticks >= e._audDelay) {
           const line = e._audLines[e._audIndex % e._audLines.length];
           e._audIndex++;
           speak(line);
+          addFeed('boss', '🏛️ ' + line);
+          const el = document.getElementById('bossStrip');
+          if (el) { el.textContent = '🏛️ "' + line + '"'; el.style.display = 'block'; }
           e._audDelay = ticks + 300;
         }
       }
@@ -416,7 +422,7 @@ export function updateEnemies() {
 
     if (e.pi >= path.length - 1 && !e.reversed) {
       e.dead = true;
-      if (!e.noLives) state.lives -= (e.boss || state.fogWave) ? 3 : 1;
+      if (!e.noLives) state.lives -= e.boss ? 3 : 1;
       if (e.auditor) state.auditorActive = false;
       continue;
     }
@@ -464,13 +470,14 @@ function geologistBfs(fromX, fromY, toX, toY) {
   return [];
 }
 
-// Steal one ground stack from a tile. Returns true if taken.
+// Steal one ground stack from a tile. Returns true if taken. Dust is never stolen.
 function _stealOneGroundItem(e, tx, ty) {
   const cell = getCell(tx, ty);
   if (!cell?.stacks) return false;
   for (let i = 0; i < cell.stacks.length; i++) {
     const s = cell.stacks[i];
     if (!s || s.bossLoot || e.stolen.length >= e.gMaxSteal) continue;
+    if (s.type === 'dust') continue;
     e.stolen.push({ type: s.type || (s.section === 'artifacts' ? '_artifact' : '_item'), item: s });
     cell.stacks[i] = null;
     return true;
@@ -478,34 +485,45 @@ function _stealOneGroundItem(e, tx, ty) {
   return false;
 }
 
-// Returns true if a lootable tower exists at this tile.
+// Returns true if any lootable non-dust item exists at this tile (tower or ground).
 function _hasTowerLoot(tx, ty) {
   const tw = state.towers.find(t => Math.round(t.x) === tx && Math.round(t.y) === ty);
   if (!tw) return false;
-  if (tw.type === 'hoard') return (tw.stored || 0) > 0;
-  if (tw.type === 'workbench' && tw.inv) return Object.values(tw.inv).some(v => v > 0);
-  if (tw.type === 'lab') return (state.resources.dust || 0) > 0;
+  if (tw.stored > 0) return true;
+  if (tw.inv) return Object.entries(tw.inv).some(([k, v]) => k !== 'dust' && v > 0);
+  if (tw.slots) return tw.slots.some(s => s && s.count > 0 && s.type !== 'dust');
   return false;
 }
 
-// Steal one item from a tower at tile. Returns true if taken.
+// Steal one non-dust item from any tower at tile. Returns true if taken.
 function _stealFromTower(e, tx, ty) {
   const tw = state.towers.find(t => Math.round(t.x) === tx && Math.round(t.y) === ty);
   if (!tw) return false;
-  if (tw.type === 'hoard' && tw.stored > 0) {
+  // Hoard
+  if (tw.stored > 0) {
     tw.stored--;
-    e.stolen.push({ type: 'resource', label: 'hoard' });
+    e.stolen.push({ type: 'resource', label: tw.type });
     return true;
   }
-  if (tw.type === 'workbench' && tw.inv) {
+  // inv-based towers (workbench, etc.)
+  if (tw.inv) {
     for (const [res, amt] of Object.entries(tw.inv)) {
-      if (amt > 0) { tw.inv[res]--; e.stolen.push({ type: res }); return true; }
+      if (res === 'dust' || amt <= 0) continue;
+      tw.inv[res]--;
+      e.stolen.push({ type: res });
+      return true;
     }
   }
-  if (tw.type === 'lab' && (state.resources.dust || 0) > 0) {
-    state.resources.dust--;
-    e.stolen.push({ type: 'dust' });
-    return true;
+  // slot-based towers (stockpile, etc.)
+  if (tw.slots) {
+    for (let i = 0; i < tw.slots.length; i++) {
+      const s = tw.slots[i];
+      if (!s || s.count <= 0 || s.type === 'dust') continue;
+      s.count--;
+      e.stolen.push({ type: s.type });
+      if (s.count <= 0) tw.slots[i] = null;
+      return true;
+    }
   }
   return false;
 }
@@ -592,7 +610,7 @@ function updateGeologist(e, path, CELL) {
 function applyStatusEffects(e, freezeActive, ticks, CELL, particles, enemies) {
   if (freezeActive > 0 && !e.boss) { e.frozen = 2; return true; }
   if (e.frozen > 0) { e.frozen--; return true; }
-  if (e.stunned > 0) { e.stunned--; return true; }
+  if (e.stunned > 0) { e.stunned--; e._stunSlow = true; }
 
   if (e.reverseTimer > 0) { e.reverseTimer--; if (e.reverseTimer <= 0) e.reversed = false; }
   if (e.stealthTimer > 0) { e.stealthTimer--; if (e.stealthTimer <= 0) e.stealth = false; }
@@ -627,6 +645,7 @@ function moveEnemy(e, path) {
 
   const dx = t.x - e.x, dy = t.y - e.y, d = Math.sqrt(dx * dx + dy * dy);
   let sp = e.spd * (1 - Math.max(e.slow, e._trapSlow || 0, e._labSlow || 0)) * 0.04;
+  if (e._stunSlow) { sp *= 0.15; e._stunSlow = false; }
   if (e.spdBuff > 0) sp *= 1.3;
   if (d < sp + 0.001) { e.x = t.x; e.y = t.y; e.pi = nextI; }
   else { e.x += dx / d * sp; e.y += dy / d * sp; }

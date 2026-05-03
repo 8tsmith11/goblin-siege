@@ -157,8 +157,8 @@ export function getScribeEntry(wave, state) {
     17: () => state.bSen?.has('curious_auditor') ? "After the fog, something new. It didn't kill \u2014 it taxed. Every shot cost them. Some stopped shooting. I don't know if that was wise or cowardice." : null,
     23: () => 'They translated the first sounds. Give it time.',
     20: () => `The Ledger appeared. The number was ${state._kills || 0}. I wrote it down.`,
-    22: () => "New material on the surface. They can't use it yet. They will.",
-    25: () => "The age is ending. Whatever comes next will be louder. It's always louder.",
+    22: () => "There was a sound. ~40Hz. It didn't come from the goblins. The Lab recorded it. No one else reacted. We are beginning to think the Lab understands something we don't.",
+    25: () => null,
     32: () => state.bSen?.has('patient_watcher') && state.watcherEscaped ? "It left. Untouched. We stared at it for thirty seconds and it walked out the back. I've never seen anything leave before." : state.bSen?.has('patient_watcher') && !state.watcherEscaped ? "It moved like it had nowhere to be. Then they hurt it. That was a mistake." : null,
   };
   return entries[wave]?.() ?? null;
@@ -181,8 +181,7 @@ export function getScribeLogs(state) {
   if (w >= 15) logs.push({ w: 'Wave 15', t: "The fog came. You can't fight fog. The towers kept shooting, but they were shooting at their own shadows." });
   if (w >= 23) logs.push({ w: 'Wave 23', t: 'They translated the first sounds. Give it time.' });
   if (w >= 20) logs.push({ w: 'Wave 20', t: `The Ledger appeared. The number was ${(state._kills||0)}. I wrote it down.` });
-  if (w >= 22) logs.push({ w: 'Wave 22', t: "New material on the surface. They can't use it yet. They will." });
-  if (w >= 25) logs.push({ w: 'Wave 25', t: "The age is ending. Whatever comes next will be louder. It's always louder." });
+  if (w >= 22) logs.push({ w: 'Wave 22', t: "There was a sound. ~40Hz. It didn't come from the goblins. The Lab recorded it. No one else reacted. We are beginning to think the Lab understands something we don't." });
   if (w >= 18 && state.bSen?.has('curious_auditor')) logs.push({ w: '~Wave 17', t: "After the fog, something new. It didn't kill — it taxed. Every shot cost them. Some stopped shooting. I don't know if that was wise or cowardice." });
   if (w >= 27 && state.bSen?.has('spider')) logs.push({ w: '~Wave 24', t: "The spiders arrived. They didn't go for the towers. They went for something we hadn't built yet." });
   if (w >= 30 && state.bSen?.has('patient_watcher') && state.watcherEscaped) logs.push({ w: '~Wave 30', t: "It left. Untouched. It moved between our walls for thirty seconds and no one fired. I've never seen anything leave before." });

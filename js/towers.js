@@ -23,10 +23,27 @@ function spawnProjectile(tw, tgt, def, isFrenzySecondary = false) {
     const adjacent = state.towers.filter(t => t !== tw && t.type === 'lion' && Math.abs(t.x - tw.x) <= 1 && Math.abs(t.y - tw.y) <= 1).length;
     if (adjacent > 0) dmg = Math.round(dmg * (1 + adjacent * 0.3));
   }
+  // Abhorrent Ambush: ×5 damage on assault shot
+  let assaultTower = null;
+  if (!isFrenzySecondary && tw._abhAssault && tw._assaultReady) {
+    dmg *= 2.5;
+    assaultTower = tw;
+    tw._assaultShot = true;
+  }
+  // Compute pierce direction (straight-line from tower to target)
+  let pierceDir = null, startX = tw.x, startY = tw.y;
+  const _pierce = isFrenzySecondary ? 0 : (tw.pierce || 0);
+  if (_pierce > 0) {
+    const _pdx = tgt.x - tw.x, _pdy = tgt.y - tw.y, _pd = Math.hypot(_pdx, _pdy) || 1;
+    pierceDir = { x: _pdx / _pd, y: _pdy / _pd };
+  }
   if (isFrenzySecondary) {
-     Object.assign(p, { x:tw.x, y:tw.y, tgt, dmg, spd:def.pSpd*0.06, clr:def.pClr, splash:tw.splash, slow:tw.slow, pierce:0, chain:0, speedUp:false, hits:[], stun:0, poison:null, blind:false, chainStun:0, bloodlust:tw.bloodlust, lingeringChill:false, brittleIce:false });
+     Object.assign(p, { x:tw.x, y:tw.y, tgt, dmg, spd:def.pSpd*0.06, clr:def.pClr, splash:tw.splash, slow:tw.slow, pierce:0, chain:0, speedUp:false, hits:[], stun:0, poison:null, blind:false, chainStun:0, bloodlust:tw.bloodlust, lingeringChill:false, brittleIce:false, pierceDir:null, _assaultTower:null, twX:tw.x, twY:tw.y, chainRange:0 });
   } else {
-     Object.assign(p, { x:tw.x, y:tw.y, tgt, dmg, spd:def.pSpd*0.06, clr:def.pClr, splash:tw.splash, slow:tw.slow, pierce:tw.pierce||0, chain:tw.chain||0, speedUp:def.speedUp, hits:[], stun:tw.stun||0, poison:tw.poison||null, blind:tw.blind, chainStun:tw.chainStun||0, chainSlowAmt:tw.chainSlowAmt||0, chainSlowDur:tw.chainSlowDur||0, chainEfficiency:tw.chainEfficiency||0, chainSparks:tw.chainSparks||false, bloodlust:tw.bloodlust, lingeringChill:tw.lingeringChill||false, brittleIce:tw.brittleIce||false, mastery:tw._mastery||false });
+    const _stun = (tw._assaultShot ? Math.max(tw.stun||0, 15) : (tw.stun||0));
+    tw._assaultShot = false;
+    const _pierceRange = _pierce > 0 ? (state.fogWave ? Math.max(1, tw.range * 0.55) : tw.range) : 0;
+    Object.assign(p, { x:tw.x, y:tw.y, tgt, dmg, spd:def.pSpd*0.06, clr:def.pClr, splash:tw.splash, slow:tw.slow, pierce:_pierce, chain:tw.chain||0, speedUp:def.speedUp, hits:[], stun:_stun, poison:tw.poison||null, blind:tw.blind, chainStun:tw.chainStun||0, chainSlowAmt:tw.chainSlowAmt||0, chainSlowDur:tw.chainSlowDur||0, chainEfficiency:tw.chainEfficiency||0, chainSparks:tw.chainSparks||false, bloodlust:tw.bloodlust, lingeringChill:tw.lingeringChill||false, brittleIce:tw.brittleIce||false, mastery:tw._mastery||false, tempest:tw._tempest||false, pierceDir, startX, startY, pierceRange:_pierceRange, _assaultTower:assaultTower, twX:tw.x, twY:tw.y, chainRange:tw.chainRange||0 });
   }
   return p;
 }
@@ -88,6 +105,24 @@ export function updateTowers() {
   towers.forEach(tw => {
     if (tw.type === 'factory' || TD[tw.type]?.cat !== 'tower') return;
     if (tw.disabled && tw.disabledWave === wave) return;
+    // Abhorrent Ambush: check idle duration to unlock stealth mode
+    if (tw._abhAssault && !tw._assaultReady) {
+      if (ticks - (tw._lastFireTick || 0) >= 180) tw._assaultReady = true;
+    }
+    // Grateful Spider: web fires at wave start and mid-wave (before cd gate)
+    if (tw.type === 'grateful_spider' && state.phase === 'active') {
+      const _fireWeb = () => {
+        const pathInRange = state.path.filter(p => Math.hypot(p.x - tw.x, p.y - tw.y) <= (state.fogWave ? Math.min(tw.range, 1) : tw.range));
+        if (!pathInRange.length) return;
+        const center = pathInRange[Math.floor(pathInRange.length / 2)];
+        const count = (tw.webSpread ? 5 : 3) + (tw._webExtra || 0);
+        const webTiles = state.path.filter(p => Math.abs(p.x - center.x) + Math.abs(p.y - center.y) <= 2).slice(0, count);
+        if (!state.webs) state.webs = [];
+        for (const pt of webTiles) state.webs.push({ x: pt.x, y: pt.y, expiry: 9999999, dmg: tw.webVenom ? 3 : 0, slow: tw.webSlowBonus ? 0.8 : 0.6, stun: tw._silkThrone ? 20 : 0 });
+      };
+      if (!tw.webUsed) { _fireWeb(); tw.webUsed = true; tw._web2Tick = ticks + 600; }
+      if (tw._silkThrone && !tw._web2Used && tw._web2Tick && ticks >= tw._web2Tick) { _fireWeb(); tw._web2Used = true; }
+    }
     if (tw.cd > 0) { tw.cd -= (tw._rateBuff < 1 ? 1.2 : 1); return; }
 
     const def = TD[tw.type];
@@ -115,10 +150,17 @@ export function updateTowers() {
       const invisible = vis.filter(e => e.stealth);
       if (invisible.length) tgtPool = invisible;
     }
+    // Penguin: prefer enemies not already slowed
+    if (tw.type === 'penguin') {
+      const unslowed = tgtPool.filter(e => !(e.slow > 0) && !(e._permSlow > 0));
+      if (unslowed.length) tgtPool = unslowed;
+    }
     const tgt = findTarget(tgtPool, def.target);
-    
+
     projectiles.push(spawnProjectile(tw, tgt, def, false));
     sfxShoot(); tw.cd = Math.round(def.rate * warmPebbleBoost);
+    // Track last fire tick for Abhorrent Ambush idle check
+    if (tw._abhAssault) tw._lastFireTick = ticks;
     if (state.enemies.some(e => e.auditor && !e.dead)) {
       _ΨΔ(() => { state.gold = Math.max(0, state.gold - 1); });
       mkF(getCenter(tw.x, CELL), getCenter(tw.y, CELL), '-1', '#ef4444');
@@ -136,21 +178,6 @@ export function updateTowers() {
       if (!e.spdBuff) e.spdBuff = tw.megaSpeed ? 2 : 1;
       if (ticks % 12 === 0) spawnParticles(particles, getCenter(e.x, CELL), getCenter(e.y, CELL), 1, { vxBase: (Math.random()-.5)*2, vyBase: -1.5, spreadX: 0, spreadY: 0, life: 10, clr: '#a3e635', sz: 2 });
     });
-    // Grateful Spider: once-per-wave web shot
-    if (tw.type === 'grateful_spider') {
-      if (!tw.webUsed && state.phase === 'active' && ticks % 180 === 1) {
-        const pathInRange = state.path.filter(p => Math.hypot(p.x - tw.x, p.y - tw.y) <= effectiveRange);
-        if (pathInRange.length) {
-          const center = pathInRange[Math.floor(pathInRange.length / 2)];
-          const webTiles = state.path.filter(p => Math.abs(p.x - center.x) + Math.abs(p.y - center.y) <= 2).slice(0, tw.webSpread ? 5 : 3);
-          if (!state.webs) state.webs = [];
-          const duration = tw.webLasting ? 7200 : 120;
-          for (const pt of webTiles) state.webs.push({ x: pt.x, y: pt.y, expiry: ticks + duration, dmg: tw.webVenom ? 3 : 0, slow: tw.webSlowBonus ? 0.8 : 0.6 });
-          tw.webUsed = true;
-        }
-      }
-      return;
-    }
   });
   // Apply web effects to enemies
   if (state.webs?.length) {
@@ -162,7 +189,9 @@ export function updateTowers() {
         if (Math.abs(e.x - web.x) < 0.75 && Math.abs(e.y - web.y) < 0.75) {
           e._trapSlow = Math.max(e._trapSlow || 0, web.slow);
           if (web.dmg && ticks % 20 === 0) e.hp -= web.dmg;
+          if (web.stun && !e.boss && !e._webStunCd) { e.stunned = Math.max(e.stunned, web.stun); e._webStunCd = 90; }
         }
+        if (e._webStunCd > 0) e._webStunCd--;
       }
     }
   }

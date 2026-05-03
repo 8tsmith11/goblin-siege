@@ -1,5 +1,5 @@
 'use strict';
-import { state, dropLoot } from './main.js';
+import { state, dropLoot, _ΨΔ } from './main.js';
 import { TD } from './data.js';
 import { sfxClown, sfxBee, sfxLaser, speak } from './audio.js';
 import { getEnemiesInRadius } from './grid.js';
@@ -110,7 +110,7 @@ export function updateRobot() {
       state.freezeActive = 90;
       mkF(cx, cy, '🤖❄️', '#38bdf8');
     } else if (pick === 'heal') {
-      state.lives = Math.min(state.lives + 1, 30);
+      _ΨΔ(() => { state.lives = Math.min(state.lives + 1, state.maxLives || 3); });
       mkF(cx, cy, '🤖💚', '#22c55e');
     }
     rb.cd = cd;
@@ -219,7 +219,7 @@ export function spawnSpiderMother() {
     x: start.x, y: start.y,
     pi: 0,
     phase: 'forward',
-    spd: 0.10,
+    spd: 0.035,
     dead: false,
     stonePickedUp: false,
   };

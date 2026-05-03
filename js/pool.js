@@ -13,7 +13,7 @@ const _pPool = createPool(() => ({}), null);
 export const getP = _pPool.get;
 export const freeP = _pPool.free;
 
-const _projPool = createPool(() => ({ hits: [] }), p => { p.hits.length = 0; p.poison = null; });
+const _projPool = createPool(() => ({ hits: [] }), p => { p.hits.length = 0; p.poison = null; p.pierceDir = null; p._assaultTower = null; p._beeHive = null; });
 export const getProj = _projPool.get;
 export const freeProj = _projPool.free;
 

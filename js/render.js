@@ -383,7 +383,19 @@ export function render() {
     } else {
       const _dis = tw.disabled && tw.disabledWave === state.wave;
       const _mst = tw._mastery;
-      if (_mst) {
+      const _abh = tw._abhAssault; // Abhorrent Ambush mastery
+      const _ambushReady = _abh && tw._assaultReady;
+      if (_abh) {
+        // Abhorrent Ambush: sickly dark green background
+        const grad = cx.createLinearGradient(tx, ty, tx + CELL, ty + CELL);
+        if (_ambushReady) {
+          // Stealth: near-black, predator waiting
+          grad.addColorStop(0, '#020501'); grad.addColorStop(0.5, '#040a01'); grad.addColorStop(1, '#020501');
+        } else {
+          grad.addColorStop(0, '#0d1a00'); grad.addColorStop(0.5, '#111a00'); grad.addColorStop(1, '#0d1a00');
+        }
+        cx.fillStyle = grad;
+      } else if (_mst) {
         // Mastery: deep purple-gold gradient background
         const grad = cx.createLinearGradient(tx, ty, tx + CELL, ty + CELL);
         grad.addColorStop(0, '#1a0d30'); grad.addColorStop(0.5, '#2a1800'); grad.addColorStop(1, '#1a0d30');
@@ -392,15 +404,33 @@ export function render() {
         cx.fillStyle = _dis ? '#1a0a0a' : isH ? '#0a3d2f' : tw._buffed ? '#1a2040' : '#171838';
       }
       cx.fillRect(tx + 2, ty + 2, CELL - 4, CELL - 4);
-      cx.strokeStyle = _dis ? '#ef4444' : _mst ? '#a855f7' : isH ? '#10b981' : tw._buffed ? '#5eead4' : (def?.clr || '#555');
-      cx.lineWidth = _mst ? 2.5 : tw._buffed ? 2 : 1.5; cx.strokeRect(tx + 2, ty + 2, CELL - 4, CELL - 4);
-      if (_mst) {
+      if (_abh) {
+        const pulse = 0.5 + 0.5 * Math.sin(ticks * 0.07);
+        if (_ambushReady) {
+          // Stealth: bright acid-green pulsing border, stands out against black bg
+          cx.strokeStyle = `rgba(163,230,53,${0.85 + 0.15 * pulse})`; cx.lineWidth = 3;
+        } else {
+          cx.strokeStyle = `rgba(74,222,128,${0.4 + 0.2 * pulse})`; cx.lineWidth = 1.5;
+        }
+      } else {
+        cx.strokeStyle = _dis ? '#ef4444' : _mst ? '#a855f7' : isH ? '#10b981' : tw._buffed ? '#5eead4' : (def?.clr || '#555');
+        cx.lineWidth = _mst ? 2.5 : tw._buffed ? 2 : 1.5;
+      }
+      cx.strokeRect(tx + 2, ty + 2, CELL - 4, CELL - 4);
+      if (_abh && _ambushReady) {
+        // Stealth mode: inner pulsing ring
+        const p2 = 0.3 + 0.4 * Math.sin(ticks * 0.12);
+        cx.strokeStyle = `rgba(74,222,128,${p2})`; cx.lineWidth = 1;
+        cx.strokeRect(tx + 5, ty + 5, CELL - 10, CELL - 10);
+      } else if (_mst && !_abh) {
         // Gold inner glow corners
         cx.strokeStyle = '#f59e0b44'; cx.lineWidth = 1;
         cx.strokeRect(tx + 4, ty + 4, CELL - 8, CELL - 8);
       }
       cx.font = Math.floor(CELL * 0.35) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      if (_ambushReady) cx.globalAlpha = 0.25; // nearly invisible in stealth
       cx.fillText(isH ? '🏺' : (def?.icon || '?'), tx + CELL / 2, ty + CELL / 2);
+      cx.globalAlpha = 1;
     }
     if (tw.level > 0) { cx.font = 'bold ' + Math.floor(CELL * 0.16) + 'px Anybody,sans-serif'; cx.fillStyle = '#fbbf24'; cx.fillText('★'.repeat(Math.min(tw.level, 5)), tx + CELL / 2, ty + CELL - 2); }
   });
@@ -432,7 +462,22 @@ export function render() {
     if (!tw._mastery) return;
     const px = tw.x * CELL + CELL / 2, py = tw.y * CELL + CELL / 2;
     const pulse = 0.5 + Math.sin(ticks * 0.05) * 0.2;
-    if (tw.type === 'clown') {
+    if (tw._abhAssault) {
+      // Abhorrent Ambush mastery aura — dark green instead of purple
+      const gpulse = 0.4 + Math.sin(ticks * 0.07) * 0.2;
+      if (tw._assaultReady) {
+        // Stealth mode: expanding pulse rings
+        const ringT = (ticks * 0.05) % 1;
+        cx.beginPath(); cx.arc(px, py, CELL * (0.3 + ringT * 0.5), 0, Math.PI * 2);
+        cx.strokeStyle = `rgba(74,222,128,${(1 - ringT) * 0.6})`; cx.lineWidth = 2; cx.stroke();
+        if (!state.paused && ticks % 8 === 0) state.particles.push({ x: px + (Math.random()-0.5)*CELL*0.6, y: py + (Math.random()-0.5)*CELL*0.6, vx: (Math.random()-0.5)*0.3, vy: -0.2 - Math.random()*0.4, life: 20+Math.random()*15, clr: Math.random()<0.6 ? '#4ade80' : '#1a2e00', sz: 1.5+Math.random() });
+      } else {
+        // Idle: faint green ring + occasional dark smoke
+        cx.beginPath(); cx.arc(px, py, CELL * 0.5, 0, Math.PI * 2);
+        cx.strokeStyle = `rgba(74,222,128,${gpulse.toFixed(2)})`; cx.lineWidth = 1.5; cx.stroke();
+        if (!state.paused && ticks % 45 === 0) state.particles.push({ x: px + (Math.random()-0.5)*CELL*0.4, y: py + (Math.random()-0.5)*CELL*0.4, vx: (Math.random()-0.5)*0.3, vy: -0.3 - Math.random()*0.3, life: 18+Math.random()*12, clr: '#1a3300', sz: 2 });
+      }
+    } else if (tw.type === 'clown') {
       const JCLR = ['#f472b6','#facc15','#34d399','#60a5fa','#f87171','#a78bfa'];
       const spinAngle = ticks * 0.04;
       const r = CELL * 0.65;
@@ -446,7 +491,7 @@ export function render() {
       }
       cx.beginPath(); cx.arc(px, py, r, 0, Math.PI * 2);
       cx.strokeStyle = `rgba(244,114,182,${pulse.toFixed(2)})`; cx.lineWidth = 2; cx.stroke();
-      if (ticks % 20 === 0) {
+      if (!state.paused && ticks % 20 === 0) {
         const a = Math.random() * Math.PI * 2;
         state.particles.push({ x: px + Math.cos(a) * r, y: py + Math.sin(a) * r,
           vx: Math.cos(a) * (0.5 + Math.random() * 0.5), vy: -0.6 - Math.random() * 0.6,
@@ -457,7 +502,7 @@ export function render() {
       cx.strokeStyle = `rgba(168,85,247,${pulse.toFixed(2)})`; cx.lineWidth = 2.5; cx.stroke();
       cx.beginPath(); cx.arc(px, py, CELL * 0.48, 0, Math.PI * 2);
       cx.strokeStyle = `rgba(245,158,11,${(pulse * 0.5).toFixed(2)})`; cx.lineWidth = 1; cx.stroke();
-      if (ticks % 30 === 0) {
+      if (!state.paused && ticks % 30 === 0) {
         const angle = Math.random() * Math.PI * 2;
         const r = CELL * (0.4 + Math.random() * 0.2);
         state.particles.push({ x: px + Math.cos(angle) * r, y: py + Math.sin(angle) * r,
@@ -645,6 +690,7 @@ export function render() {
 
   // Projectiles
   projectiles.forEach(p => {
+    if (p.chain > 0) return; // chain lightning: invisible in flight, beam draws on hit
     const px = p.x * CELL + CELL / 2, py = p.y * CELL + CELL / 2;
     if (p.mastery) {
       // Mastery projectile: larger core + purple outer glow + gold inner
@@ -661,9 +707,10 @@ export function render() {
   beams.forEach(b => {
     const alpha = Math.min(1, b.life / 6);
     const w = b.w || 2;
-    // Build jagged polyline via midpoint displacement
-    const segs = 7;
-    const spread = Math.hypot(b.x2 - b.x1, b.y2 - b.y1) * 0.20;
+    const isTemp = b.clr === '#e8e8e8'; // tempest mastery beam (white)
+    // Default beams use tight amplitude; mastery uses wider spread
+    const segs = 10;
+    const spread = Math.hypot(b.x2 - b.x1, b.y2 - b.y1) * (isTemp ? 0.30 : 0.22);
     const pts = [{ x: b.x1, y: b.y1 }];
     for (let si = 1; si < segs; si++) {
       const t = si / segs;
@@ -678,15 +725,21 @@ export function render() {
       cx.globalAlpha = a; cx.strokeStyle = clr; cx.lineWidth = lw;
       cx.beginPath(); pts.forEach((p, i) => i ? cx.lineTo(p.x, p.y) : cx.moveTo(p.x, p.y)); cx.stroke();
     };
-    const isTemp = b.clr === '#38bdf8'; // tempest mastery beam
-    drawPts(w + 7, b.clr + '44', alpha * 0.5);  // outer glow
-    drawPts(w + 3, b.clr, alpha * 0.7);          // mid color
-    drawPts(w, isTemp ? '#0a0a1a' : '#ffffff', alpha); // dark core for tempest, white for normal
-    if (isTemp) drawPts(w - 2, b.clr, alpha * 0.6); // inner color shimmer for tempest
+    if (isTemp) {
+      // Tempest mastery: indigo outer, black core
+      drawPts(w + 12, '#818cf833', alpha * 0.4); // wide outer indigo glow
+      drawPts(w + 8, '#818cf8', alpha * 0.95);   // thick indigo border
+      drawPts(w - 3, '#0a0a0a', alpha);           // narrow black core
+    } else {
+      // Default lightning: thin, subtle
+      drawPts(w + 3, b.clr + '44', alpha * 0.4);  // faint outer glow
+      drawPts(w + 1, b.clr, alpha * 0.6);          // color mid
+      drawPts(w, '#ffffff', alpha);                 // white core
+    }
     // Spark dots at endpoints
-    cx.globalAlpha = alpha * 0.9; cx.fillStyle = isTemp ? b.clr : '#ffffff';
-    cx.beginPath(); cx.arc(b.x1, b.y1, w + 1.5, 0, Math.PI * 2); cx.fill();
-    cx.beginPath(); cx.arc(b.x2, b.y2, w + 1.5, 0, Math.PI * 2); cx.fill();
+    cx.globalAlpha = alpha * 0.9; cx.fillStyle = isTemp ? '#818cf8' : '#ffffff';
+    cx.beginPath(); cx.arc(b.x1, b.y1, w + 1, 0, Math.PI * 2); cx.fill();
+    cx.beginPath(); cx.arc(b.x2, b.y2, w + 1, 0, Math.PI * 2); cx.fill();
   });
   cx.globalAlpha = 1;
 

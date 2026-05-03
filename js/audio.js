@@ -127,6 +127,30 @@ function startMusic() {
   if (sOn) window.bgm.play().catch(()=>{});
 }
 
+export function switchToMidnight() {
+  if (!window.bgm) return;
+  const old = window.bgm;
+  // Fade out over 3 seconds
+  const fadeStep = () => {
+    if (old.volume > 0.02) { old.volume = Math.max(0, old.volume - 0.01); setTimeout(fadeStep, 60); }
+    else {
+      old.pause();
+      window.bgm = new Audio("assets/The_Inventor's_Midnight.mp3");
+      window.bgm.volume = sOn ? 0.3 : 0;
+      window.bgm.addEventListener('ended', () => {
+        window.bgmWaiting = true;
+        setTimeout(() => {
+          window.bgmWaiting = false;
+          window.bgm.currentTime = 0;
+          if (sOn) window.bgm.play().catch(() => {});
+        }, 5000);
+      });
+      if (sOn) window.bgm.play().catch(() => {});
+    }
+  };
+  fadeStep();
+}
+
 export function sfxWatcherScreech() {
   if (!AC || !sOn) return;
   const now = AC.currentTime;
