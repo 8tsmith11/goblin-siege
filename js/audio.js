@@ -142,7 +142,7 @@ export function switchToMidnight() {
   window.bgmWaiting = false;
   window.bgm = new Audio("assets/The_Inventor’s_Midnight.mp3");
   window.bgm.volume = sOn ? 0.3 : 0;
-  window.bgm.addEventListener(‘ended’, () => {
+  window.bgm.addEventListener('ended', () => {
     window.bgmWaiting = true;
     setTimeout(() => {
       window.bgmWaiting = false;
