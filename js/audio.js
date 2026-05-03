@@ -116,7 +116,7 @@ window.bgmWaiting = false;
 function startMusic() {
   if (mOn) return; mOn = true;
   const isForgeComplete = state?.research?.the_forge?.status === 'complete';
-  const song = isForgeComplete ? "assets/The_Inventor's_Midnight.mp3" : "assets/Breath_of_the_Cedar.mp3";
+  const song = isForgeComplete ? "assets/The_Inventor’s_Midnight.mp3" : "assets/Breath_of_the_Cedar.mp3";
   window.bgm = new Audio(song);
   window.bgm.volume = sOn ? 0.3 : 0;
   window.bgm.addEventListener('ended', () => {
@@ -138,7 +138,7 @@ export function switchToMidnight() {
     if (old.volume > 0.02) { old.volume = Math.max(0, old.volume - 0.01); setTimeout(fadeStep, 60); }
     else {
       old.pause();
-      window.bgm = new Audio("assets/The_Inventor's_Midnight.mp3");
+      window.bgm = new Audio("assets/The_Inventor’s_Midnight.mp3");
       window.bgm.volume = sOn ? 0.3 : 0;
       window.bgm.addEventListener('ended', () => {
         window.bgmWaiting = true;
