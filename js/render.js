@@ -690,8 +690,13 @@ export function render() {
 
   // Projectiles
   projectiles.forEach(p => {
-    if (p.chain > 0) return; // chain lightning: invisible in flight, beam draws on hit
+    if (p.chain > 0) return;
     const px = p.x * CELL + CELL / 2, py = p.y * CELL + CELL / 2;
+    if (p.webShot) {
+      cx.font = Math.floor(CELL * 0.45) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.fillText('🕸️', px, py);
+      return;
+    }
     if (p.mastery) {
       // Mastery projectile: larger core + purple outer glow + gold inner
       cx.fillStyle = '#f59e0b'; cx.beginPath(); cx.arc(px, py, 3.5, 0, Math.PI * 2); cx.fill();

@@ -167,14 +167,14 @@ export function updateOrbitalBrood() {
       // If latched onto an enemy, follow and damage it
       if (orb.latched) {
         const e = orb.latched;
-        if (e.dead || Math.hypot(e.x - tw.x, e.y - tw.y) > 8) {
-          orb.latched = null; // return to orbit
+        if (e.dead) {
+          orb.latched = null;
         } else {
           orb.x = getCenter(e.x, CELL) + (Math.random() - 0.5) * 4;
           orb.y = getCenter(e.y, CELL) + (Math.random() - 0.5) * 4;
           orb.cd++;
-          if (orb.cd >= 30) {
-            e.hp -= 2;
+          if (orb.cd >= 20) {
+            e.hp -= Math.max(2, Math.ceil(tw.dmg * 0.35));
             orb.cd = 0;
             spawnParticles(particles, orb.x, orb.y, 2, { spreadX: 2, spreadY: 2, life: 6, clr: '#c4b5fd', sz: 1 });
           }

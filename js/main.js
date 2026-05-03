@@ -158,7 +158,7 @@ import { updateMonkeys } from './monkeys.js';
 import { render, invalidateBg, clearFogParticles } from './render.js';
 import { ARTIFACTS } from './artifacts.js';
 import { triggerEvent } from './events.js';
-import { sfxBoss, sfxWave, sfxKill, sfxHit, startHum, stopHum, isSoundOn, sfxWatcherScreech, speak } from './audio.js';
+import { sfxBoss, sfxWave, sfxKill, sfxHit, startHum, stopHum, isSoundOn, sfxWatcherScreech, speak, resetMusic } from './audio.js';
 import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, resetResPos, initInventoryUI, initCraftUI, showLedger } from './ui.js';
 import { initInput, updateCameraKeys } from './input.js';
 import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
@@ -672,6 +672,7 @@ export function resetGame() {
   state.pathSet.clear(); state.grid = [];
   clearFeed();
   initSz();
+  resetMusic();
   clearSave(); hideTT(); startGame();
 }
 

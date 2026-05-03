@@ -21,8 +21,7 @@ export function mkE(et, bHP, bSpd) {
   return e;
 }
 
-const BOSS_WAVES = new Set([5, 11, 17, 25, 30, 36, 50]);
-export function isBossWave(w) { return BOSS_WAVES.has(w) || (w > 50 && w % 5 === 0); }
+export function isBossWave(w) { return w % 5 === 0; }
 
 // Named boss order — consumed in sequence for each regular boss wave (after Herald & Fog).
 // 'vanguard' = generic crown boss. After the list is exhausted, falls back to 'vanguard'.

@@ -14,6 +14,23 @@ export function updateProjectiles() {
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i];
 
+    // ── Web shot: fly toward target tile, spawn webs on arrival ──────────────
+    if (p.webShot) {
+      const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);
+      if (d < p.spd) {
+        const cx = Math.round(p.tx - 0.5), cy = Math.round(p.ty - 0.5);
+        if (!state.webs) state.webs = [];
+        const webTiles = state.path.filter(pt => Math.abs(pt.x - cx) + Math.abs(pt.y - cy) <= 1).slice(0, p.count);
+        for (const pt of webTiles) state.webs.push({ x: pt.x, y: pt.y, expiry: 9999999, dmg: p.webDmg || 0, slow: p.webSlow || 0.6, stun: p.webStun || 0 });
+        for (let j = 0; j < 6; j++) particles.push({ x: p.tx * CELL, y: p.ty * CELL, vx: (Math.random()-0.5)*3, vy: (Math.random()-0.5)*3, life: 14, clr: '#c4b5fd', sz: 2 });
+        projectiles.splice(i, 1);
+      } else {
+        p.x += dx / d * p.spd;
+        p.y += dy / d * p.spd;
+      }
+      continue;
+    }
+
     // ── Pierce: straight-line movement ───────────────────────────────────────
     if (p.pierceDir) {
       // Despawn if traveled beyond pierce range

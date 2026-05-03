@@ -223,7 +223,7 @@ function handleTap(e) {
     if (!state.webs) state.webs = [];
     const center = { x: c.x, y: c.y };
     const webTiles = state.path.filter(p => Math.abs(p.x - center.x) + Math.abs(p.y - center.y) <= 2).slice(0, 5);
-    for (const pt of webTiles) state.webs.push({ x: pt.x, y: pt.y, expiry: state.ticks + 120, dmg: 3, slow: 0.6 });
+    for (const pt of webTiles) state.webs.push({ x: pt.x, y: pt.y, expiry: 9999999, dmg: 3, slow: 0.6 });
     state.sel = null;
     showTip('🕸️ Webs placed!');
     return;

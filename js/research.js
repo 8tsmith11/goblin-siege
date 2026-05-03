@@ -62,7 +62,8 @@ export const UNLOCK_DESC = {
   'augment_tripwire':   'Tripwire augment',
   'consumable_ale':     'Consumable: Ale',
   'lore_tremor':        'Tremor lore entry',
-  'monkey_logistics':   'Round Robin & Harvest roles',
+  'monkey_logistics':   'Round Robin role',
+  'monkey_harvesting':  'Harvest role',
   'monkey_auto_place':  'Monkeys auto-place path consumables',
   'hoard':              'Hoard Pile unlocked',
   'tower_skills':       'Tower skill upgrades unlocked',
@@ -190,7 +191,6 @@ export function tickResearch() {
     // Forge obs entry
     if (active.id === 'the_forge') {
       addFeed('obs', 'The Forge completed at wave ' + state.wave + '. The Stone Age is over. Stone-Age systems persist. The Age-label of \'Stone\' is now a memory. Memories persist, too.');
-      switchToMidnight();
     }
     // When frequency_analysis completes, unlock knowledge_otherworldly if watcher has appeared
     if (active.id === 'frequency_analysis' || active._sourceId === 'frequency_analysis') {
@@ -255,6 +255,9 @@ export function applyUnlock(node) {
     }
     case 'monkey_logistics': {
       state.researchUnlocks.monkey_round_robin = true;
+      break;
+    }
+    case 'monkey_harvesting': {
       state.researchUnlocks.monkey_harvester = true;
       break;
     }
@@ -311,6 +314,8 @@ export function applyUnlock(node) {
   }
   // Handle patternRecDone for translation system
   if (node.id === 'pattern_rec') state.patternRecDone = true;
+  // Forge unlock triggers music transition from any code path
+  if (node.id === 'the_forge') switchToMidnight();
 }
 
 // Look up a node's position from the authoritative RESEARCH_JSON source.

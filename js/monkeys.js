@@ -171,14 +171,15 @@ function cellCenter(gx, gy) {
 
 // ─── Item helpers ─────────────────────────────────────────────────────────────
 
-// Take 1 item from ground stacks at (gx, gy), respecting filter. Returns { type } or null.
-function takeFromCell(gx, gy, filter) {
+// Take 1 item from ground stacks at (gx, gy), respecting filter and optional accepts predicate. Returns { type } or null.
+function takeFromCell(gx, gy, filter, accepts = null) {
   const cell = getCell(gx, gy);
   if (!cell?.stacks) return null;
   for (let i = 0; i < 4; i++) {
     const s = cell.stacks[i];
     if (!s) continue;
     if (filter && s.type !== filter) continue;
+    if (accepts && !accepts(s.type)) continue;
     const type = s.type;
     s.count--;
     if (s.count <= 0) cell.stacks[i] = null;
@@ -211,7 +212,7 @@ function isStorageStockpile(gx, gy) {
 
 // Find nearest cell with a matching stack within range tiles of (ox, oy)
 // exclude can be a single {x,y} or an array of {x,y}
-function findNearestStack(ox, oy, range, filter, exclude) {
+function findNearestStack(ox, oy, range, filter, exclude, accepts = null) {
   const { grid, COLS, ROWS } = state;
   const excArr = !exclude ? [] : Array.isArray(exclude) ? exclude : [exclude];
   let best = null, bestD = Infinity;
@@ -224,7 +225,7 @@ function findNearestStack(ox, oy, range, filter, exclude) {
       if (Math.hypot(dx, dy) > range) continue;
       const cell = getCell(gx, gy);
       if (!cell?.stacks) continue;
-      const hasMatch = cell.stacks.some(s => s && (!filter || s.type === filter));
+      const hasMatch = cell.stacks.some(s => s && (!filter || s.type === filter) && (!accepts || accepts(s.type)));
       if (!hasMatch) continue;
       const d = Math.hypot(dx, dy);
       if (d < bestD) { bestD = d; best = { x: gx, y: gy }; }
@@ -266,21 +267,24 @@ function inRange(tw, gx, gy) {
 function tickGatherer(mk, tw) {
   const { cfg } = mk;
 
-  // No destination configured or dest out of range — orbit hut
   if (!cfg.dest || !inRange(tw, cfg.dest.x, cfg.dest.y)) { tickIdle(mk, tw); return; }
 
+  // Gatherers only handle raw materials (stone/wood). When filter is set, further restrict to that type.
+  // Also skip items the destination cannot currently accept (e.g. workbench slot full for that type).
+  const rawAccepts = cfg.filter
+    ? null
+    : (type) => RTYPES[type] && type !== 'dust' && canTileAccept(cfg.dest.x, cfg.dest.y, type);
+
   if (mk.st === 'idle') {
-    // Orbit if dest is full or can't accept the item type
-    if (!canTileAccept(cfg.dest.x, cfg.dest.y, cfg.filter)) { tickIdle(mk, tw); return; }
-    // Already carrying — dest has space now, go deliver
+    if (cfg.filter && !canTileAccept(cfg.dest.x, cfg.dest.y, cfg.filter)) { tickIdle(mk, tw); return; }
     if (mk.carrying) {
+      if (!canTileAccept(cfg.dest.x, cfg.dest.y, mk.carrying.type)) { mk.carrying = null; mk.st = 'idle'; return; }
       const c = cellCenter(cfg.dest.x, cfg.dest.y);
       mk.targetX = c.x; mk.targetY = c.y;
       mk.st = 'carrying';
       return;
     }
-    // Scan for nearest item in range, skip destination tile to avoid pickup loop
-    const target = findNearestStack(tw.x, tw.y, tw.range, cfg.filter, cfg.dest);
+    const target = findNearestStack(tw.x, tw.y, tw.range, cfg.filter, cfg.dest, rawAccepts);
     if (target) {
       const c = cellCenter(target.x, target.y);
       mk.targetX = c.x; mk.targetY = c.y;
@@ -291,15 +295,15 @@ function tickGatherer(mk, tw) {
     }
   } else if (mk.st === 'moving') {
     if (moveTo(mk, mk.targetX, mk.targetY)) {
-      // Arrived at item cell — try to pick up
-      const item = takeFromCell(mk._itemTarget.x, mk._itemTarget.y, cfg.filter);
+      const item = takeFromCell(mk._itemTarget.x, mk._itemTarget.y, cfg.filter,
+        cfg.filter ? null : (type) => RTYPES[type] && type !== 'dust');
       if (item) {
         mk.carrying = item;
         const c = cellCenter(cfg.dest.x, cfg.dest.y);
         mk.targetX = c.x; mk.targetY = c.y;
         mk.st = 'carrying';
       } else {
-        mk.st = 'idle'; // item already gone
+        mk.st = 'idle';
       }
     }
   } else if (mk.st === 'carrying') {

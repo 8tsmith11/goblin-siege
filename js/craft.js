@@ -212,24 +212,42 @@ export function placeConsumable(item, gx, gy) {
   return true;
 }
 
-// Reset transient trap slows, apply sap slows, trigger stone traps. Call before updateEnemies.
+// Reset transient trap slows, apply sap slows, trigger stone traps, apply webs. Call before updateEnemies.
 export function updateTraps() {
-  for (const e of state.enemies) e._trapSlow = 0;
-  if (!state.traps?.length) return;
+  const { enemies, ticks } = state;
+  for (const e of enemies) e._trapSlow = 0;
 
+  // Web effects (must run here so _trapSlow is set before updateEnemies reads it)
+  if (state.webs?.length) {
+    for (let i = state.webs.length - 1; i >= 0; i--) {
+      if (ticks >= state.webs[i].expiry) { state.webs.splice(i, 1); continue; }
+      const web = state.webs[i];
+      for (const e of enemies) {
+        if (e.dead) continue;
+        if (Math.abs(e.x - web.x) < 0.75 && Math.abs(e.y - web.y) < 0.75) {
+          e._trapSlow = Math.max(e._trapSlow || 0, web.slow);
+          if (web.dmg && ticks % 20 === 0) e.hp -= web.dmg;
+          if (web.stun && !e.boss && !e._webStunCd) { e.stunned = Math.max(e.stunned, web.stun); e._webStunCd = 90; }
+        }
+        if (e._webStunCd > 0) e._webStunCd--;
+      }
+    }
+  }
+
+  if (!state.traps?.length) return;
   const toRemove = [];
   for (let ti = 0; ti < state.traps.length; ti++) {
     const trap = state.traps[ti];
     if (trap.type === 'sap') {
-      if (state.ticks >= trap.expiry) { toRemove.push(ti); continue; }
-      for (const e of state.enemies) {
+      if (ticks >= trap.expiry) { toRemove.push(ti); continue; }
+      for (const e of enemies) {
         if (e.dead) continue;
         if (Math.abs(e.x - trap.x) < 0.75 && Math.abs(e.y - trap.y) < 0.75) {
           e._trapSlow = Math.max(e._trapSlow, trap.slow);
         }
       }
     } else if (trap.type === 'trap') {
-      for (const e of state.enemies) {
+      for (const e of enemies) {
         if (e.dead) continue;
         if (Math.abs(e.x - trap.x) < 0.75 && Math.abs(e.y - trap.y) < 0.75) {
           e.hp -= e.boss ? Math.min(e.mhp * 0.04, 80) : e.mhp;

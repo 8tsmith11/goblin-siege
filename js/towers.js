@@ -19,6 +19,11 @@ function spawnProjectile(tw, tgt, def, isFrenzySecondary = false) {
   let p = getProj();
   let dmg = tw.dmg;
   if (tw._buffed) dmg = Math.ceil(dmg * 1.5);
+  // Warm Pebble: towers adjacent to Lab deal 20% more damage
+  if (state.inventory?.equipped?.some(a => a?.id === 'warm_pebble')) {
+    const lab = state.towers.find(t => t.type === 'lab');
+    if (lab && Math.abs(tw.x - lab.x) <= 1 && Math.abs(tw.y - lab.y) <= 1) dmg = Math.ceil(dmg * 1.1);
+  }
   if (tw.packHunter) {
     const adjacent = state.towers.filter(t => t !== tw && t.type === 'lion' && Math.abs(t.x - tw.x) <= 1 && Math.abs(t.y - tw.y) <= 1).length;
     if (adjacent > 0) dmg = Math.round(dmg * (1 + adjacent * 0.3));
@@ -109,31 +114,35 @@ export function updateTowers() {
     if (tw._abhAssault && !tw._assaultReady) {
       if (ticks - (tw._lastFireTick || 0) >= 180) tw._assaultReady = true;
     }
-    // Grateful Spider: web fires at wave start and mid-wave (before cd gate)
+    // Grateful Spider: launch a web-shot projectile at wave start (independent of enemies)
     if (tw.type === 'grateful_spider' && state.phase === 'active') {
-      const _fireWeb = () => {
-        const pathInRange = state.path.filter(p => Math.hypot(p.x - tw.x, p.y - tw.y) <= (state.fogWave ? Math.min(tw.range, 1) : tw.range));
+      const _launchWebShot = () => {
+        const effectiveRange = state.fogWave ? Math.min(tw.range, 1) : tw.range;
+        const pathInRange = state.path.filter(p => Math.hypot(p.x - tw.x, p.y - tw.y) <= effectiveRange);
         if (!pathInRange.length) return;
-        const center = pathInRange[Math.floor(pathInRange.length / 2)];
-        const count = (tw.webSpread ? 5 : 3) + (tw._webExtra || 0);
-        const webTiles = state.path.filter(p => Math.abs(p.x - center.x) + Math.abs(p.y - center.y) <= 2).slice(0, count);
-        if (!state.webs) state.webs = [];
-        for (const pt of webTiles) state.webs.push({ x: pt.x, y: pt.y, expiry: 9999999, dmg: tw.webVenom ? 3 : 0, slow: tw.webSlowBonus ? 0.8 : 0.6, stun: tw._silkThrone ? 20 : 0 });
+        const target = pathInRange[Math.floor(Math.random() * pathInRange.length)];
+        projectiles.push({
+          webShot: true,
+          x: tw.x + 0.5, y: tw.y + 0.5,
+          tx: target.x + 0.5, ty: target.y + 0.5,
+          spd: 0.14,
+          clr: '#c4b5fd',
+          count: (tw.webSpread ? 3 : 1) + (tw._webExtra || 0),
+          webDmg: tw.webVenom ? 3 : 0,
+          webSlow: tw.webSlowBonus ? 0.8 : 0.6,
+          webStun: tw._silkThrone ? 20 : 0,
+        });
       };
-      if (!tw.webUsed) { _fireWeb(); tw.webUsed = true; tw._web2Tick = ticks + 600; }
-      if (tw._silkThrone && !tw._web2Used && tw._web2Tick && ticks >= tw._web2Tick) { _fireWeb(); tw._web2Used = true; }
+      if (!tw.webUsed) { _launchWebShot(); tw.webUsed = true; tw._web2Tick = ticks + 600; }
+      if (tw._silkThrone && !tw._web2Used && tw._web2Tick && ticks >= tw._web2Tick) { _launchWebShot(); tw._web2Used = true; }
     }
     if (tw.cd > 0) { tw.cd -= (tw._rateBuff < 1 ? 1.2 : 1); return; }
 
     const def = TD[tw.type];
-    // Warm Pebble: towers adjacent to Lab fire 10% faster
+    // Chipped Mirror: towers adjacent to Lab fire 10% faster
     let warmPebbleBoost = 1;
-    if (state.inventory?.equipped?.some(a => a?.id === 'warm_pebble')) {
-      const lab = towers.find(t => t.type === 'lab');
-      if (lab && Math.abs(tw.x - lab.x) <= 1 && Math.abs(tw.y - lab.y) <= 1) warmPebbleBoost = 0.9;
-    }
-    // Chipped Mirror: one tower adjacent to Lab fires 10% faster
-    if (warmPebbleBoost === 1 && state.inventory?.equipped?.some(a => a?.id === 'chipped_mirror')) {
+    const hasMirror = state.inventory?.equipped?.some(a => a?.id === 'chipped_mirror');
+    if (hasMirror) {
       const lab = towers.find(t => t.type === 'lab');
       if (lab && Math.abs(tw.x - lab.x) <= 1 && Math.abs(tw.y - lab.y) <= 1) warmPebbleBoost = 0.9;
     }
@@ -179,20 +188,4 @@ export function updateTowers() {
       if (ticks % 12 === 0) spawnParticles(particles, getCenter(e.x, CELL), getCenter(e.y, CELL), 1, { vxBase: (Math.random()-.5)*2, vyBase: -1.5, spreadX: 0, spreadY: 0, life: 10, clr: '#a3e635', sz: 2 });
     });
   });
-  // Apply web effects to enemies
-  if (state.webs?.length) {
-    for (let i = state.webs.length - 1; i >= 0; i--) {
-      if (ticks >= state.webs[i].expiry) { state.webs.splice(i, 1); continue; }
-      const web = state.webs[i];
-      for (const e of state.enemies) {
-        if (e.dead) continue;
-        if (Math.abs(e.x - web.x) < 0.75 && Math.abs(e.y - web.y) < 0.75) {
-          e._trapSlow = Math.max(e._trapSlow || 0, web.slow);
-          if (web.dmg && ticks % 20 === 0) e.hp -= web.dmg;
-          if (web.stun && !e.boss && !e._webStunCd) { e.stunned = Math.max(e.stunned, web.stun); e._webStunCd = 90; }
-        }
-        if (e._webStunCd > 0) e._webStunCd--;
-      }
-    }
-  }
 }

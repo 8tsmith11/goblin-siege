@@ -185,12 +185,12 @@
         "wood": 10
       },
       "waves": 3,
-      "unlocks": "monkey_auto_place",
+      "unlocks": "monkey_harvesting",
       "prereqs": [
         "monkey_business"
       ],
-      "desc": "Monkeys learn to recognize and deploy path items autonomously.",
-      "tooltip": "Courier and Round Robin monkeys automatically place consumable traps/sap when delivering to a path tile.",
+      "desc": "Monkeys develop spatial awareness and resource instincts.",
+      "tooltip": "Unlocks the Harvest role: monkeys mine rock nodes or forage wood from forest tiles.",
       "x": 720,
       "y": 1200
     },
@@ -274,8 +274,8 @@
       "prereqs": [
         "monkey_training"
       ],
-      "desc": "Advanced primate training: rotating deliveries and forest foraging.",
-      "tooltip": "Unlocks Round Robin (cycle up to 5 delivery targets) and Harvest (mine rock nodes or forage wood from forest) roles for monkeys.",
+      "desc": "Advanced primate training: rotating deliveries and logistics.",
+      "tooltip": "Unlocks the Round Robin role: cycle up to 5 delivery targets per monkey.",
       "x": 840,
       "y": 960
     },
