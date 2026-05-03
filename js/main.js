@@ -19,7 +19,7 @@ import { render, invalidateBg, clearFogParticles } from './render.js';
 import { ARTIFACTS } from './artifacts.js';
 import { triggerEvent } from './events.js';
 import { sfxBoss, sfxWave, sfxKill, sfxHit, startHum, stopHum, isSoundOn, sfxWatcherScreech, speak, resetMusic } from './audio.js';
-import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, resetResPos, initInventoryUI, initCraftUI, showLedger } from './ui.js';
+import { hudU, showOv, hideOv, showBanner, showBL, showResearchPop, showForgeAnnounce, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, resetResPos, initInventoryUI, initCraftUI, showLedger } from './ui.js';
 import { initInput, updateCameraKeys } from './input.js';
 import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
 import { placeNodes, updateNodes } from './resources.js';
@@ -153,6 +153,8 @@ bus.on('watcherTransition', ({ watcher }) => {
   sfxWatcherScreech();
   startHum();
 });
+
+bus.on('bossLine', ({ line }) => { showBL(line); });
 
 bus.on('firstSpider', () => {
   addFeed('obs', 'Entity classification: arachnid. Non-hostile posture. She is looking for something. We do not know what.');
@@ -447,7 +449,11 @@ function update() {
     if (inc > 0) mkF(state.W / 2, state.H / 2, '+' + inc + ' 🏺', '#10b981');
     // Research tick
     const _done = tickResearch();
-    if (_done) { showBanner('🔬 ' + _done.name + ' complete!'); addFeed('research', _done.name + ' complete.'); }
+    if (_done) {
+      if (_done.id === 'the_forge') { showForgeAnnounce(); } else { showBanner('🔬 ' + _done.name + ' complete!'); }
+      showResearchPop(_done.name);
+      addFeed('research', _done.name + ' complete.');
+    }
     refreshResearch();
     // Craft tick
     cleanupBarricades();

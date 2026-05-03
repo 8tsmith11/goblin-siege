@@ -4,7 +4,6 @@ import { clearEnemiesGrid, addToCell } from './grid.js';
 import { ETYPES, BOSS_LINES } from './data.js';
 import { spawnParticles, getCenter } from './utils.js';
 import { bus } from './bus.js';
-import { speak } from './audio.js';
 import { addFeed } from './feed.js';
 
 export function mkE(et, bHP, bSpd) {
@@ -339,10 +338,8 @@ export function updateEnemies() {
         if (e._audFirstHit && ticks >= e._audDelay) {
           const line = e._audLines[e._audIndex % e._audLines.length];
           e._audIndex++;
-          speak(line);
           addFeed('boss', '🏛️ ' + line);
-          const el = document.getElementById('bossStrip');
-          if (el) { el.textContent = '🏛️ "' + line + '"'; el.style.display = 'block'; }
+          bus.emit('bossLine', { line });
           e._audDelay = ticks + 300;
         }
       }

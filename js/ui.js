@@ -103,6 +103,21 @@ export function showBL(t) {
   setTimeout(() => b.classList.remove('sh'), 3000);
 }
 
+export function showResearchPop(name) {
+  const b = document.getElementById('rPop');
+  b.textContent = '🔬 ' + name + ' complete.';
+  b.classList.add('sh');
+  setTimeout(() => b.classList.remove('sh'), 3500);
+}
+
+export function showForgeAnnounce() {
+  const b = document.getElementById('wb');
+  b.classList.add('forge');
+  b.innerHTML = '⚙️ The Age of Steam.<br><span style="font-size:15px;opacity:0.75">You have left the Stone Age. You did not know you were in it.</span>';
+  b.classList.add('sh');
+  setTimeout(() => { b.classList.remove('sh'); setTimeout(() => b.classList.remove('forge'), 400); }, 5000);
+}
+
 export function showLedger() {
   const el = document.getElementById('ledgerP');
   if (!el) return;

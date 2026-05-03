@@ -46,7 +46,7 @@ function _showLabNotes() {
   const panel = document.getElementById('obsLogP');
   if (!panel) return;
 
-  const sorted = _labNoteSort === 'all' ? log : log.filter(e => e.type === _labNoteSort);
+  const sorted = _labNoteSort === 'all' ? log : log.filter(e => _labNoteSort === 'event' ? (e.type === 'event' || e.type === 'event_good' || e.type === 'event_bad') : e.type === _labNoteSort);
   const rows = sorted.map(e => {
     const def = FEED_TYPES[e.type] || FEED_TYPES.system;
     const icon = e.icon || def.icon;
