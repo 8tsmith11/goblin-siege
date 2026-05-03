@@ -6,6 +6,27 @@ import { updateProjectiles } from './projectiles.js';
 import { dropItem } from './resources.js';
 import { buildPath } from './path.js';
 import { RESEARCH_DATA_READY } from './research.js';
+import { buildResearchGraph, tickResearch } from './research.js';
+import { tickCraft, updateTraps, cleanupBarricades } from './craft.js';
+import { addFeed, clearFeed } from './feed.js';
+import { getScribeEntry } from './bestiary.js';
+import { TOWER_SKILLS, HOARD_LEVELS, TD, ETYPES } from './data.js';
+import { updateEnemies, genWave, mkE, isBossWave, previewWave } from './enemies.js';
+import { updateTowers } from './towers.js';
+import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser, spawnSpiderMother, updateSpiderMother, updateOrbitalBrood } from './support.js';
+import { updateMonkeys } from './monkeys.js';
+import { render, invalidateBg, clearFogParticles } from './render.js';
+import { ARTIFACTS } from './artifacts.js';
+import { triggerEvent } from './events.js';
+import { sfxBoss, sfxWave, sfxKill, sfxHit, startHum, stopHum, isSoundOn, sfxWatcherScreech, speak, resetMusic } from './audio.js';
+import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, resetResPos, initInventoryUI, initCraftUI, showLedger } from './ui.js';
+import { initInput, updateCameraKeys } from './input.js';
+import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
+import { placeNodes, updateNodes } from './resources.js';
+import { placeNpcs, initNpcUI, updateNpcBubble } from './npc.js';
+import { initWeather, tickWeather, updateWeather } from './weather.js';
+import { refreshPipStock, syncPipBtn, updatePipPanel, initPipUI } from './ui-pip.js';
+import { syncInvBtn, addToInventory } from './ui-inventory.js';
 
 bus.on('enemyDeath', e => {
   state._kills = (state._kills || 0) + 1;
@@ -146,27 +167,7 @@ bus.on('watcherEscaped', () => {
   addFeed('obs', 'The Patient Watcher left without engaging. Its route was not random. It was methodical. It was looking at us.');
 });
 
-import { buildResearchGraph, tickResearch } from './research.js';
-import { tickCraft, updateTraps, cleanupBarricades } from './craft.js';
-import { addFeed, clearFeed } from './feed.js';
-import { getScribeEntry } from './bestiary.js';
-import { TOWER_SKILLS, HOARD_LEVELS, TD, ETYPES } from './data.js';
-import { updateEnemies, genWave, mkE, isBossWave, previewWave } from './enemies.js';
-import { updateTowers } from './towers.js';
-import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser, spawnSpiderMother, updateSpiderMother, updateOrbitalBrood } from './support.js';
-import { updateMonkeys } from './monkeys.js';
-import { render, invalidateBg, clearFogParticles } from './render.js';
-import { ARTIFACTS } from './artifacts.js';
-import { triggerEvent } from './events.js';
-import { sfxBoss, sfxWave, sfxKill, sfxHit, startHum, stopHum, isSoundOn, sfxWatcherScreech, speak, resetMusic } from './audio.js';
-import { hudU, showOv, hideOv, showBanner, showBL, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, resetResPos, initInventoryUI, initCraftUI, showLedger } from './ui.js';
-import { initInput, updateCameraKeys } from './input.js';
-import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
-import { placeNodes, updateNodes } from './resources.js';
-import { placeNpcs, initNpcUI, updateNpcBubble } from './npc.js';
-import { initWeather, tickWeather, updateWeather } from './weather.js';
-import { refreshPipStock, syncPipBtn, updatePipPanel, initPipUI } from './ui-pip.js';
-import { syncInvBtn, addToInventory } from './ui-inventory.js';
+
 
 export const VERSION = 'v1.9';
 export const WORLD_COLS = 32;
