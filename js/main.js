@@ -117,8 +117,8 @@ bus.on('enemyDeath', e => {
       }
     }
   }
-  // Wave 11 boss: drop blueprint on the ground
-  if (e.boss && state.wave === 11 && state.worldGenChoices?.wave10Blueprint) {
+  // Wave 25 boss: drop blueprint on the ground
+  if (e.boss && state.wave === 25 && state.worldGenChoices?.wave10Blueprint) {
     const bpType = state.worldGenChoices.wave10Blueprint;
     const bpDef = TD[bpType];
     if (bpDef) {
