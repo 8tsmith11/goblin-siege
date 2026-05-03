@@ -9,7 +9,7 @@ import { RESEARCH_DATA_READY } from './research.js';
 import { buildResearchGraph, tickResearch } from './research.js';
 import { tickCraft, updateTraps, cleanupBarricades } from './craft.js';
 import { addFeed, clearFeed } from './feed.js';
-import { getScribeEntry } from './bestiary.js';
+import { getScribeEntry, TRANSLATIONS } from './bestiary.js';
 import { TOWER_SKILLS, HOARD_LEVELS, TD, ETYPES } from './data.js';
 import { updateEnemies, genWave, mkE, isBossWave, previewWave } from './enemies.js';
 import { updateTowers } from './towers.js';
@@ -450,7 +450,7 @@ function update() {
     // Research tick
     const _done = tickResearch();
     if (_done) {
-      if (_done.id === 'the_forge') { showForgeAnnounce(); } else { showBanner('🔬 ' + _done.name + ' complete!'); }
+      if (_done.id === 'the_forge') { setTimeout(() => showForgeAnnounce(), 100); } else { showBanner('🔬 ' + _done.name + ' complete!'); }
       showResearchPop(_done.name);
       addFeed('research', _done.name + ' complete.');
     }
@@ -464,11 +464,11 @@ function update() {
     }
     // Reset grateful spider once-per-wave web ability
     state.towers.forEach(tw => { if (tw.type === 'grateful_spider') { tw.webUsed = false; tw._web2Used = false; tw._web2Tick = 0; } });
-    // Honey production: beehives produce 1 honey per wave when research is unlocked
+    // Honey production: beehives produce 1 honey per wave when research is unlocked — drops on tile
     if (state.researchUnlocks?.honey_production) {
       const hives = state.towers.filter(tw => tw.type === 'beehive');
       for (const hive of hives) {
-        addToInventory('consumables', { id: 'honey', icon: '🍯', name: 'Honey', desc: 'Place on a path tile. Slows enemies by 40%.' });
+        dropItem(hive.x, hive.y, 'honey');
       }
     }
     // Clear expired webs
@@ -505,8 +505,13 @@ function update() {
     // Translation tick
     if (state.patternRecDone) {
       state._translationWaveCount = (state._translationWaveCount || 0) + 1;
-      if (state._translationWaveCount % 2 === 0) {
-        state.translationStep = Math.min(12, (state.translationStep || 0) + 1);
+      if (state._translationWaveCount % 2 === 0 && (state.translationStep || 0) < 12) {
+        state.translationStep = (state.translationStep || 0) + 1;
+        const _tEntry = TRANSLATIONS[state.translationStep - 1];
+        if (_tEntry) {
+          addFeed('translations', `Goblin Translation: 👺 ${_tEntry.text}`);
+          if (_tEntry.full) showBanner(`👺 "${_tEntry.text}"`);
+        }
       }
     }
     // Ledger overlay at wave 20
@@ -514,6 +519,13 @@ function update() {
     // Heal to max lives at end of each wave
     _ΨΔ(() => { state.lives = state.maxLives || 3; });
     // Transition seamlessly into the prep phase without a blocking modal.
+    // Flush pending bestiary entries now that the wave is over
+    if (state._pendingBSen) { for (const k of state._pendingBSen) state.bSen.add(k); state._pendingBSen = null; }
+    // Unlock lab at end of wave 7 so it's available during prep
+    if (state.wave >= 7 && !state.unlockedTowers.has('lab')) {
+      state.unlockedTowers.add('lab');
+      showBanner('🧪 Lab Unlocked');
+    }
     bus.emit('trigger', { type: 'wave_prep', wave: state.wave + 1 });
     state.phase = 'prep'; state.prepTicks = 1800; sfxWave(); _φ = false;
     if (window.speechSynthesis) window.speechSynthesis.cancel();
@@ -533,7 +545,7 @@ function update() {
     if (Math.random() < 0.4 && state.wave > 1) setTimeout(() => triggerEvent(), 500);
     const _hasLedger = state.inventory?.equipped?.some(a => a?.id === 'auditors_ledger');
     const _nextPreview = _hasLedger ? ' — Next: ' + previewWave(state.wave + 1) : '';
-    showBanner(_wasFog ? '🌫️ The fog clears. An artifact glints at the castle gate.' : '✅ Wave ' + state.wave + ' Complete!' + _nextPreview);
+    if (_done?.id !== 'the_forge') showBanner(_wasFog ? '🌫️ The fog clears. An artifact glints at the castle gate.' : '✅ Wave ' + state.wave + ' Complete!' + _nextPreview);
     // Herald / Horn warning — announce upcoming boss wave during prep
     const _nextW = state.wave + 1;
     const _isHeraldNext = _nextW === 5;
@@ -584,7 +596,7 @@ export function startGame() {
     state.worldGenChoices.wave10Blueprint = Math.random() < 0.5 ? 'clown' : 'lizard';
   if (!state.research) state.research = buildResearchGraph();
   resetResPos();
-  state.started = true; state.phase = 'prep'; state.prepTicks = 1800;
+  state.started = true; state.phase = 'prep'; state.prepTicks = 3600;
   invalidateBg(); initSz(); hideOv(); hudU(); panelU();
   initWeather();
   syncInvBtn();
@@ -598,11 +610,6 @@ export function startWave() {
   if (_stripEl) _stripEl.style.display = 'none';
   if (state.wave !== 22) stopHum(); // let hum run through wave 23 (started at end of wave 22)
   state.wave++;
-  // Unlock lab at wave 8
-  if (state.wave >= 8 && !state.unlockedTowers.has('lab')) {
-    state.unlockedTowers.add('lab');
-    showBanner('🧪 Lab Unlocked');
-  }
   for (const tw of state.towers) tw.wavesAlive = (tw.wavesAlive || 0) + 1;
   // Spider Mother event: if ceasefire raised + seed stone placed + spider wave incoming
   const _spiderWave = state.wave >= 24 && !state.spiderRitualDone && !isBossWave(state.wave);
@@ -669,7 +676,7 @@ export function resetGame() {
     namedBossIndex: 0, auditorActive: false, watcherEscaped: false, watcherAppeared: false, _acAnomalyDone: false, spiderRitualDone: false, spiderMother: null, ceasefire: false, seedStone: null, cameraShake: 0,
     inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} },
     worldGenChoices: {}, totalGoblinsKilled: 0, totalGoldEarned: 0, maxLives: 3,
-    frequencyPlayed: false, patternRecDone: false, translationStep: 0, _translationWaveCount: 0, _forgeScriberFired: false,
+    frequencyPlayed: false, patternRecDone: false, translationStep: 0, _translationWaveCount: 0, _forgeScriberFired: false, _pendingBSen: null,
     _obs1: false, _obs5: false,
     cam: { panX: undefined, panY: undefined, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
     _Σ: 0, _Ω: 0,

@@ -1,16 +1,16 @@
 export const TRANSLATIONS = [
-  '"Do not go past the red stone."',
-  '"The hum means the tall ones are near."',
-  '"Three clicks: move. Four clicks: run."',
-  '"Leave food by the water. They remember."',
-  '"The crown does not protect you."',
-  '"Some of us do not want to be here either."',
-  '"What is a wall to someone with nothing to lose?"',
-  '"They built this path. Not for us."',
-  '"We are not the first wave."',
-  '"The fog remembers everyone who passed through."',
-  '"Tell the hatchlings the door was already open."',
-  '"We were supposed to arrive at dawn."',
+  { text: '...kha...',                          full: false },
+  { text: '...eth...',                          full: false },
+  { text: '...she...',                          full: false },
+  { text: '...we...',                           full: false },
+  { text: 'We kha eth.',                        full: true  },
+  { text: '...walks...',                        full: false },
+  { text: '...we walk...',                      full: false },
+  { text: '...she waits...',                    full: false },
+  { text: 'We walk because she waits.',         full: true  },
+  { text: '...not enemies...',                  full: false },
+  { text: '...do not look at the towers...',    full: false },
+  { text: 'They are afraid of us.',             full: true  },
 ];
 
 export const BESTIARY = {
@@ -167,29 +167,29 @@ export function getScribeEntry(wave, state) {
 export function getScribeLogs(state) {
   const w = state.wave || 0;
   let logs = [];
-  if (w >= 1) logs.push({ w: 'Wave 1', t: 'I should start writing again. One more time.' });
-  if (w >= 3) {
+  if (w >= 2) logs.push({ w: 'Wave 1', t: 'I should start writing again. One more time.' });
+  if (w >= 4) {
     const hasLab3 = state.towers?.some(t => t.type === 'lab') || state.bSen?.has('lab');
     if (hasLab3) logs.push({ w: 'Wave 3', t: 'They built a lab.' });
   }
-  if (w >= 5) logs.push({ w: 'Wave 5', t: "The first boss. They survived. They always survive the first one." });
-  if (w >= 10) {
+  if (w >= 6) logs.push({ w: 'Wave 5', t: "The first boss. They survived. They always survive the first one." });
+  if (w >= 11) {
     const hasLab10 = state.towers?.some(t => t.type === 'lab') || state.bSen?.has('lab');
     logs.push({ w: 'Wave 10', t: !hasLab10 ? "No lab yet. Interesting. Most build one. Whatever they know that the others didn't, I hope it's worth knowing." : "They're building faster now. It's beautiful in a way. The way an avalanche is beautiful." });
   }
-  if (w >= 12) logs.push({ w: 'Wave 12', t: "The ground shook. It always shakes at this point." });
-  if (w >= 15) logs.push({ w: 'Wave 15', t: "The fog came. You can't fight fog. The towers kept shooting, but they were shooting at their own shadows." });
-  if (w >= 23) logs.push({ w: 'Wave 23', t: 'They translated the first sounds. Give it time.' });
-  if (w >= 20) logs.push({ w: 'Wave 20', t: `The Ledger appeared. The number was ${(state._kills||0)}. I wrote it down.` });
-  if (w >= 22) logs.push({ w: 'Wave 22', t: "There was a sound. ~40Hz. It didn't come from the goblins. The Lab recorded it. No one else reacted. We are beginning to think the Lab understands something we don't." });
+  if (w >= 13) logs.push({ w: 'Wave 12', t: "The ground shook. It always shakes at this point." });
+  if (w >= 16) logs.push({ w: 'Wave 15', t: "The fog came. You can't fight fog. The towers kept shooting, but they were shooting at their own shadows." });
+  if (w >= 24) logs.push({ w: 'Wave 23', t: 'They translated the first sounds. Give it time.' });
+  if (w >= 21) logs.push({ w: 'Wave 20', t: `The Ledger appeared. The number was ${(state._kills||0)}. I wrote it down.` });
+  if (w >= 23) logs.push({ w: 'Wave 22', t: "There was a sound. ~40Hz. It didn't come from the goblins. The Lab recorded it. No one else reacted. We are beginning to think the Lab understands something we don't." });
   if (w >= 18 && state.bSen?.has('curious_auditor')) logs.push({ w: '~Wave 17', t: "After the fog, something new. It didn't kill — it taxed. Every shot cost them. Some stopped shooting. I don't know if that was wise or cowardice." });
   if (w >= 27 && state.bSen?.has('spider')) logs.push({ w: '~Wave 24', t: "The spiders arrived. They didn't go for the towers. They went for something we hadn't built yet." });
   if (w >= 30 && state.bSen?.has('patient_watcher') && state.watcherEscaped) logs.push({ w: '~Wave 30', t: "It left. Untouched. It moved between our walls for thirty seconds and no one fired. I've never seen anything leave before." });
   if (w >= 30 && state.bSen?.has('patient_watcher') && !state.watcherEscaped) logs.push({ w: '~Wave 30', t: "It moved like it had nowhere to be. Then they hurt it. That was a mistake. Once hurt, it came for the gate like everything else." });
   if (w >= 30 && state.spiderRitualDone) logs.push({ w: 'Ritual', t: "She came. She took what she needed. She said thank you. The old builders knew this would happen. They always did. There are no more spiders." });
   else if (w >= 35 && state.bSen?.has('spider') && !state.spiderRitualDone) logs.push({ w: '~Wave 35+', t: "The spiders keep coming. The flag was never raised. The stone was never made. It will keep happening." });
-  if (w >= 39) logs.push({ w: 'Wave 39', t: "They are coming for the stones. All of them, this time." });
-  if (w >= 40) logs.push({ w: 'Wave 40', t: "Every last one. Collectors, to the core. The Weight of Bones." });
+  if (w >= 40) logs.push({ w: 'Wave 39', t: "They are coming for the stones. All of them, this time." });
+  if (w >= 41) logs.push({ w: 'Wave 40', t: "Every last one. Collectors, to the core. The Weight of Bones." });
 
   if (logs.length === 0) return "";
   

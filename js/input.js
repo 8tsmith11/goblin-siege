@@ -9,6 +9,7 @@ import { showTT, hideTT, showTip, showBanner, panelU, hudU, mkGain, addToInvento
 import { clickNode, RTYPES, dropItem } from './resources.js';
 import { initMonkeys } from './monkeys.js';
 import { applyAugment, placeConsumable, RECIPES } from './craft.js';
+import { _itemRegistry } from './resources.js';
 
 function cell(e) {
   const r = state.cv.getBoundingClientRect();
@@ -68,11 +69,12 @@ function handleStackInteraction(c, e) {
         hudU();
       } else {
         const recipe = RECIPES.find(r => r.id === stack.type);
-        if (recipe) {
+        const regEntry = recipe || _itemRegistry[stack.type];
+        if (regEntry) {
           if (!state.inventory) state.inventory = { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} };
-          const section = recipe.output === 'augment' ? 'augments' : 'consumables';
-          addToInventory(section, { id: recipe.id, name: recipe.name, icon: recipe.icon, desc: recipe.desc, rarity: recipe.rarity, output: recipe.output });
-          mkGain(px, py, recipe.icon, 1, '#a78bfa');
+          const section = regEntry.output === 'augment' ? 'augments' : 'consumables';
+          addToInventory(section, { id: stack.type, name: regEntry.name, icon: regEntry.icon, desc: regEntry.desc, rarity: regEntry.rarity, output: regEntry.output });
+          mkGain(px, py, regEntry.icon, 1, '#a78bfa');
         }
       }
       if (stack.count <= 0) glCell.stacks[closestIndex] = null;

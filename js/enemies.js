@@ -121,7 +121,7 @@ export function genWave(w) {
   // Wave 5: Proud Herald — special boss, announces itself
   if (w === 5) {
     const heraldHP = Math.floor(bHP * 6 + w * 50);
-    state.bSen.add('herald');
+    (state._pendingBSen ??= new Set()).add('herald');
     q.push({
       tp: 'boss', hp: heraldHP, mhp: heraldHP,
       spd: bSpd * 0.35, sz: 0.65, rew: 40, clr: '#f59e0b', em: '📯', drops: [],
@@ -140,12 +140,12 @@ export function genWave(w) {
   if (w === 15) {
     state.fogWave = true;
     state.fogStartTick = state.ticks;
-    state.bSen.add('fog');
+    (state._pendingBSen ??= new Set()).add('fog');
     const avail = buildAvail(w);
     const cnt = 28;
     for (let i = 0; i < cnt; i++) {
       const tp = pickType(avail);
-      state.bSen.add(tp);
+      (state._pendingBSen ??= new Set()).add(tp);
       if (tp === 'swarm') { for (let j = 0; j < 4; j++) q.push(mkE(ETYPES.swarm, bHP * 1.2, bSpd)); }
       else q.push(mkE(ETYPES[tp], bHP * 1.2, bSpd));
     }
@@ -159,13 +159,13 @@ export function genWave(w) {
     const cnt40 = Math.floor(6 + w * 0.85 + Math.pow(w, 0.75));
     for (let i = 0; i < cnt40; i++) {
       const tp = pickType(avail40);
-      state.bSen.add(tp);
+      (state._pendingBSen ??= new Set()).add(tp);
       const base = mkE(ETYPES[tp], bHP, bSpd);
       base.em = '💎'; base.clr = '#a78bfa'; base.sz = 0.30; base.gMode = 'walking'; base.gPath = null;
       base.gTarget = null; base.stolen = []; base.gMaxSteal = 10; base.noLives = true;
       q.push(base);
     }
-    state.bSen.add('geologist');
+    (state._pendingBSen ??= new Set()).add('geologist');
     return q;
   }
 
@@ -177,7 +177,7 @@ export function genWave(w) {
 
     if (bossType === 'curious_auditor') {
       const audHP = Math.floor(bHP * 15);
-      state.bSen.add('curious_auditor');
+      (state._pendingBSen ??= new Set()).add('curious_auditor');
       state.auditorActive = true;
       q.push({
         tp: 'boss', hp: audHP, mhp: audHP,
@@ -193,8 +193,8 @@ export function genWave(w) {
     }
 
     if (bossType === 'patient_watcher') {
-      const watchHP = Math.floor((bHP * 8 + w * 80) * 7.5); // 20% = 1.5× a normal boss
-      state.bSen.add('patient_watcher');
+      const watchHP = Math.floor((bHP * 8 + w * 80) * 6); // 50% = 3× a normal boss
+      (state._pendingBSen ??= new Set()).add('patient_watcher');
       state.watcherAppeared = true;
       bus.emit('watcherAppeared');
       const corners = [
@@ -230,7 +230,7 @@ export function genWave(w) {
     }
 
     // Vanguard: generic crown boss
-    state.bSen.add('boss');
+    (state._pendingBSen ??= new Set()).add('boss');
     q.push({
       tp: 'boss', hp: Math.floor(bHP * 8 + w * 80), mhp: Math.floor(bHP * 8 + w * 80),
       spd: bSpd * 0.35, sz: 0.65, rew: 40, clr: '#ef4444', em: '👑', drops: [{ type: 'stone', chance: 0.7 }, { type: 'wood', chance: 0.85 }],
@@ -248,8 +248,8 @@ export function genWave(w) {
     const cnt = Math.floor((6 + w * 0.85 + Math.pow(w, 0.75)) * earlyScale);
     for (let i = 0; i < cnt; i++) {
       const tp = pickType(avail);
-      const _wasNewSpider = tp === 'spider' && !state.bSen.has('spider');
-      state.bSen.add(tp);
+      const _wasNewSpider = tp === 'spider' && !state.bSen.has('spider') && !state._pendingBSen?.has('spider');
+      (state._pendingBSen ??= new Set()).add(tp);
       if (_wasNewSpider) bus.emit('firstSpider');
       if (tp === 'swarm') { for (let j = 0; j < 4; j++) q.push(mkE(ETYPES.swarm, bHP, bSpd)); }
       else q.push(mkE(ETYPES[tp], bHP, bSpd));
@@ -374,8 +374,8 @@ export function updateEnemies() {
         // Damage timer — reset on hit
         if (e.hp < e.prevHp) { e.everAttacked = true; e.damageTimer = 0; e.prevHp = e.hp; }
         else if (!e.everAttacked) e.damageTimer++;
-        // 20% HP: violent teleport to path start
-        if (e.hp <= e.mhp * 0.2) {
+        // 50% HP: violent teleport to path start — at this point remaining HP = 3× a normal boss
+        if (e.hp <= e.mhp * 0.5) {
           e.watcherPhase = 'path'; e.x = path[0].x; e.y = path[0].y; e.pi = 0;
           state.cameraShake = 120;
           bus.emit('watcherTransition', { watcher: e });

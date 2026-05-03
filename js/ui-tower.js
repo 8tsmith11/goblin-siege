@@ -59,7 +59,8 @@ function _showLabNotes() {
     </div>`;
   }).join('');
 
-  const sortBtns = SORT_OPTIONS.map(s =>
+  const visibleSorts = SORT_OPTIONS.filter(s => s !== 'translations' || log.some(e => e.type === 'translations'));
+  const sortBtns = visibleSorts.map(s =>
     `<button onclick="window._labSetSort('${s}')" style="padding:4px 10px;border-radius:4px;font-size:11px;border:1px solid rgba(168,85,247,.4);background:${_labNoteSort===s?'#a78bfa':'rgba(13,21,32,.8)'};color:${_labNoteSort===s?'#0d1520':'#a78bfa'};cursor:pointer;white-space:nowrap">${SORT_LABELS[s]}</button>`
   ).join('');
 

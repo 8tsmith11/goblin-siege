@@ -190,7 +190,7 @@
         "monkey_business"
       ],
       "desc": "Monkeys develop spatial awareness and resource instincts.",
-      "tooltip": "Unlocks the Harvest role: monkeys mine rock nodes or forage wood from forest tiles.",
+      "tooltip": "Unlocks the Harvest role: monkeys mine rock nodes or forage wood from forest tiles. Also enables monkeys to auto-place consumable traps from inventory.",
       "x": 720,
       "y": 1200
     },

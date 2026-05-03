@@ -68,6 +68,7 @@ export const RECIPES = [
 
 // Register items into the shared registry so resources.js can look them up
 for (const r of RECIPES) _itemRegistry[r.id] = { icon: r.icon, name: r.name, output: r.output, rarity: r.rarity, desc: r.desc };
+_itemRegistry['honey'] = { icon: '🍯', name: 'Honey', output: 'consumable', desc: 'Place on a path tile. Slows enemies by 40%.' };
 
 export function canAffordRecipe(recipe) {
   const res = state.resources || {};
@@ -227,9 +228,11 @@ export function updateTraps() {
         if (Math.abs(e.x - web.x) < 0.75 && Math.abs(e.y - web.y) < 0.75) {
           e._trapSlow = Math.max(e._trapSlow || 0, web.slow);
           if (web.dmg && ticks % 20 === 0) e.hp -= web.dmg;
-          if (web.stun && !e.boss && !e._webStunCd) { e.stunned = Math.max(e.stunned, web.stun); e._webStunCd = 90; }
+          if (web.stun && !e.boss) {
+            if (!e._webStunned) e._webStunned = new WeakSet();
+            if (!e._webStunned.has(web)) { e._webStunned.add(web); e.stunned = Math.max(e.stunned, web.stun); }
+          }
         }
-        if (e._webStunCd > 0) e._webStunCd--;
       }
     }
   }
