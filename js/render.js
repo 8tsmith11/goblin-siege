@@ -163,31 +163,6 @@ export function render() {
       cx.fillStyle = _forestPatternOob;
       cx.fillRect(vL, vT, vR - vL, vB - vT);
 
-      // Infinite Path Extensions
-      if (path.length > 0) {
-        const start = path[0];
-        const end = path[path.length - 1];
-        cx.fillStyle = '#3a2518';
-        // Left OOB extension
-        if (vL < 0) {
-          const lTileStart = Math.floor(vL / CELL);
-          for (let tx = lTileStart; tx < 0; tx++) {
-            const bx = tx * CELL, by = start.y * CELL;
-            if (_imgPath && _imgPath.complete && _imgPath.naturalWidth) cx.drawImage(_imgPath, bx, by, CELL, CELL);
-            else cx.fillRect(bx, by, CELL, CELL);
-          }
-        }
-        // Right OOB extension
-        if (vR > gw) {
-          const rTileEnd = Math.ceil(vR / CELL);
-          for (let tx = COLS; tx < rTileEnd; tx++) {
-            const bx = tx * CELL, by = end.y * CELL;
-            if (_imgPath && _imgPath.complete && _imgPath.naturalWidth) cx.drawImage(_imgPath, bx, by, CELL, CELL);
-            else cx.fillRect(bx, by, CELL, CELL);
-          }
-        }
-      }
-
       // World-space fog wisps — rendered under camera transform, naturally follow pan/zoom
       _ensureFogOob(vL, vT, vR, vB);
       for (const f of _fogOob) {
