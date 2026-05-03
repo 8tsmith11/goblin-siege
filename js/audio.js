@@ -1,4 +1,5 @@
 'use strict';
+import { state } from './main.js';
 
 let AC = null, MG = null, sOn = true, mOn = false;
 
@@ -114,7 +115,9 @@ window.bgmWaiting = false;
 
 function startMusic() {
   if (mOn) return; mOn = true;
-  window.bgm = new Audio('assets/Breath_of_the_Cedar.mp3');
+  const isForgeComplete = state?.research?.the_forge?.status === 'complete';
+  const song = isForgeComplete ? "assets/The_Inventor's_Midnight.mp3" : "assets/Breath_of_the_Cedar.mp3";
+  window.bgm = new Audio(song);
   window.bgm.volume = sOn ? 0.3 : 0;
   window.bgm.addEventListener('ended', () => {
     window.bgmWaiting = true;
