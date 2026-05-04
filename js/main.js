@@ -13,7 +13,7 @@ import { getScribeEntry, TRANSLATIONS } from './bestiary.js';
 import { TOWER_SKILLS, HOARD_LEVELS, TD, ETYPES } from './data.js';
 import { updateEnemies, genWave, mkE, isBossWave, previewWave } from './enemies.js';
 import { updateTowers } from './towers.js';
-import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser, spawnSpiderMother, updateSpiderMother, updateOrbitalBrood, updateFluids } from './support.js';
+import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser, spawnSpiderMother, updateSpiderMother, updateOrbitalBrood, updateFluids, updateTorque, updateInlinePumps } from './support.js';
 import { updateMonkeys } from './monkeys.js';
 import { render, invalidateBg, clearFogParticles } from './render.js';
 import { ARTIFACTS } from './artifacts.js';
@@ -22,7 +22,7 @@ import { sfxBoss, sfxWave, sfxKill, sfxHit, startHum, stopHum, startHum2, stopHu
 import { hudU, showOv, hideOv, showBanner, showBL, showResearchPop, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, resetResPos, initInventoryUI, initCraftUI, showLedger } from './ui.js';
 import { initInput, updateCameraKeys } from './input.js';
 import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
-import { placeNodes, updateNodes } from './resources.js';
+import { placeNodes, updateNodes, patchIronIcons } from './resources.js';
 import { placeNpcs, initNpcUI, updateNpcBubble } from './npc.js';
 import { initWeather, tickWeather, updateWeather } from './weather.js';
 import { refreshPipStock, syncPipBtn, updatePipPanel, initPipUI } from './ui-pip.js';
@@ -261,7 +261,7 @@ export const state = {
   worldGenChoices: {},
   totalGoblinsKilled: 0, totalGoldEarned: 0,
   maxLives: 3,
-  frequencyPlayed: false, secondFrequencyPlayed: false, _gemWave: null,
+  frequencyPlayed: false, secondFrequencyPlayed: false, _gemWave: null, belts: [], _beltStart: null, _torquePhase: 0,
   _forgeScriberFired: false, forgeAnnounce: null,
   patternRecDone: false, translationStep: 0, _translationWaveCount: 0,
   namedBossIndex: 0,
@@ -399,7 +399,7 @@ function update() {
     }
   }
 
-  updateClam(); updateClown(); updateRobot(); updateBees(); updateOrbitalBrood(); updateFluids(); updateMonkeys(); updateTowers();
+  updateClam(); updateClown(); updateRobot(); updateBees(); updateOrbitalBrood(); updateFluids(); updateTorque(); updateInlinePumps(); state._torquePhase = (state._torquePhase || 0) + 1; updateMonkeys(); updateTowers();
   // Gem wave activation + knowing bloom spawning
   if (state._gemWave?.active) {
     const gw = state._gemWave;
@@ -423,7 +423,7 @@ function update() {
     if (progress >= 1.5) gw.active = false;
   }
   // Knowing bloom growth from activated gems
-  if (state.ticks % 300 === 1) {
+  if (state.ticks % 1800 === 1) {
     for (const tw of state.towers) {
       if (tw.type !== 'resonating_gem' || !tw._activated) continue;
       const candidates = [];
@@ -644,6 +644,7 @@ export function dropLoot(x, y, section, item) {
 
 /* ═══ Game flow ═══ */
 export function startGame() {
+  patchIronIcons();
   _ΨΔ(() => { _wG(100); _wL(state.maxLives || 3); });
   if (!state.worldGenChoices.wave10Blueprint)
     state.worldGenChoices.wave10Blueprint = Math.random() < 0.5 ? 'clown' : 'lizard';
@@ -729,7 +730,7 @@ export function resetGame() {
     namedBossIndex: 0, auditorActive: false, watcherEscaped: false, watcherAppeared: false, _acAnomalyDone: false, spiderRitualDone: false, spiderMother: null, ceasefire: false, seedStone: null, cameraShake: 0,
     inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} },
     worldGenChoices: {}, totalGoblinsKilled: 0, totalGoldEarned: 0, maxLives: 3,
-    frequencyPlayed: false, secondFrequencyPlayed: false, _gemWave: null,
+    frequencyPlayed: false, secondFrequencyPlayed: false, _gemWave: null, belts: [], _beltStart: null, _torquePhase: 0,
     _seenResources: new Set(['stone', 'wood', 'dust']),
     patternRecDone: false, translationStep: 0, _translationWaveCount: 0, _forgeScriberFired: false, _pendingBSen: null, forgeAnnounce: null,
     _obs1: false, _obs5: false,

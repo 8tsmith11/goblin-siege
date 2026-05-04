@@ -141,7 +141,7 @@ function _drawIronOreNode(cx, wx, wy, CELL, locked) {
     // Brown rust spots (larger)
     for (const [ox, oy, r, ang] of [[-0.25, -0.2, 0.22, 0.3], [0.28, 0.08, 0.19, -0.5], [-0.05, 0.28, 0.16, 0.8], [0.12, -0.42, 0.14, 0.1]]) {
       cx.beginPath();
-      cx.ellipse(ox * s * 2, oy * s * 2, r * s * 1.3, r * s * 0.75, ang, 0, Math.PI * 2);
+      cx.ellipse(ox * s * 1.3, oy * s * 1.3, r * s * 1.3, r * s * 0.75, ang, 0, Math.PI * 2);
       cx.fillStyle = '#7c4a1e';
       cx.globalAlpha = 0.75;
       cx.fill();
@@ -197,6 +197,15 @@ export function getResourceIconDataUrl(type, size = 20) {
   if (type === 'iron_ore') _drawIronOreNode(cx, size / 2, size / 2, size, false);
   else if (type === 'iron_ingot') _drawIronIngot(cx, size / 2, size / 2, size);
   return cv.toDataURL();
+}
+
+// Patch RTYPES iron icons to canvas data-URLs so mkGain popups use the custom sprite
+let _iconsPatched = false;
+export function patchIronIcons() {
+  if (_iconsPatched) return;
+  _iconsPatched = true;
+  RTYPES.iron_ore.icon = getResourceIconDataUrl('iron_ore', 20);
+  RTYPES.iron_ingot.icon = getResourceIconDataUrl('iron_ingot', 20);
 }
 
 export function renderNodes() {
@@ -256,6 +265,7 @@ export function canTileAccept(gx, gy, type) {
   const dustOk = type === 'dust' && state.researchUnlocks?.dust_courier;
   if (tw?.type === 'workbench') return (!!RTYPES[type] || dustOk) && (tw.inv?.[type] || 0) < 20;
   if (tw?.type === 'furnace') return (type === 'iron_ore' || type === 'wood') && (tw.inv?.[type] || 0) < 20;
+  if (tw?.type === 'tank') return ['water','steam'].includes(type) && (tw.fluid?.amount || 0) < (tw.fluidMax || 40);
   const stacks = cell.stacks;
   if (!stacks) return true;
   return stacks.some(s => !s) || stacks.some(s => s && (!type || s.type === type) && s.count < 64);

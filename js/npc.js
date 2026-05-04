@@ -82,9 +82,10 @@ const NPC_LINES = {
 export function placeNpcs() {
   const { COLS, ROWS, path } = state;
   const PAD = 6;
+  const STEAM_Y = 12; // steam age rows added above; NPC stays in stone age zone
   const pathEndY = path.length > 0 ? path[path.length - 1].y : -1;
   const candidates = [];
-  for (let y = PAD; y < ROWS - PAD; y++) {
+  for (let y = PAD + STEAM_Y; y < ROWS - PAD; y++) {
     if (y === pathEndY) continue;
     if (getCell(COLS - PAD - 1, y)?.type === 'water') continue;
     candidates.push(y);

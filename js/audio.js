@@ -102,6 +102,32 @@ export function startHum() {
     o.start(); _humOsc.push(o);
   }
 }
+let _hum2Osc = null, _hum2Gain = null;
+export function startHum2() {
+  if (!AC || !sOn || _hum2Osc?.length) return;
+  if (window.bgm && sOn) { window.bgm.volume = 0.05; }
+  _hum2Gain = AC.createGain();
+  _hum2Gain.gain.setValueAtTime(0, AC.currentTime);
+  _hum2Gain.gain.linearRampToValueAtTime(0.9, AC.currentTime + 2.5);
+  _hum2Gain.connect(MG);
+  _hum2Osc = [];
+  for (const [freq, vol] of [[330, 0.45], [660, 0.28], [990, 0.14], [1320, 0.07]]) {
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.value = vol;
+    o.connect(g); g.connect(_hum2Gain);
+    o.start(); _hum2Osc.push(o);
+  }
+}
+export function stopHum2() {
+  if (!_hum2Osc?.length || !_hum2Gain) return;
+  _hum2Gain.gain.setValueAtTime(_hum2Gain.gain.value, AC.currentTime);
+  _hum2Gain.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 2);
+  _hum2Osc.forEach(o => o.stop(AC.currentTime + 2));
+  _hum2Osc = null; _hum2Gain = null;
+  if (window.bgm && sOn) { window.bgm.volume = 0.3; }
+}
+
 export function stopHum() {
   if (!_humOsc?.length || !_humGain) return;
   _humGain.gain.setValueAtTime(_humGain.gain.value, AC.currentTime);

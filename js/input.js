@@ -134,6 +134,40 @@ function tryPlaceTower(c, ex) {
     return;
   }
 
+  // Belt: two-click placement between pulleys
+  if (state.sel.key === 'belt') {
+    const target = getCell(c.x, c.y)?.content;
+    if (!target || target.type !== 'pulley') { showTip('Click a pulley to start a belt'); return; }
+    if (!state._beltStart) {
+      state._beltStart = { x: target.x, y: target.y };
+      showTip('Now click a second pulley');
+      return;
+    }
+    if (state._beltStart.x === target.x && state._beltStart.y === target.y) {
+      state._beltStart = null; showTip('Same pulley — cancelled'); return;
+    }
+    // Check belt count limits (max 3 per pulley)
+    const fromKey = state._beltStart.x + ',' + state._beltStart.y;
+    const toKey = target.x + ',' + target.y;
+    const fromCount = state.belts.filter(b => (b.fromX+','+b.fromY) === fromKey || (b.toX+','+b.toY) === fromKey).length;
+    const toCount   = state.belts.filter(b => (b.fromX+','+b.fromY) === toKey   || (b.toX+','+b.toY) === toKey).length;
+    if (fromCount >= 3 || toCount >= 3) { showTip('Max 3 belts per pulley'); state._beltStart = null; return; }
+    // Deduct cost
+    if (state.gold < state.sel.cost) { showTip('Not enough gold!'); return; }
+    if (state.sel.resCost) {
+      for (const [res, amt] of Object.entries(state.sel.resCost)) {
+        if ((state.resources[res] || 0) < amt) { showTip('Need ' + res); return; }
+      }
+      for (const [res, amt] of Object.entries(state.sel.resCost)) state.resources[res] -= amt;
+    }
+    _ΨΔ(() => { state.gold -= state.sel.cost; });
+    if (!state.belts) state.belts = [];
+    state.belts.push({ fromX: state._beltStart.x, fromY: state._beltStart.y, toX: target.x, toY: target.y });
+    state._beltStart = null;
+    sfxPlace(); panelU(); hudU();
+    return;
+  }
+
   let tw;
   _ΨΔ(() => {
     state.gold -= state.sel.cost;
@@ -163,6 +197,11 @@ function tryPlaceTower(c, ex) {
     if (tw.type === 'pipe') { tw.fluid = { type: null, amount: 0 }; tw.fluidMax = 10; }
     if (tw.type === 'steam_boiler') { tw.inputSide = 'W'; tw.outputSide = 'E'; tw.waterFluid = { type: 'water', amount: 0 }; tw.steamFluid = { type: 'steam', amount: 0 }; tw.woodStock = 0; }
     if (tw.type === 'ceasefire_flag') { tw.raised = false; }
+    if (tw.type === 'steam_engine') { tw.torqueActive = false; }
+    if (tw.type === 'pulley') { tw.rotation = 0; tw.torque = 0; tw.spinRate = 0; }
+    if (tw.type === 'butcher') { tw.rotation = 0; tw.spinRate = 0; tw.blades = TD.butcher.blades; tw.bladeLen = TD.butcher.bladeLen; tw.gearRatio = TD.butcher.gearRatio; tw.dmg = TD.butcher.dmg; tw.inv = {}; }
+    if (tw.type === 'tank') { tw.fluid = { type: null, amount: 0 }; tw.fluidMax = TD.tank.fluidMax; }
+    if (tw.type === 'inline_pump') { tw.inputSide = 'W'; tw.outputSide = 'E'; }
     if (tw.type === 'lab') { tw.obsRange = TD.lab.obsRange + (state.researchUnlocks?.lab_radius || 0); }
     if (tw.type === 'monkey') {
       tw.range = TD.monkey.range;
@@ -461,6 +500,11 @@ export function initInput() {
     }
     const c = cell(e);
     state.gCell = getCell(c.x, c.y) ? c : null;
+    // Track world coordinates for belt placement preview
+    const r2 = state.cv.getBoundingClientRect();
+    const sx2 = e.clientX - r2.left, sy2 = e.clientY - r2.top;
+    state._mouseWorldX = sx2 / state.cam.zoom + state.cam.panX;
+    state._mouseWorldY = sy2 / state.cam.zoom + state.cam.panY;
   });
 
   cv.addEventListener('mouseup', () => { mouseDragStart = null; });

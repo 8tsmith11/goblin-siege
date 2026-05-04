@@ -136,6 +136,17 @@ export function tickCraft() {
       }
     }
   }
+  // Furnace: 2 iron ore + 5 wood → 1 iron ingot per wave
+  for (const tw of state.towers) {
+    if (tw.type !== 'furnace') continue;
+    if (!tw.inv) tw.inv = {};
+    if ((tw.inv.iron_ore || 0) >= 2 && (tw.inv.wood || 0) >= 5) {
+      tw.inv.iron_ore -= 2;
+      tw.inv.wood -= 5;
+      dropItem(tw.x, tw.y, 'iron_ingot');
+      state._seenResources?.add('iron_ingot');
+    }
+  }
   return results;
 }
 

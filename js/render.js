@@ -416,6 +416,161 @@ export function render() {
       return;
     }
 
+    // Pulley: spinning wheel
+    if (tw.type === 'pulley') {
+      const tx2 = tw.x * CELL, ty2 = tw.y * CELL;
+      const pcx = tx2 + CELL / 2, pcy = ty2 + CELL / 2;
+      const R = CELL * 0.34, spokes = 6;
+      cx.save();
+      // Outer ring
+      cx.beginPath(); cx.arc(pcx, pcy, R, 0, Math.PI * 2);
+      cx.strokeStyle = tw.torque > 0 ? '#f59e0b' : '#6b7280'; cx.lineWidth = 3; cx.stroke();
+      // Hub
+      cx.beginPath(); cx.arc(pcx, pcy, R * 0.18, 0, Math.PI * 2);
+      cx.fillStyle = '#374151'; cx.fill();
+      // Spokes (rotate with tw.rotation)
+      const rot = tw.rotation || 0;
+      cx.strokeStyle = '#9ca3af'; cx.lineWidth = 1.5;
+      for (let i = 0; i < spokes; i++) {
+        const a = rot + (i / spokes) * Math.PI * 2;
+        cx.beginPath();
+        cx.moveTo(pcx + Math.cos(a) * R * 0.18, pcy + Math.sin(a) * R * 0.18);
+        cx.lineTo(pcx + Math.cos(a) * R * 0.9,  pcy + Math.sin(a) * R * 0.9);
+        cx.stroke();
+      }
+      // Torque indicator dot
+      if (tw.torque > 0) {
+        cx.beginPath(); cx.arc(pcx + Math.cos(rot) * R * 0.6, pcy + Math.sin(rot) * R * 0.6, 3, 0, Math.PI * 2);
+        cx.fillStyle = '#fcd34d'; cx.fill();
+      }
+      cx.restore();
+      return;
+    }
+
+    // Steam engine
+    if (tw.type === 'steam_engine') {
+      const tx2 = tw.x * CELL, ty2 = tw.y * CELL;
+      cx.save();
+      cx.fillStyle = tw.torqueActive ? '#1c1008' : '#111';
+      cx.fillRect(tx2 + 2, ty2 + 2, CELL - 4, CELL - 4);
+      cx.strokeStyle = tw.torqueActive ? '#f97316' : '#555'; cx.lineWidth = 2;
+      cx.strokeRect(tx2 + 2, ty2 + 2, CELL - 4, CELL - 4);
+      // Piston rod
+      const bx = tx2 + CELL * 0.5, by = ty2 + CELL * 0.72;
+      cx.strokeStyle = '#9ca3af'; cx.lineWidth = 3;
+      cx.beginPath(); cx.moveTo(bx, by); cx.lineTo(bx, ty2 + CELL * 0.3); cx.stroke();
+      // Crank circle
+      const phase = state._torquePhase || 0;
+      const cr = CELL * 0.15;
+      const crx = bx + Math.cos(tw.torqueActive ? phase * 0.12 : 0) * cr;
+      const cry = ty2 + CELL * 0.3 + Math.sin(tw.torqueActive ? phase * 0.12 : 0) * cr;
+      cx.beginPath(); cx.arc(crx, cry, 4, 0, Math.PI * 2);
+      cx.fillStyle = tw.torqueActive ? '#fb923c' : '#6b7280'; cx.fill();
+      cx.font = Math.floor(CELL * 0.28) + 'px serif';
+      cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.fillStyle = '#d1d5db';
+      cx.fillText('⚙️', tx2 + CELL * 0.5, ty2 + CELL * 0.72);
+      cx.restore();
+      return;
+    }
+
+    // Butcher: spinning blades
+    if (tw.type === 'butcher') {
+      const tx2 = tw.x * CELL, ty2 = tw.y * CELL;
+      const pcx = tx2 + CELL / 2, pcy = ty2 + CELL / 2;
+      cx.save();
+      cx.fillStyle = tw.spinRate > 0 ? '#1a0505' : '#111';
+      cx.fillRect(tx2 + 2, ty2 + 2, CELL - 4, CELL - 4);
+      cx.strokeStyle = tw.spinRate > 0 ? '#ef4444' : '#555'; cx.lineWidth = 1.5;
+      cx.strokeRect(tx2 + 2, ty2 + 2, CELL - 4, CELL - 4);
+      const blades = tw.blades || 3;
+      const reach = (tw.range || tw.bladeLen || 0.58) * CELL;
+      const rot = tw.rotation || 0;
+      // Blade range circle (faint)
+      cx.beginPath(); cx.arc(pcx, pcy, reach, 0, Math.PI * 2);
+      cx.strokeStyle = 'rgba(239,68,68,0.15)'; cx.lineWidth = 1; cx.stroke();
+      // Blades
+      for (let i = 0; i < blades; i++) {
+        const a = rot + (i / blades) * Math.PI * 2;
+        cx.save();
+        cx.translate(pcx, pcy); cx.rotate(a);
+        cx.fillStyle = tw.spinRate > 0 ? '#f87171' : '#6b7280';
+        cx.beginPath();
+        cx.moveTo(0, -2.5); cx.lineTo(reach, -2); cx.lineTo(reach, 2); cx.lineTo(0, 2.5);
+        cx.closePath(); cx.fill();
+        cx.restore();
+      }
+      // Axle
+      cx.beginPath(); cx.arc(pcx, pcy, CELL * 0.1, 0, Math.PI * 2);
+      cx.fillStyle = '#374151'; cx.fill();
+      cx.restore();
+      return;
+    }
+
+    // Tank: fluid storage with window
+    if (tw.type === 'tank') {
+      const tx2 = tw.x * CELL, ty2 = tw.y * CELL;
+      cx.save();
+      cx.fillStyle = '#1e293b';
+      cx.fillRect(tx2 + 2, ty2 + 2, CELL - 4, CELL - 4);
+      cx.strokeStyle = '#475569'; cx.lineWidth = 2;
+      cx.strokeRect(tx2 + 2, ty2 + 2, CELL - 4, CELL - 4);
+      // Window showing fluid
+      const winX = tx2 + CELL * 0.2, winY = ty2 + CELL * 0.15;
+      const winW = CELL * 0.6, winH = CELL * 0.65;
+      cx.fillStyle = '#0f172a';
+      cx.fillRect(winX, winY, winW, winH);
+      const fl = tw.fluid?.amount || 0;
+      const fmax = tw.fluidMax || 40;
+      if (fl > 0) {
+        const ft = tw.fluid.type;
+        const fclr = ft === 'water' ? '#60a5fa' : ft === 'steam' ? '#e0e7ff' : '#94a3b8';
+        const fh = winH * (fl / fmax);
+        cx.fillStyle = fclr; cx.globalAlpha = 0.7;
+        cx.fillRect(winX, winY + winH - fh, winW, fh);
+        cx.globalAlpha = 1;
+      }
+      cx.strokeStyle = '#64748b'; cx.lineWidth = 1;
+      cx.strokeRect(winX, winY, winW, winH);
+      cx.restore();
+      return;
+    }
+
+    // Inline pump: pipe-style with valve symbol
+    if (tw.type === 'inline_pump') {
+      const tx2 = tw.x * CELL, ty2 = tw.y * CELL;
+      const pcx = tx2 + CELL / 2, pcy = ty2 + CELL / 2;
+      const _ipFT = new Set(['pipe','water_pump','steam_boiler','tank','inline_pump']);
+      const conn = {
+        N: _ipFT.has(getCell(tw.x, tw.y - 1)?.content?.type),
+        S: _ipFT.has(getCell(tw.x, tw.y + 1)?.content?.type),
+        E: _ipFT.has(getCell(tw.x + 1, tw.y)?.content?.type),
+        W: _ipFT.has(getCell(tw.x - 1, tw.y)?.content?.type),
+      };
+      const anyConn = conn.N || conn.S || conn.E || conn.W;
+      const pipeClr = '#4b5563';
+      const armW = CELL * 0.26;
+      cx.save();
+      cx.fillStyle = pipeClr;
+      if (!anyConn || conn.N) cx.fillRect(pcx - armW/2, ty2, armW, CELL / 2);
+      if (!anyConn || conn.S) cx.fillRect(pcx - armW/2, pcy, armW, CELL / 2);
+      if (!anyConn || conn.E) cx.fillRect(pcx, pcy - armW/2, CELL / 2, armW);
+      if (!anyConn || conn.W) cx.fillRect(tx2, pcy - armW/2, CELL / 2, armW);
+      // Hub
+      const hubR = CELL * 0.22;
+      cx.beginPath(); cx.arc(pcx, pcy, hubR, 0, Math.PI * 2);
+      cx.fillStyle = '#374151'; cx.fill();
+      // Valve symbol (X with circle)
+      cx.strokeStyle = '#9ca3af'; cx.lineWidth = 1.5;
+      cx.beginPath(); cx.arc(pcx, pcy, hubR * 0.7, 0, Math.PI * 2); cx.stroke();
+      cx.beginPath();
+      cx.moveTo(pcx - hubR*0.5, pcy - hubR*0.5); cx.lineTo(pcx + hubR*0.5, pcy + hubR*0.5);
+      cx.moveTo(pcx + hubR*0.5, pcy - hubR*0.5); cx.lineTo(pcx - hubR*0.5, pcy + hubR*0.5);
+      cx.stroke();
+      cx.restore();
+      return;
+    }
+
     const isH = tw.type === 'hoard', def = TD[tw.type];
     const tx = Math.round(tw.x * CELL), ty = Math.round(tw.y * CELL);
     if (isH && _imgHoard.naturalWidth) {
@@ -566,6 +721,40 @@ export function render() {
     }
   });
   cx.restore();
+
+  // Belt rendering — drawn after towers so belts appear on top
+  if (state.belts?.length) {
+    const pulleyR = CELL * 0.32; // visual radius of pulley wheel
+    for (const b of state.belts) {
+      const x1 = b.fromX * CELL + CELL / 2, y1 = b.fromY * CELL + CELL / 2;
+      const x2 = b.toX   * CELL + CELL / 2, y2 = b.toY   * CELL + CELL / 2;
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      const perp = angle + Math.PI / 2;
+      const dx = Math.cos(perp) * pulleyR, dy = Math.sin(perp) * pulleyR;
+      // Two parallel lines (top and bottom of belt)
+      cx.strokeStyle = '#44403c'; cx.lineWidth = 3; cx.globalAlpha = 0.9;
+      cx.beginPath(); cx.moveTo(x1 + dx, y1 + dy); cx.lineTo(x2 + dx, y2 + dy); cx.stroke();
+      cx.beginPath(); cx.moveTo(x1 - dx, y1 - dy); cx.lineTo(x2 - dx, y2 - dy); cx.stroke();
+      cx.globalAlpha = 1;
+      // Moving marker dots along belt
+      const dist = Math.hypot(x2 - x1, y2 - y1);
+      const phase = (state._torquePhase || 0) * 0.04; // speed from torque
+      const step = 24;
+      for (let t = (phase % step) / dist; t < 1; t += step / dist) {
+        const mx = x1 + (x2 - x1) * t, my = y1 + (y2 - y1) * t;
+        cx.beginPath(); cx.arc(mx, my, 2.5, 0, Math.PI * 2);
+        cx.fillStyle = '#a8a29e'; cx.fill();
+      }
+    }
+    // Belt placement preview — show line from first pulley to mouse
+    if (state._beltStart) {
+      const sx = state._beltStart.x * CELL + CELL / 2, sy = state._beltStart.y * CELL + CELL / 2;
+      const mx = (state._mouseWorldX || sx), my = (state._mouseWorldY || sy);
+      cx.save(); cx.globalAlpha = 0.45; cx.strokeStyle = '#f59e0b'; cx.lineWidth = 2; cx.setLineDash([6,4]);
+      cx.beginPath(); cx.moveTo(sx, sy); cx.lineTo(mx, my); cx.stroke();
+      cx.setLineDash([]); cx.restore();
+    }
+  }
 
   // Gem sine wave visual
   if (state._gemWave?.active) {

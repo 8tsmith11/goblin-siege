@@ -68,7 +68,7 @@ export function hudU() {
       hRes.innerHTML = rtKeys.map(k => {
         const r = RTYPES[k];
         const iconHtml = (k === 'iron_ore' || k === 'iron_ingot')
-          ? `<img src="${getResourceIconDataUrl(k, 18)}" style="width:18px;height:18px;vertical-align:middle;image-rendering:pixelated">`
+          ? `<img src="${getResourceIconDataUrl(k, 28)}" style="width:28px;height:28px;vertical-align:middle;image-rendering:pixelated">`
           : r.icon;
         return `<div class="hi" data-res="${k}">${iconHtml}<span class="v" style="color:${r.clr}">${state.resources[k] || 0}</span></div>`;
       }).join('');
@@ -335,7 +335,12 @@ export function mkGain(px, py, icon, amount, clr) {
   p.el.style.left = (cvR.left - gcR.left + sx) + 'px';
   p.el.style.top = (cvR.top - gcR.top + sy) + 'px';
   p.el.style.color = clr;
-  p.el.textContent = (amount >= 0 ? '+' : '') + amount + '\u202f' + icon;
+  const amtStr = (amount >= 0 ? '+' : '') + amount + '\u202f';
+  if (icon && icon.startsWith('data:')) {
+    p.el.innerHTML = amtStr + `<img src="${icon}" style="width:20px;height:20px;vertical-align:middle;image-rendering:pixelated">`;
+  } else {
+    p.el.textContent = amtStr + icon;
+  }
   p.el.style.display = 'block';
   p.tmr = setTimeout(() => { p.el.style.display = 'none'; fltGPool.push(p); }, 1900);
 }

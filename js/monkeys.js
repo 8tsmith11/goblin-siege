@@ -1,7 +1,7 @@
 'use strict';
 import { state, getCell } from './main.js';
 import { TD } from './data.js';
-import { dropItem, canTileAccept, RTYPES } from './resources.js';
+import { dropItem, canTileAccept, RTYPES, NTYPES } from './resources.js';
 import { mkGain } from './ui.js';
 import { placeConsumable } from './craft.js';
 
@@ -641,12 +641,14 @@ function tickHarvester(mk, tw) {
     if (mk._harvestCd > 0) { mk._harvestCd--; return; }
     const node = getCell(src.x, src.y)?.content;
     if (!node || node.cd > 0) return;
+    const nodeResource = node.type ? (NTYPES[node.type]?.resource || 'stone') : 'stone';
+    if (nodeResource === 'iron_ore' && state.age !== 'steam') return; // age gate
     node.wobbleTick = 8; node.cd = 12;
     mk._harvestCd = 120;
     if (Math.random() < 0.20) {
-      mk.carrying = { type: 'stone' };
+      mk.carrying = { type: nodeResource };
       mk.st = 'carrying';
-      mkGain(nc.x, nc.y, RTYPES.stone.icon, 1, RTYPES.stone.clr);
+      mkGain(nc.x, nc.y, RTYPES[nodeResource]?.icon || '🟤', 1, RTYPES[nodeResource]?.clr || '#7c5123');
     }
   }
 }

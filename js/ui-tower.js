@@ -31,7 +31,7 @@ import { buildMonkeyTT } from './ui-monkey.js';
 let _ttPx = 0, _ttPy = 0;
 function refreshTT(tw) { hudU(); panelU(); showTT(tw, _ttPx, _ttPy); }
 
-const _LIVE_TT_TYPES = new Set(['furnace','steam_boiler','water_pump']);
+const _LIVE_TT_TYPES = new Set(['furnace','steam_boiler','water_pump','steam_engine','pulley','butcher','tank']);
 let _liveInterval = null;
 export function clearLiveRefresh() { if (_liveInterval) { clearInterval(_liveInterval); _liveInterval = null; } }
 
@@ -408,6 +408,67 @@ export function showTT(tw, px, py) {
           // Output → None
           tw.outputSide = null;
         }
+        refreshTT(tw);
+      };
+      sideDiv.appendChild(btn);
+    }
+    a.appendChild(sideDiv);
+  }
+  if (tw.type === 'steam_engine') {
+    const infoDiv = document.createElement('div');
+    infoDiv.style.cssText = 'width:100%;font-size:10px;color:#94a3b8;margin-bottom:4px';
+    infoDiv.innerHTML = '⚙️ Torque: <b>' + (tw.torqueActive ? (TD.steam_engine?.torqueOut || 10) : 0) + '</b>/<b>' + (TD.steam_engine?.torqueOut || 10) + '</b><br>♨️ Steam rate: ' + (TD.steam_engine?.steamRate || 0.04) + '/tick';
+    a.appendChild(infoDiv);
+  }
+  if (tw.type === 'pulley') {
+    const infoDiv = document.createElement('div');
+    infoDiv.style.cssText = 'width:100%;font-size:10px;color:#94a3b8;margin-bottom:4px';
+    infoDiv.innerHTML = '⚙️ Torque: <b>' + (tw.torque || 0) + '</b>  🔗 Network size: <b>' + (tw.torqueNetworkSize || 1) + '</b>';
+    a.appendChild(infoDiv);
+  }
+  if (tw.type === 'butcher') {
+    const infoDiv = document.createElement('div');
+    infoDiv.style.cssText = 'width:100%;font-size:10px;color:#94a3b8;margin-bottom:4px';
+    infoDiv.innerHTML = '🔪 Blades: <b>' + (tw.blades || 3) + '</b>  🔧 Gear ratio: <b>' + (tw.gearRatio || 2) + '</b><br>⚡ Spin: <b>' + ((tw.spinRate || 0).toFixed(3)) + '</b> rad/tick';
+    a.appendChild(infoDiv);
+    // Gear ratio controls
+    const gearRow = document.createElement('div');
+    gearRow.style.cssText = 'width:100%;display:flex;gap:6px;margin-bottom:4px';
+    for (const g of [1,2,3,4]) {
+      const btn = document.createElement('button');
+      btn.className = 'ttb tts2';
+      btn.style.cssText = 'font-size:9px;padding:2px 6px' + (tw.gearRatio === g ? ';background:#7f1d1d' : '');
+      btn.textContent = 'G' + g;
+      btn.title = 'Gear ratio ' + g + ' — higher = faster spin, more torque use';
+      btn.onclick = e => { e.stopPropagation(); tw.gearRatio = g; refreshTT(tw); };
+      gearRow.appendChild(btn);
+    }
+    a.appendChild(gearRow);
+  }
+  if (tw.type === 'tank') {
+    const infoDiv = document.createElement('div');
+    infoDiv.style.cssText = 'width:100%;font-size:10px;color:#94a3b8;margin-bottom:4px';
+    const fl = tw.fluid?.amount?.toFixed(1) || '0.0';
+    const ft = tw.fluid?.type || 'empty';
+    infoDiv.innerHTML = '🪣 ' + ft + ': <b>' + fl + '</b>/<b>' + (tw.fluidMax || 40) + '</b>';
+    a.appendChild(infoDiv);
+  }
+  if (tw.type === 'inline_pump') {
+    // Side config identical to boiler
+    const sideDiv = document.createElement('div');
+    sideDiv.style.cssText = 'width:100%;display:flex;gap:4px;flex-wrap:wrap;margin-bottom:2px';
+    for (const side of ['N','E','S','W']) {
+      const isIn = tw.inputSide === side, isOut = tw.outputSide === side;
+      const label = isIn ? 'In' : isOut ? 'Out' : 'None';
+      const btn = document.createElement('button');
+      btn.className = 'ttb tts2';
+      btn.style.cssText = 'font-size:9px;padding:2px 6px';
+      btn.textContent = side + ': ' + label;
+      btn.onclick = e => {
+        e.stopPropagation();
+        if (!isIn && !isOut) { tw.inputSide = side; }
+        else if (isIn) { tw.inputSide = null; tw.outputSide = side; }
+        else { tw.outputSide = null; }
         refreshTT(tw);
       };
       sideDiv.appendChild(btn);

@@ -81,6 +81,9 @@ function _build() {
     _tgk: state.totalGoblinsKilled || 0,
     _tge: state.totalGoldEarned || 0,
     _fp: state.frequencyPlayed || false,
+    _sf: state.secondFrequencyPlayed || false,
+    _age: state.age || 'stone',
+    _sr: Array.from(state._seenResources || []),
     _prd: state.patternRecDone || false,
     _trs: state.translationStep || 0,
     _trwc: state._translationWaveCount || 0,
@@ -91,6 +94,7 @@ function _build() {
     _aad: state._acAnomalyDone || false,
     _srd: state.spiderRitualDone || false,
     _ss: state.seedStone || null,
+    _belts: state.belts || [],
     _rpos: getRPos() ? { ...getRPos() } : null,
   };
 }
@@ -201,6 +205,9 @@ function _apply(d) {
   state.totalGoblinsKilled = d._tgk || 0;
   state.totalGoldEarned = d._tge || 0;
   state.frequencyPlayed = d._fp || false;
+  state.secondFrequencyPlayed = d._sf || false;
+  state.age = d._age || 'stone';
+  state._seenResources = new Set(d._sr?.length ? d._sr : ['stone', 'wood', 'dust']);
   state.patternRecDone = d._prd || false;
   state.translationStep = d._trs || 0;
   state._translationWaveCount = d._trwc || 0;
@@ -211,6 +218,7 @@ function _apply(d) {
   state._acAnomalyDone = d._aad || false;
   state.spiderRitualDone = d._srd || false;
   state.seedStone = d._ss || null;
+  state.belts = d._belts || [];
   state.ceasefire = state.towers.some(t => t.type === 'ceasefire_flag' && t.raised);
   state.sel = null; state.ttTower = null; state.gameOver = false;
   state.started = true; state.wave = d._w; state.phase = 'idle';

@@ -412,3 +412,174 @@ export function updateFluids() {
     }
   }
 }
+
+// ─── Torque system ────────────────────────────────────────────────────────────
+
+function _torqueNeighbors(tw) {
+  const result = [];
+  for (const [, [dx, dy]] of Object.entries(_SIDE_D)) {
+    const nbr = getCell(tw.x + dx, tw.y + dy)?.content;
+    if (nbr && (nbr.type === 'pulley' || nbr.type === 'steam_engine')) result.push(nbr);
+  }
+  return result;
+}
+
+export function updateTorque() {
+  const { towers, belts } = state;
+  if (!belts) return;
+
+  // Reset torque on all pulleys and engines
+  for (const tw of towers) {
+    if (tw.type === 'pulley') tw.torque = 0;
+    if (tw.type === 'steam_engine') { tw.torqueActive = false; }
+  }
+
+  // Each steam engine: consume steam from adjacent boiler, output torque
+  for (const tw of towers) {
+    if (tw.type !== 'steam_engine') continue;
+    // Find adjacent boiler with steam
+    let steamSrc = null;
+    for (const [, [dx, dy]] of Object.entries(_SIDE_D)) {
+      const nbr = getCell(tw.x + dx, tw.y + dy)?.content;
+      if (nbr?.type === 'steam_boiler' && (nbr.steamFluid?.amount || 0) > 0) { steamSrc = nbr; break; }
+    }
+    if (steamSrc && steamSrc.steamFluid.amount >= (TD.steam_engine?.steamRate || 0.04)) {
+      steamSrc.steamFluid.amount = Math.max(0, steamSrc.steamFluid.amount - (TD.steam_engine?.steamRate || 0.04));
+      tw.torqueActive = true;
+    }
+  }
+
+  // BFS: spread torque through belt-connected pulley networks
+  const beltMap = new Map(); // pulley key -> Set of connected pulley keys
+  for (const b of belts) {
+    const ka = b.fromX + ',' + b.fromY, kb = b.toX + ',' + b.toY;
+    if (!beltMap.has(ka)) beltMap.set(ka, new Set());
+    if (!beltMap.has(kb)) beltMap.set(kb, new Set());
+    beltMap.get(ka).add(kb);
+    beltMap.get(kb).add(ka);
+  }
+
+  const pulleyMap = new Map();
+  for (const tw of towers) {
+    if (tw.type === 'pulley') pulleyMap.set(tw.x + ',' + tw.y, tw);
+  }
+
+  const visited = new Set();
+  for (const tw of towers) {
+    if (tw.type !== 'pulley' || visited.has(tw)) continue;
+    // BFS to find network
+    const cluster = [];
+    const queue = [tw];
+    while (queue.length) {
+      const cur = queue.shift();
+      const key = cur.x + ',' + cur.y;
+      if (visited.has(cur)) continue;
+      visited.add(cur);
+      cluster.push(cur);
+      for (const nk of (beltMap.get(key) || [])) {
+        const nbr = pulleyMap.get(nk);
+        if (nbr && !visited.has(nbr)) queue.push(nbr);
+      }
+    }
+
+    // Check if any pulley in cluster is adjacent to an active steam engine
+    let totalTorque = 0;
+    for (const p of cluster) {
+      for (const [, [dx, dy]] of Object.entries(_SIDE_D)) {
+        const nbr = getCell(p.x + dx, p.y + dy)?.content;
+        if (nbr?.type === 'steam_engine' && nbr.torqueActive) {
+          totalTorque += TD.steam_engine?.torqueOut || 10;
+        }
+      }
+    }
+
+    for (const p of cluster) {
+      p.torque = totalTorque;
+      p.torqueNetworkSize = cluster.length;
+    }
+  }
+
+  // Butcher: consume torque, spin, attack enemies in range
+  for (const tw of towers) {
+    if (tw.type !== 'butcher') continue;
+    if (!tw.rotation) tw.rotation = 0;
+    if (!tw.blades) tw.blades = TD.butcher.blades;
+    if (!tw.bladeLen) tw.bladeLen = TD.butcher.bladeLen;
+    if (!tw.gearRatio) tw.gearRatio = TD.butcher.gearRatio;
+
+    // Find adjacent pulley with torque
+    let available = 0;
+    for (const [, [dx, dy]] of Object.entries(_SIDE_D)) {
+      const nbr = getCell(tw.x + dx, tw.y + dy)?.content;
+      if (nbr?.type === 'pulley' && nbr.torque > 0) { available = nbr.torque; break; }
+    }
+
+    const spinRate = available > 0 ? Math.min(0.15, (available / 10) * 0.08 * tw.gearRatio) : 0;
+    tw.spinRate = spinRate;
+    tw.rotation = (tw.rotation + spinRate) % (Math.PI * 2);
+
+    if (spinRate > 0 && (!tw.cd || tw.cd <= 0)) {
+      const { CELL, enemies } = state;
+      const reach = (tw.range || tw.bladeLen || 0.58) * CELL;
+      const cx = tw.x * CELL + CELL / 2, cy = tw.y * CELL + CELL / 2;
+      for (const e of enemies) {
+        if (e.dead) continue;
+        if (Math.hypot(e.x * CELL + CELL / 2 - cx, e.y * CELL + CELL / 2 - cy) <= reach) {
+          e.hp -= tw.dmg || TD.butcher.dmg;
+        }
+      }
+      tw.cd = Math.max(1, Math.round(60 / (spinRate * tw.blades * 10)));
+    }
+    if (tw.cd > 0) tw.cd--;
+  }
+
+  // Spin pulleys visually
+  for (const tw of towers) {
+    if (tw.type === 'pulley') {
+      if (!tw.rotation) tw.rotation = 0;
+      const spinRate = tw.torque > 0 ? (tw.torque / 10) * 0.05 : 0;
+      tw.rotation = (tw.rotation + spinRate) % (Math.PI * 2);
+      tw.spinRate = spinRate;
+    }
+  }
+}
+
+export function updateInlinePumps() {
+  const { towers } = state;
+  for (const tw of towers) {
+    if (tw.type !== 'inline_pump') continue;
+    if (!tw.inputSide) tw.inputSide = 'W';
+    if (!tw.outputSide) tw.outputSide = 'E';
+    const [idx, idy] = _SIDE_D[tw.inputSide];
+    const [odx, ody] = _SIDE_D[tw.outputSide];
+    const inNbr = getCell(tw.x + idx, tw.y + idy)?.content;
+    const outNbr = getCell(tw.x + odx, tw.y + ody)?.content;
+    if (!inNbr || !outNbr) continue;
+
+    // Pull from tank or pipe on input side
+    let srcAmount = 0, srcType = null;
+    if (inNbr.type === 'tank' && (inNbr.fluid?.amount || 0) > 0) {
+      srcAmount = inNbr.fluid.amount; srcType = inNbr.fluid.type;
+    } else if (inNbr.type === 'pipe' && inNbr.fluidType) {
+      // pipes are conduits; pump pulls conceptually from its network
+      srcAmount = 10; srcType = inNbr.fluidType;
+    }
+    if (!srcType || srcAmount <= 0) continue;
+
+    const rate = TD.inline_pump?.fluidRate || 0.2;
+    // Push to tank or pipe on output side
+    if (outNbr.type === 'tank') {
+      if (!outNbr.fluid) outNbr.fluid = { type: null, amount: 0 };
+      if (!outNbr.fluid.type || outNbr.fluid.type === srcType) {
+        const space = (outNbr.fluidMax || 40) - (outNbr.fluid.amount || 0);
+        const push = Math.min(rate, space, srcAmount);
+        outNbr.fluid.amount = (outNbr.fluid.amount || 0) + push;
+        outNbr.fluid.type = srcType;
+        if (inNbr.type === 'tank') inNbr.fluid.amount = Math.max(0, inNbr.fluid.amount - push);
+      }
+    } else if (outNbr.type === 'pipe') {
+      outNbr.fluidType = srcType;
+      if (inNbr.type === 'tank') inNbr.fluid.amount = Math.max(0, inNbr.fluid.amount - rate);
+    }
+  }
+}
