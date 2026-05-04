@@ -1,5 +1,5 @@
 'use strict';
-import { state, WORLD_COLS, WORLD_ROWS, getCell } from './main.js';
+import { state, WORLD_COLS, WORLD_ROWS, STEAM_ROWS, getCell } from './main.js';
 import { TD } from './data.js';
 import { renderNodes, renderStacks, RTYPES, getItemDef } from './resources.js';
 
@@ -50,12 +50,13 @@ const _imgHoard = new Image(); _imgHoard.src = 'assets/tiles/hoardpile.png';
 const _imgForest = new Image(); _imgForest.src = 'assets/tiles/forest.png';
 const _imgElder = new Image(); _imgElder.src = 'assets/tiles/elder.png';
 
-export function canPlace(cx2, cy2) {
-  const { COLS, ROWS, pathSet, grid } = state;
+export function canPlace(cx2, cy2, towerType) {
+  const { COLS, ROWS, pathSet } = state;
   if (cx2 < 0 || cx2 >= COLS || cy2 < 0 || cy2 >= ROWS) return false;
   const cell = getCell(cx2, cy2);
   if (!cell) return false;
   if (pathSet.has(cx2 + ',' + cy2)) return false;
+  if (towerType === 'water_pump') return cell.type === 'water';
   if (cell.type !== 'empty') return false;
   return true;
 }
@@ -348,30 +349,73 @@ export function render() {
     if (tw.type === 'resonating_gem') {
       const tx2 = tw.x * CELL, ty2 = tw.y * CELL;
       const cx2 = tx2 + CELL / 2, cy2 = ty2 + CELL / 2;
-      const pulse = 0.7 + 0.3 * Math.sin(ticks / 24 + tw.x * 0.7);
-      // Pedestal (dark gray)
-      cx.fillStyle = '#484848'; cx.globalAlpha = 0.9;
+      const activated = !!tw._activated;
+      const pulse = activated ? 0.7 + 0.3 * Math.sin(ticks / 24 + tw.x * 0.7) : 0.35;
+      const vibScale = activated ? 1 + 0.04 * Math.sin(ticks * 0.8) : 1;
+      // Pedestal
+      cx.fillStyle = activated ? '#484848' : '#333'; cx.globalAlpha = 0.9;
       cx.fillRect(cx2 - CELL * 0.18, cy2 + CELL * 0.18, CELL * 0.36, CELL * 0.18);
       cx.fillRect(cx2 - CELL * 0.12, cy2 + CELL * 0.12, CELL * 0.24, CELL * 0.08);
       cx.globalAlpha = 1;
-      // Glow
       cx.save();
-      cx.shadowColor = '#c084fc'; cx.shadowBlur = 16 * pulse;
-      // Inverted diamond (point down), shifted up slightly so point meets pedestal
-      const gs = CELL * 0.46;
+      if (activated) { cx.shadowColor = '#c084fc'; cx.shadowBlur = 16 * pulse; }
+      const gs = CELL * 0.46 * vibScale;
       const gy = cy2 - CELL * 0.18;
       cx.beginPath();
-      cx.moveTo(cx2, gy + gs);                    // bottom point
-      cx.lineTo(cx2 + gs * 0.6, gy + gs * 0.2);  // lower-right
-      cx.lineTo(cx2 + gs * 0.55, gy - gs * 0.3); // upper-right
-      cx.lineTo(cx2, gy - gs * 0.5);             // top center
-      cx.lineTo(cx2 - gs * 0.55, gy - gs * 0.3); // upper-left
-      cx.lineTo(cx2 - gs * 0.6, gy + gs * 0.2);  // lower-left
+      cx.moveTo(cx2, gy + gs);
+      cx.lineTo(cx2 + gs * 0.6, gy + gs * 0.2);
+      cx.lineTo(cx2 + gs * 0.55, gy - gs * 0.3);
+      cx.lineTo(cx2, gy - gs * 0.5);
+      cx.lineTo(cx2 - gs * 0.55, gy - gs * 0.3);
+      cx.lineTo(cx2 - gs * 0.6, gy + gs * 0.2);
       cx.closePath();
-      const grad = cx.createLinearGradient(cx2, gy - gs * 0.5, cx2, gy + gs);
-      grad.addColorStop(0, '#e9d5ff'); grad.addColorStop(0.4, '#a855f7'); grad.addColorStop(1, '#4c1d95');
-      cx.fillStyle = grad; cx.globalAlpha = 0.88 * pulse; cx.fill();
-      cx.strokeStyle = '#e9d5ff'; cx.lineWidth = 1; cx.globalAlpha = 0.7; cx.stroke();
+      if (activated) {
+        const grad = cx.createLinearGradient(cx2, gy - gs * 0.5, cx2, gy + gs);
+        grad.addColorStop(0, '#e9d5ff'); grad.addColorStop(0.4, '#a855f7'); grad.addColorStop(1, '#4c1d95');
+        cx.fillStyle = grad; cx.globalAlpha = 0.88 * pulse; cx.fill();
+        cx.strokeStyle = '#e9d5ff'; cx.lineWidth = 1; cx.globalAlpha = 0.7; cx.stroke();
+      } else {
+        cx.fillStyle = '#555'; cx.globalAlpha = 0.55; cx.fill();
+        cx.strokeStyle = '#777'; cx.lineWidth = 1; cx.globalAlpha = 0.4; cx.stroke();
+      }
+      cx.restore();
+      return;
+    }
+
+    // Pipe: directional fluid conduit (Minecraft fence style)
+    if (tw.type === 'pipe') {
+      const px2 = tw.x * CELL, py2 = tw.y * CELL;
+      const pcx = px2 + CELL / 2, pcy = py2 + CELL / 2;
+      const _fluidTypes = new Set(['pipe','water_pump','steam_boiler']);
+      const conn = {
+        N: _fluidTypes.has(getCell(tw.x, tw.y - 1)?.content?.type),
+        S: _fluidTypes.has(getCell(tw.x, tw.y + 1)?.content?.type),
+        E: _fluidTypes.has(getCell(tw.x + 1, tw.y)?.content?.type),
+        W: _fluidTypes.has(getCell(tw.x - 1, tw.y)?.content?.type),
+      };
+      const anyConn = conn.N || conn.S || conn.E || conn.W;
+      const fluidAmt = tw.fluid?.amount || 0;
+      const fluidType = tw.fluid?.type;
+      const fluidClr = fluidType === 'water' ? '#60a5fa' : fluidType === 'steam' ? 'rgba(240,240,255,0.85)' : '#444';
+      const pipeClr = '#555';
+      const armW = CELL * 0.28, armH = CELL * 0.5;
+      const hubR = CELL * 0.18;
+      cx.save();
+      // Draw arms
+      if (!anyConn || conn.N) { cx.fillStyle = pipeClr; cx.fillRect(pcx - armW/2, py2, armW, CELL/2 - hubR); }
+      if (!anyConn || conn.S) { cx.fillStyle = pipeClr; cx.fillRect(pcx - armW/2, pcy + hubR, armW, CELL/2 - hubR); }
+      if (!anyConn || conn.E) { cx.fillStyle = pipeClr; cx.fillRect(pcx + hubR, pcy - armW/2, CELL/2 - hubR, armW); }
+      if (!anyConn || conn.W) { cx.fillStyle = pipeClr; cx.fillRect(px2, pcy - armW/2, CELL/2 - hubR, armW); }
+      // Hub
+      cx.beginPath(); cx.arc(pcx, pcy, hubR, 0, Math.PI * 2);
+      cx.fillStyle = pipeClr; cx.fill();
+      // Fluid windows in arms
+      const winR = CELL * 0.07;
+      const winOff = CELL * 0.22;
+      if (!anyConn || conn.N) { cx.beginPath(); cx.arc(pcx, pcy - winOff, winR, 0, Math.PI * 2); cx.fillStyle = fluidClr; cx.fill(); }
+      if (!anyConn || conn.S) { cx.beginPath(); cx.arc(pcx, pcy + winOff, winR, 0, Math.PI * 2); cx.fillStyle = fluidClr; cx.fill(); }
+      if (!anyConn || conn.E) { cx.beginPath(); cx.arc(pcx + winOff, pcy, winR, 0, Math.PI * 2); cx.fillStyle = fluidClr; cx.fill(); }
+      if (!anyConn || conn.W) { cx.beginPath(); cx.arc(pcx - winOff, pcy, winR, 0, Math.PI * 2); cx.fillStyle = fluidClr; cx.fill(); }
       cx.restore();
       return;
     }
@@ -512,6 +556,40 @@ export function render() {
     }
   });
   cx.restore();
+
+  // Gem sine wave visual
+  if (state._gemWave?.active) {
+    const gw = state._gemWave;
+    const elapsed = state.ticks - gw.startTick;
+    const progress = elapsed / 180;
+    const castle = path[path.length - 1];
+    if (castle) {
+      const cpx = castle.x * CELL + CELL / 2, cpy = castle.y * CELL + CELL / 2;
+      for (const tw of towers) {
+        if (tw.type !== 'resonating_gem') continue;
+        const gpx = tw.x * CELL + CELL / 2, gpy = tw.y * CELL + CELL / 2;
+        const dist = Math.hypot(gpx - cpx, gpy - cpy);
+        const waveFront = progress * (COLS * CELL);
+        if (waveFront < 0) continue;
+        const drawLen = Math.min(1, waveFront / dist);
+        if (drawLen <= 0) continue;
+        cx.save();
+        cx.strokeStyle = tw._activated ? '#c084fc' : '#e9d5ff';
+        cx.lineWidth = 1.5;
+        cx.globalAlpha = 0.7;
+        cx.beginPath();
+        const steps = 40;
+        for (let i = 0; i <= steps; i++) {
+          const t = (i / steps) * drawLen;
+          const bx2 = cpx + (gpx - cpx) * t;
+          const by2 = cpy + (gpy - cpy) * t + Math.sin(t * Math.PI * 6) * CELL * 0.3;
+          i === 0 ? cx.moveTo(bx2, by2) : cx.lineTo(bx2, by2);
+        }
+        cx.stroke();
+        cx.restore();
+      }
+    }
+  }
 
   // Stacks (items on ground)
   renderStacks();
@@ -862,20 +940,20 @@ export function render() {
     }
   }
 
-  // Steam Age announcement — full-screen canvas overlay, gold, lasts 10s
+  // Steam Age announcement — full-screen canvas overlay matching herald scale
   if (state.forgeAnnounce) {
     const elapsed = ticks - state.forgeAnnounce.tick;
-    const dur = 600;
+    const dur = 300;
     if (elapsed < dur) {
-      const alpha = elapsed < 60 ? elapsed / 60 : elapsed > 480 ? (dur - elapsed) / 120 : 1;
+      const alpha = elapsed < 60 ? elapsed / 60 : elapsed > 240 ? (dur - elapsed) / 60 : 1;
       cx.save();
-      cx.fillStyle = `rgba(10,8,2,${0.75 * alpha})`;
+      cx.fillStyle = `rgba(0,0,0,${0.65 * alpha})`;
       cx.fillRect(0, 0, W, H);
       cx.textAlign = 'center'; cx.textBaseline = 'middle';
       cx.font = `bold ${Math.floor(H * 0.08)}px serif`;
       cx.fillStyle = `rgba(245,158,11,${alpha})`;
       cx.fillText('⚙️ The Age of Steam', W / 2, H / 2 - Math.floor(H * 0.04));
-      cx.font = `${Math.floor(H * 0.036)}px serif`;
+      cx.font = `${Math.floor(H * 0.04)}px serif`;
       cx.fillStyle = `rgba(253,224,130,${alpha * 0.85})`;
       cx.fillText('You have left the Stone Age. You did not know you were in it.', W / 2, H / 2 + Math.floor(H * 0.045));
       cx.restore();

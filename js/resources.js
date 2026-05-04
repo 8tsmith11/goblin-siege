@@ -47,6 +47,7 @@ export function placeNodes() {
   const used = new Set();
   const nodes = [];
   for (const [type, nt] of Object.entries(NTYPES)) {
+    if (type === 'iron_ore') continue; // spawns when steam age unlocks
     const grass = [];
     const yMin = STONE_Y_MIN;
     const yMax = ROWS - PAD;
@@ -73,6 +74,24 @@ export function placeNodes() {
   state.nodes = nodes;
 }
 
+export function spawnIronOreNode() {
+  const { COLS, ROWS, pathSet } = state;
+  const PAD = 6;
+  const STONE_Y_MIN = PAD + STEAM_ROWS;
+  const candidates = [];
+  for (let y = STONE_Y_MIN; y < ROWS - PAD; y++) {
+    for (let x = PAD; x < COLS - PAD; x++) {
+      if (!pathSet.has(x + ',' + y) && getCell(x, y)?.type === 'empty') candidates.push({ x, y });
+    }
+  }
+  if (!candidates.length) return;
+  const pick = candidates[Math.floor(Math.random() * candidates.length)];
+  const nd = { type: 'iron_ore', x: pick.x, y: pick.y, wobbleTick: 0, cd: 0 };
+  state.nodes.push(nd);
+  const nc = getCell(pick.x, pick.y);
+  nc.type = 'node'; nc.content = nd;
+}
+
 // ─── Per-tick update ──────────────────────────────────────────────────────
 export function updateNodes() {
   for (const n of state.nodes) {
@@ -85,10 +104,6 @@ export function updateNodes() {
 export function clickNode(node) {
   if (node.cd > 0) return;
   const nt = NTYPES[node.type];
-  if (nt.resource === 'iron_ore' && state.age !== 'steam') {
-    import('./feed.js').then(m => m.addFeed('obs', '⚙️ Iron ore. Requires Steam Age to harvest.'));
-    return;
-  }
   const rt = RTYPES[nt.resource];
   node.wobbleTick = nt.wobble;
   node.cd = nt.cooldown;
@@ -107,7 +122,7 @@ function _drawIronOreNode(cx, wx, wy, CELL, locked) {
   const s = CELL * 0.32;
   cx.save();
   cx.translate(wx, wy);
-  // Dark rocky base
+  // Gray rocky base
   cx.beginPath();
   cx.moveTo(-s * 0.6, s * 0.5);
   cx.lineTo(-s * 0.9, 0);
@@ -117,21 +132,59 @@ function _drawIronOreNode(cx, wx, wy, CELL, locked) {
   cx.lineTo(s * 0.9, s * 0.2);
   cx.lineTo(s * 0.4, s * 0.7);
   cx.closePath();
-  cx.fillStyle = locked ? '#3a2a1a' : '#5c3318';
+  cx.fillStyle = locked ? '#555' : '#8a9099';
   cx.fill();
-  cx.strokeStyle = locked ? '#4a3a2a' : '#8b4a1e';
+  cx.strokeStyle = locked ? '#444' : '#6b7280';
   cx.lineWidth = 1;
   cx.stroke();
   if (!locked) {
-    // Ore veins (reddish-brown flecks)
-    for (const [ox, oy, or2] of [[-0.2, -0.3, 0.15], [0.3, 0.1, 0.12], [-0.1, 0.2, 0.1]]) {
+    // Brown rust spots
+    for (const [ox, oy, r, ang] of [[-0.25, -0.2, 0.13, 0.3], [0.25, 0.05, 0.11, -0.5], [-0.05, 0.25, 0.09, 0.8], [0.1, -0.45, 0.08, 0.1]]) {
       cx.beginPath();
-      cx.ellipse(ox * s * 2, oy * s * 2, or2 * s, or2 * s * 0.7, 0.4, 0, Math.PI * 2);
-      cx.fillStyle = '#c0581a';
-      cx.globalAlpha = 0.7;
+      cx.ellipse(ox * s * 2, oy * s * 2, r * s * 1.3, r * s * 0.75, ang, 0, Math.PI * 2);
+      cx.fillStyle = '#7c4a1e';
+      cx.globalAlpha = 0.75;
       cx.fill();
     }
+    // Highlight
+    cx.beginPath();
+    cx.ellipse(-s * 0.2, -s * 0.35, s * 0.25, s * 0.12, -0.6, 0, Math.PI * 2);
+    cx.fillStyle = '#c8cdd4';
+    cx.globalAlpha = 0.45;
+    cx.fill();
   }
+  cx.globalAlpha = 1;
+  cx.restore();
+}
+
+function _drawIronIngot(cx, wx, wy, CELL) {
+  const iw = CELL * 0.42, ih = CELL * 0.22;
+  cx.save();
+  cx.translate(wx, wy);
+  // Trapezoidal bar shape (wider at bottom)
+  cx.beginPath();
+  cx.moveTo(-iw * 0.5, ih * 0.5);
+  cx.lineTo(iw * 0.5, ih * 0.5);
+  cx.lineTo(iw * 0.42, -ih * 0.5);
+  cx.lineTo(-iw * 0.42, -ih * 0.5);
+  cx.closePath();
+  const grad = cx.createLinearGradient(0, -ih * 0.5, 0, ih * 0.5);
+  grad.addColorStop(0, '#d1d5db');
+  grad.addColorStop(0.35, '#9ca3af');
+  grad.addColorStop(1, '#6b7280');
+  cx.fillStyle = grad;
+  cx.fill();
+  cx.strokeStyle = '#4b5563'; cx.lineWidth = 0.8; cx.stroke();
+  // Ridge line across the middle
+  cx.beginPath();
+  cx.moveTo(-iw * 0.38, 0); cx.lineTo(iw * 0.38, 0);
+  cx.strokeStyle = '#e5e7eb'; cx.lineWidth = 0.7; cx.globalAlpha = 0.6;
+  cx.stroke();
+  // Top highlight
+  cx.beginPath();
+  cx.moveTo(-iw * 0.35, -ih * 0.3); cx.lineTo(iw * 0.35, -ih * 0.3);
+  cx.strokeStyle = '#f3f4f6'; cx.lineWidth = 1.2; cx.globalAlpha = 0.5;
+  cx.stroke();
   cx.globalAlpha = 1;
   cx.restore();
 }
@@ -148,23 +201,14 @@ export function renderNodes() {
     if (getCell(n.x, n.y)?.type === 'tower') continue;
     const wx = n.x * CELL + CELL / 2, wy = n.y * CELL + CELL / 2;
     if (n.type === 'iron_ore') {
-      const locked = state.age !== 'steam';
       if (n.wobbleTick > 0) {
         cx.save();
         cx.translate(wx, wy);
         cx.rotate(Math.sin(n.wobbleTick * 1.4) * 0.06);
-        _drawIronOreNode(cx, 0, 0, CELL, locked);
+        _drawIronOreNode(cx, 0, 0, CELL, false);
         cx.restore();
       } else {
-        _drawIronOreNode(cx, wx, wy, CELL, locked);
-      }
-      // Lock indicator
-      if (locked) {
-        cx.save();
-        cx.font = Math.round(CELL * 0.28) + 'px serif';
-        cx.globalAlpha = 0.7;
-        cx.fillText('🔒', wx + CELL * 0.3, wy - CELL * 0.3);
-        cx.restore();
+        _drawIronOreNode(cx, wx, wy, CELL, false);
       }
       continue;
     }
@@ -341,16 +385,7 @@ export function renderStacks() {
           continue;
         }
         if (stack.type === 'iron_ingot') {
-          cx.save();
-          const iw = CELL * 0.3, ih = CELL * 0.16;
-          const grad = cx.createLinearGradient(basex - iw/2, basey - ih/2, basex - iw/2, basey + ih/2);
-          grad.addColorStop(0, '#e2e8f0'); grad.addColorStop(0.4, '#94a3b8'); grad.addColorStop(1, '#64748b');
-          cx.fillStyle = grad;
-          cx.beginPath();
-          cx.roundRect(basex - iw/2, basey - ih/2, iw, ih, 2);
-          cx.fill();
-          cx.strokeStyle = '#cbd5e1'; cx.lineWidth = 0.5; cx.stroke();
-          cx.restore();
+          _drawIronIngot(cx, basex, basey, CELL * 0.7);
           if (stack.count > 1) {
             cx.save();
             cx.font = '900 ' + Math.floor(CELL * 0.18) + 'px sans-serif';
