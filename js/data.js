@@ -19,6 +19,10 @@ export const TD = {
   grateful_spider: { name:'Grateful Spider', icon:'🕷️', clr:'#8b5cf6', cost:60, resCost:{wood:3}, cat:'tower', dmg:12, range:3, rate:40, pClr:'#c4b5fd', pSpd:4, splash:0, slow:0.4, target:'first', desc:'Shoots slowing webs · Once per wave: webs a path tile in range (slows + damages) · Blueprint only' },
   robot:    { name:'AI Agent',           icon:'🤖', clr:'#38bdf8', cost:110, cat:'support', autoSpell:true, reqAge: 'iron', desc:'Automatically casts spells during waves' },
   resonating_gem: { name:'Resonating Gem', icon:'💎', clr:'#a78bfa', cost:0, cat:'support', desc:'A gem of unknown purpose. It hums faintly.', noBackground:true },
+  furnace:      { name:'Furnace',      icon:'🔥', clr:'#f97316', cost:80,  resCost:{stone:8,wood:4}, cat:'support', reqAge:'steam', desc:'Smelts 2 iron ore + 5 wood → 1 iron ingot per wave.' },
+  water_pump:   { name:'Water Pump',   icon:'💧', clr:'#3b82f6', cost:60,  resCost:{stone:4},        cat:'support', reqAge:'steam', fluidRate:0.3, desc:'Placed on water. Pumps water into connected pipes.' },
+  pipe:         { name:'Pipe',         icon:'🔩', clr:'#78716c', cost:0,   resCost:{iron_ingot:1},   cat:'support', reqAge:'steam', desc:'Carries fluid. Connects to adjacent fluid containers.' },
+  steam_boiler: { name:'Steam Boiler', icon:'♨️',  clr:'#f59e0b', cost:80,  resCost:{stone:6,iron_ingot:2}, cat:'support', reqAge:'steam', desc:'Burns wood + water → steam. Configure input/output sides.' },
 };
 
 export const TOWER_SKILLS = {

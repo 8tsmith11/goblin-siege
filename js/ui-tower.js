@@ -317,6 +317,95 @@ export function showTT(tw, px, py) {
     addTTB(a, '📋 Lab Notes', 'tts2', true, () => _showLabNotes());
   }
   if (tw.type === 'monkey') buildMonkeyTT(tw, a, () => refreshTT(tw));
+  if (tw.type === 'furnace') {
+    if (!tw.inv) tw.inv = {};
+    const recipeDiv = document.createElement('div');
+    recipeDiv.style.cssText = 'width:100%;font-size:10px;color:#94a3b8;margin-bottom:4px';
+    recipeDiv.textContent = '2 iron ore + 5 wood → 1 ingot/wave';
+    a.appendChild(recipeDiv);
+    const stockRow = document.createElement('div');
+    stockRow.style.cssText = 'width:100%;display:flex;gap:4px;flex-wrap:wrap;margin-bottom:2px';
+    for (const [k, icon] of [['iron_ore','🟤'],['wood','🪵']]) {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;align-items:center;gap:3px;background:#0d1525;border-radius:4px;padding:2px 6px;font-size:10px;color:#94a3b8';
+      const lbl = document.createElement('span');
+      lbl.textContent = icon + ' ' + (tw.inv[k] || 0) + '/20';
+      wrap.appendChild(lbl);
+      if ((state.resources[k] || 0) > 0) {
+        const btn = document.createElement('button');
+        btn.className = 'ttb tts2';
+        btn.style.cssText = 'font-size:9px;padding:1px 4px';
+        btn.textContent = '+1';
+        btn.onclick = e => {
+          e.stopPropagation();
+          if ((state.resources[k] || 0) <= 0 || (tw.inv[k] || 0) >= 20) return;
+          state.resources[k]--;
+          tw.inv[k] = (tw.inv[k] || 0) + 1;
+          refreshTT(tw);
+        };
+        wrap.appendChild(btn);
+      }
+      stockRow.appendChild(wrap);
+    }
+    a.appendChild(stockRow);
+  }
+  if (tw.type === 'steam_boiler') {
+    const infoDiv = document.createElement('div');
+    infoDiv.style.cssText = 'width:100%;font-size:10px;color:#94a3b8;margin-bottom:4px';
+    const wf = tw.waterFluid?.amount?.toFixed(1) || '0.0';
+    const sf = tw.steamFluid?.amount?.toFixed(1) || '0.0';
+    infoDiv.innerHTML = '💧 Water: <b>' + wf + '/10</b>  ♨️ Steam: <b>' + sf + '/10</b>';
+    a.appendChild(infoDiv);
+    // Wood deposit row
+    const woodRow = document.createElement('div');
+    woodRow.style.cssText = 'width:100%;display:flex;align-items:center;gap:3px;background:#0d1525;border-radius:4px;padding:2px 6px;font-size:10px;color:#94a3b8;margin-bottom:4px';
+    const woodLbl = document.createElement('span');
+    woodLbl.textContent = '🪵 Wood stock: ' + (tw.woodStock?.toFixed(1) || 0);
+    woodRow.appendChild(woodLbl);
+    if ((state.resources.wood || 0) > 0) {
+      const btn = document.createElement('button');
+      btn.className = 'ttb tts2';
+      btn.style.cssText = 'font-size:9px;padding:1px 4px';
+      btn.textContent = '+1';
+      btn.onclick = e => {
+        e.stopPropagation();
+        if ((state.resources.wood || 0) <= 0) return;
+        state.resources.wood--;
+        tw.woodStock = (tw.woodStock || 0) + 1;
+        refreshTT(tw);
+      };
+      woodRow.appendChild(btn);
+    }
+    a.appendChild(woodRow);
+    // Side config: each side cycles None → Input → Output → None
+    const sideDiv = document.createElement('div');
+    sideDiv.style.cssText = 'width:100%;display:flex;gap:4px;flex-wrap:wrap;margin-bottom:2px';
+    for (const side of ['N','E','S','W']) {
+      const isIn = tw.inputSide === side, isOut = tw.outputSide === side;
+      const label = isIn ? 'Input' : isOut ? 'Output' : 'None';
+      const btn = document.createElement('button');
+      btn.className = 'ttb tts2';
+      btn.style.cssText = 'font-size:9px;padding:2px 6px';
+      btn.textContent = side + ': ' + label;
+      btn.onclick = e => {
+        e.stopPropagation();
+        if (!isIn && !isOut) {
+          // None → Input (clear any existing input)
+          tw.inputSide = side;
+        } else if (isIn) {
+          // Input → Output (clear any existing output)
+          tw.inputSide = null;
+          tw.outputSide = side;
+        } else {
+          // Output → None
+          tw.outputSide = null;
+        }
+        refreshTT(tw);
+      };
+      sideDiv.appendChild(btn);
+    }
+    a.appendChild(sideDiv);
+  }
   if (tw.type === 'workbench') {
     const inv = tw.inv || {};
     const stockRow = document.createElement('div');
