@@ -1,5 +1,5 @@
 'use strict';
-import { state, dropLoot, _ΨΔ } from './main.js';
+import { state, dropLoot, _ΨΔ, getCell } from './main.js';
 import { TD } from './data.js';
 import { sfxClown, sfxBee, sfxLaser, speak } from './audio.js';
 import { getEnemiesInRadius } from './grid.js';
@@ -297,6 +297,118 @@ export function updateSpiderMother() {
     } else {
       sm.x += (dx / dist) * sm.spd;
       sm.y += (dy / dist) * sm.spd;
+    }
+  }
+}
+
+// ─── Fluid system ─────────────────────────────────────────────────────────────
+const _FLUID_TYPES = new Set(['water_pump','pipe','steam_boiler']);
+const _SIDE_D = { N:[0,-1], S:[0,1], E:[1,0], W:[-1,0] };
+
+function _fluidNeighbors(tw) {
+  const result = [];
+  for (const [side, [dx, dy]] of Object.entries(_SIDE_D)) {
+    const nbr = getCell(tw.x + dx, tw.y + dy)?.content;
+    if (nbr && _FLUID_TYPES.has(nbr.type)) result.push({ tw: nbr, side });
+  }
+  return result;
+}
+
+// BFS through pipes from a starting fluid node; returns all reachable non-pipe containers
+function _findContainers(start) {
+  const visited = new Set([start]);
+  const queue = [start];
+  const containers = [];
+  while (queue.length) {
+    const cur = queue.shift();
+    for (const { tw: nbr } of _fluidNeighbors(cur)) {
+      if (visited.has(nbr)) continue;
+      visited.add(nbr);
+      if (nbr.type === 'pipe') {
+        queue.push(nbr);
+      } else {
+        containers.push(nbr);
+      }
+    }
+  }
+  return { visited, containers };
+}
+
+export function updateFluids() {
+  const towers = state.towers;
+
+  // Step 1: Water pumps generate water, then equalize with connected containers
+  for (const tw of towers) {
+    if (tw.type !== 'water_pump') continue;
+    if (!tw.fluid) tw.fluid = { type: 'water', amount: 0 };
+    tw.fluid.amount = Math.min(10, (tw.fluid.amount || 0) + (TD.water_pump?.fluidRate || 0.3));
+    tw.fluid.type = 'water';
+
+    // Find all containers connected via pipes; push water to equalize
+    const { visited, containers } = _findContainers(tw);
+    // Mark pipes as water-typed
+    for (const p of visited) {
+      if (p.type === 'pipe' && !p.fluidType) p.fluidType = 'water';
+    }
+    // Equalize water across pump + boiler water buffers
+    const waterNodes = [tw, ...containers.filter(c => c.type === 'steam_boiler')];
+    const waterAmounts = waterNodes.map(n => n.type === 'water_pump' ? n.fluid.amount : (n.waterFluid?.amount || 0));
+    const totalWater = waterAmounts.reduce((a, b) => a + b, 0);
+    const avg = totalWater / waterNodes.length;
+    for (const n of waterNodes) {
+      if (n.type === 'water_pump') {
+        n.fluid.amount = avg;
+      } else {
+        if (!n.waterFluid) n.waterFluid = { type: 'water', amount: 0 };
+        n.waterFluid.amount = avg;
+      }
+    }
+  }
+
+  // Step 2: Steam boiler — consume water + wood → steam, equalize steam with output pipes
+  for (const tw of towers) {
+    if (tw.type !== 'steam_boiler') continue;
+    if (!tw.waterFluid) tw.waterFluid = { type: 'water', amount: 0 };
+    if (!tw.steamFluid) tw.steamFluid = { type: 'steam', amount: 0 };
+    if (!tw.woodStock) tw.woodStock = 0;
+    // Convert water + wood → steam
+    if (tw.waterFluid.amount > 0.1 && tw.woodStock > 0) {
+      const rate = 0.02;
+      tw.waterFluid.amount = Math.max(0, tw.waterFluid.amount - rate);
+      tw.woodStock = Math.max(0, tw.woodStock - rate * 0.5);
+      tw.steamFluid.amount = Math.min(10, tw.steamFluid.amount + rate * 0.8);
+    }
+    // Push steam into connected output pipes (mark them steam-typed)
+    if (tw.steamFluid.amount > 0) {
+      const outputSide = tw.outputSide || 'E';
+      const [odx, ody] = _SIDE_D[outputSide];
+      const outNbr = getCell(tw.x + odx, tw.y + ody)?.content;
+      if (outNbr?.type === 'pipe') {
+        outNbr.fluidType = 'steam';
+        // BFS to mark all connected pipes
+        const q = [outNbr]; const vs = new Set([outNbr]);
+        while (q.length) {
+          const cur = q.shift();
+          cur.fluidType = 'steam';
+          for (const { tw: nbr } of _fluidNeighbors(cur)) {
+            if (nbr.type === 'pipe' && !vs.has(nbr)) { vs.add(nbr); q.push(nbr); }
+          }
+        }
+      }
+    }
+  }
+
+  // Wood delivery to boilers (monkey drops wood on boiler tile → woodStock)
+  for (const tw of towers) {
+    if (tw.type !== 'steam_boiler') continue;
+    const cell = getCell(tw.x, tw.y);
+    if (!cell?.stacks) continue;
+    for (let i = 0; i < 4; i++) {
+      const s = cell.stacks[i];
+      if (s?.type === 'wood') {
+        tw.woodStock = Math.min(50, (tw.woodStock || 0) + s.count);
+        cell.stacks[i] = null;
+      }
     }
   }
 }

@@ -382,40 +382,36 @@ export function render() {
       return;
     }
 
-    // Pipe: directional fluid conduit (Minecraft fence style)
+    // Pipe: directional fluid conduit — arms reach center, color dot at hub
     if (tw.type === 'pipe') {
       const px2 = tw.x * CELL, py2 = tw.y * CELL;
       const pcx = px2 + CELL / 2, pcy = py2 + CELL / 2;
-      const _fluidTypes = new Set(['pipe','water_pump','steam_boiler']);
+      const _pFT = new Set(['pipe','water_pump','steam_boiler']);
       const conn = {
-        N: _fluidTypes.has(getCell(tw.x, tw.y - 1)?.content?.type),
-        S: _fluidTypes.has(getCell(tw.x, tw.y + 1)?.content?.type),
-        E: _fluidTypes.has(getCell(tw.x + 1, tw.y)?.content?.type),
-        W: _fluidTypes.has(getCell(tw.x - 1, tw.y)?.content?.type),
+        N: _pFT.has(getCell(tw.x, tw.y - 1)?.content?.type),
+        S: _pFT.has(getCell(tw.x, tw.y + 1)?.content?.type),
+        E: _pFT.has(getCell(tw.x + 1, tw.y)?.content?.type),
+        W: _pFT.has(getCell(tw.x - 1, tw.y)?.content?.type),
       };
       const anyConn = conn.N || conn.S || conn.E || conn.W;
-      const fluidAmt = tw.fluid?.amount || 0;
-      const fluidType = tw.fluid?.type;
-      const fluidClr = fluidType === 'water' ? '#60a5fa' : fluidType === 'steam' ? 'rgba(240,240,255,0.85)' : '#444';
-      const pipeClr = '#555';
-      const armW = CELL * 0.28, armH = CELL * 0.5;
-      const hubR = CELL * 0.18;
+      const fluidType = tw.fluidType;
+      const fluidClr = fluidType === 'water' ? '#60a5fa' : fluidType === 'steam' ? '#f0f4ff' : '#444';
+      const pipeClr = '#4b5563';
+      const armW = CELL * 0.26;
       cx.save();
-      // Draw arms
-      if (!anyConn || conn.N) { cx.fillStyle = pipeClr; cx.fillRect(pcx - armW/2, py2, armW, CELL/2 - hubR); }
-      if (!anyConn || conn.S) { cx.fillStyle = pipeClr; cx.fillRect(pcx - armW/2, pcy + hubR, armW, CELL/2 - hubR); }
-      if (!anyConn || conn.E) { cx.fillStyle = pipeClr; cx.fillRect(pcx + hubR, pcy - armW/2, CELL/2 - hubR, armW); }
-      if (!anyConn || conn.W) { cx.fillStyle = pipeClr; cx.fillRect(px2, pcy - armW/2, CELL/2 - hubR, armW); }
-      // Hub
+      cx.fillStyle = pipeClr;
+      // Arms extend from cell edge to center
+      if (!anyConn || conn.N) cx.fillRect(pcx - armW/2, py2, armW, CELL / 2);
+      if (!anyConn || conn.S) cx.fillRect(pcx - armW/2, pcy, armW, CELL / 2);
+      if (!anyConn || conn.E) cx.fillRect(pcx, pcy - armW/2, CELL / 2, armW);
+      if (!anyConn || conn.W) cx.fillRect(px2, pcy - armW/2, CELL / 2, armW);
+      // Hub circle at center (drawn on top, covers arm overlap)
+      const hubR = CELL * 0.17;
       cx.beginPath(); cx.arc(pcx, pcy, hubR, 0, Math.PI * 2);
       cx.fillStyle = pipeClr; cx.fill();
-      // Fluid windows in arms
-      const winR = CELL * 0.07;
-      const winOff = CELL * 0.22;
-      if (!anyConn || conn.N) { cx.beginPath(); cx.arc(pcx, pcy - winOff, winR, 0, Math.PI * 2); cx.fillStyle = fluidClr; cx.fill(); }
-      if (!anyConn || conn.S) { cx.beginPath(); cx.arc(pcx, pcy + winOff, winR, 0, Math.PI * 2); cx.fillStyle = fluidClr; cx.fill(); }
-      if (!anyConn || conn.E) { cx.beginPath(); cx.arc(pcx + winOff, pcy, winR, 0, Math.PI * 2); cx.fillStyle = fluidClr; cx.fill(); }
-      if (!anyConn || conn.W) { cx.beginPath(); cx.arc(pcx - winOff, pcy, winR, 0, Math.PI * 2); cx.fillStyle = fluidClr; cx.fill(); }
+      // Fluid color dot at hub center
+      cx.beginPath(); cx.arc(pcx, pcy, CELL * 0.09, 0, Math.PI * 2);
+      cx.fillStyle = fluidClr; cx.fill();
       cx.restore();
       return;
     }
