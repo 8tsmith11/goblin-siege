@@ -386,7 +386,7 @@ export function render() {
     if (tw.type === 'pipe') {
       const px2 = tw.x * CELL, py2 = tw.y * CELL;
       const pcx = px2 + CELL / 2, pcy = py2 + CELL / 2;
-      const _pFT = new Set(['pipe','water_pump','steam_boiler']);
+      const _pFT = new Set(['pipe','water_pump','steam_boiler','tank','inline_pump']);
       const conn = {
         N: _pFT.has(getCell(tw.x, tw.y - 1)?.content?.type),
         S: _pFT.has(getCell(tw.x, tw.y + 1)?.content?.type),
