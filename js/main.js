@@ -13,13 +13,13 @@ import { getScribeEntry, TRANSLATIONS } from './bestiary.js';
 import { TOWER_SKILLS, HOARD_LEVELS, TD, ETYPES } from './data.js';
 import { updateEnemies, genWave, mkE, isBossWave, previewWave } from './enemies.js';
 import { updateTowers } from './towers.js';
-import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser, spawnSpiderMother, updateSpiderMother, updateOrbitalBrood } from './support.js';
+import { updateClam, updateClown, updateRobot, updateBees, updateFactoryLaser, spawnSpiderMother, updateSpiderMother, updateOrbitalBrood, updateFluids } from './support.js';
 import { updateMonkeys } from './monkeys.js';
 import { render, invalidateBg, clearFogParticles } from './render.js';
 import { ARTIFACTS } from './artifacts.js';
 import { triggerEvent } from './events.js';
-import { sfxBoss, sfxWave, sfxKill, sfxHit, startHum, stopHum, isSoundOn, sfxWatcherScreech, speak, resetMusic } from './audio.js';
-import { hudU, showOv, hideOv, showBanner, showBL, showResearchPop, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, resetResPos, initInventoryUI, initCraftUI, showLedger } from './ui.js';
+import { sfxBoss, sfxWave, sfxKill, sfxHit, startHum, stopHum, startHum2, stopHum2, isSoundOn, sfxWatcherScreech, speak, resetMusic } from './audio.js';
+import { hudU, showOv, hideOv, showBanner, showBL, showResearchPop, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, resetResPos, initInventoryUI, initCraftUI, showLedger, refreshActiveTT } from './ui.js';
 import { initInput, updateCameraKeys } from './input.js';
 import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
 import { placeNodes, updateNodes } from './resources.js';
@@ -149,9 +149,18 @@ bus.on('enemyDeath', e => {
   }
 });
 // Patient Watcher: teleport to path start, begin path phase
-bus.on('watcherTransition', ({ watcher }) => {
+bus.on('watcherTransition', () => {
   sfxWatcherScreech();
   startHum();
+  if (!state.secondFrequencyPlayed) {
+    state.secondFrequencyPlayed = true;
+    setTimeout(() => {
+      startHum2();
+      setTimeout(() => stopHum2(), 8000);
+    }, 3000);
+    state._gemWave = { startTick: state.ticks + 180, active: true }; // 3s delay before wave travels
+    addFeed('obs', 'A second anomaly. ~330Hz. Resonance detected.');
+  }
 });
 
 bus.on('bossLine', ({ line }) => { showBL(line); });
@@ -173,7 +182,8 @@ bus.on('watcherEscaped', () => {
 
 export const VERSION = 'v1.9';
 export const WORLD_COLS = 32;
-export const WORLD_ROWS = 24;
+export const WORLD_ROWS = 36; // expanded: +12 upward for steam age zone
+export const STEAM_ROWS = 12; // number of new rows above stone age zone
 
 const _BOSS_STRIP_ORDER = ['herald','vanguard','vanguard','vanguard','curious_auditor','vanguard','patient_watcher'];
 const _BOSS_STRIP_DESC = {
@@ -227,7 +237,7 @@ export const state = {
   wave: 0, phase: 'idle', ticks: 0, prepTicks: 0,
   enemies: [], towers: [], projectiles: [], particles: [], beams: [], bees: [],
   spawnQueue: [], spawnTimer: 0,
-  nodes: [], resources: {},
+  nodes: [], resources: {}, _seenResources: new Set(['stone', 'wood', 'dust']),
   npcs: [], firedTriggerLines: new Set(),
   weather: { id: 'clear', wavesLeft: 1 },
   fogWave: false, fogStartTick: 0,
@@ -251,7 +261,8 @@ export const state = {
   worldGenChoices: {},
   totalGoblinsKilled: 0, totalGoldEarned: 0,
   maxLives: 3,
-  frequencyPlayed: false, _forgeScriberFired: false, forgeAnnounce: null,
+  frequencyPlayed: false, secondFrequencyPlayed: false, _gemWave: null,
+  _forgeScriberFired: false, forgeAnnounce: null,
   patternRecDone: false, translationStep: 0, _translationWaveCount: 0,
   namedBossIndex: 0,
   auditorActive: false,
@@ -302,7 +313,7 @@ export function clampCam() {
   
   if (state.cam.panX === undefined) {
     state.cam.panX = -Math.floor((viewW - worldW) / 2);
-    state.cam.panY = -Math.floor((viewH - worldH) / 2);
+    state.cam.panY = (STEAM_ROWS + 6) * CELL; // PAD=6, skip steam zone to show stone age zone
   }
   
   cam.panX = viewW >= worldW ? -(viewW - worldW) / 2 : Math.max(0, Math.min(cam.panX, worldW - viewW));
@@ -388,7 +399,49 @@ function update() {
     }
   }
 
-  updateClam(); updateClown(); updateRobot(); updateBees(); updateOrbitalBrood(); updateMonkeys(); updateTowers();
+  updateClam(); updateClown(); updateRobot(); updateBees(); updateOrbitalBrood(); updateFluids(); updateMonkeys(); updateTowers();
+  // Gem wave activation + knowing bloom spawning
+  if (state._gemWave?.active) {
+    const gw = state._gemWave;
+    const elapsed = state.ticks - gw.startTick;
+    const mapPx = state.COLS * state.CELL;
+    const progress = elapsed / 180; // 3s travel across full map width
+    const castle = state.path[state.path.length - 1];
+    if (castle) {
+      const cpx = castle.x * state.CELL + state.CELL / 2, cpy = castle.y * state.CELL + state.CELL / 2;
+      for (const tw of state.towers) {
+        if (tw.type !== 'resonating_gem' || tw._activated) continue;
+        const gpx = tw.x * state.CELL + state.CELL / 2, gpy = tw.y * state.CELL + state.CELL / 2;
+        const dist = Math.hypot(gpx - cpx, gpy - cpy);
+        if (progress * mapPx >= dist) {
+          tw._activated = true;
+          import('./audio.js').then(m => m.sfxResearch?.());
+          state._seenResources?.add('knowing_bloom');
+        }
+      }
+    }
+    if (progress >= 1.5) gw.active = false;
+  }
+  // Knowing bloom growth from activated gems
+  if (state.ticks % 300 === 1) {
+    for (const tw of state.towers) {
+      if (tw.type !== 'resonating_gem' || !tw._activated) continue;
+      const candidates = [];
+      for (let dx = -2; dx <= 2; dx++) {
+        for (let dy = -2; dy <= 2; dy++) {
+          const cell = getCell(tw.x + dx, tw.y + dy);
+          if (cell && cell.type === 'empty' && !cell.content && (!cell.stacks || cell.stacks.every(s => !s))) {
+            candidates.push({ x: tw.x + dx, y: tw.y + dy });
+          }
+        }
+      }
+      if (candidates.length) {
+        const pick = candidates[Math.floor(Math.random() * candidates.length)];
+        dropItem(pick.x, pick.y, 'knowing_bloom');
+        state._seenResources?.add('knowing_bloom');
+      }
+    }
+  }
   updateSpiderMother();
   // Silence BGM while Patient Watcher is alive (any phase)
   const _watcherPresent = state.enemies.some(e => e.watcher);
@@ -676,7 +729,9 @@ export function resetGame() {
     namedBossIndex: 0, auditorActive: false, watcherEscaped: false, watcherAppeared: false, _acAnomalyDone: false, spiderRitualDone: false, spiderMother: null, ceasefire: false, seedStone: null, cameraShake: 0,
     inventory: { artifacts: [], augments: [], blueprints: [], consumables: [], equipped: [null], seenSections: {} },
     worldGenChoices: {}, totalGoblinsKilled: 0, totalGoldEarned: 0, maxLives: 3,
-    frequencyPlayed: false, patternRecDone: false, translationStep: 0, _translationWaveCount: 0, _forgeScriberFired: false, _pendingBSen: null, forgeAnnounce: null,
+    frequencyPlayed: false, secondFrequencyPlayed: false, _gemWave: null,
+    _seenResources: new Set(['stone', 'wood', 'dust']),
+    patternRecDone: false, translationStep: 0, _translationWaveCount: 0, _forgeScriberFired: false, _pendingBSen: null, forgeAnnounce: null,
     _obs1: false, _obs5: false,
     cam: { panX: undefined, panY: undefined, zoom: 1, targetZoom: 1, focalX: 0, focalY: 0, focalSx: 0, focalSy: 0 },
     _Σ: 0, _Ω: 0,
@@ -710,6 +765,8 @@ function loop(timestamp) {
   while (_accum >= TICK_MS) { update(); _accum -= TICK_MS; }
   render(); updateNpcBubble();
   if (state.ticks - lastP > 10) { panelU(); lastP = state.ticks; }
+  const _liveTT = state.ttTower?.type;
+  if (_liveTT && ['furnace','steam_boiler','water_pump'].includes(_liveTT) && state.ticks % 20 === 0) refreshActiveTT();
   requestAnimationFrame(loop);
 }
 

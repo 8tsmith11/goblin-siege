@@ -468,9 +468,23 @@ export function render() {
         cx.strokeRect(tx + 4, ty + 4, CELL - 8, CELL - 8);
       }
       cx.font = Math.floor(CELL * 0.35) + 'px serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
-      if (_ambushReady) cx.globalAlpha = 0.25; // nearly invisible in stealth
+      if (_ambushReady) cx.globalAlpha = 0.25;
       cx.fillText(isH ? '🏺' : (def?.icon || '?'), tx + CELL / 2, ty + CELL / 2);
       cx.globalAlpha = 1;
+      // Water pump: rising water fill inside the tower cell
+      if (tw.type === 'water_pump') {
+        const level = Math.min(1, (tw.fluid?.amount || 0) / 10);
+        if (level > 0) {
+          const innerH = (CELL - 6) * level;
+          const innerY = ty + 3 + (CELL - 6) - innerH;
+          cx.save();
+          cx.globalAlpha = 0.38;
+          cx.fillStyle = '#60a5fa';
+          cx.fillRect(tx + 3, innerY, CELL - 6, innerH);
+          cx.globalAlpha = 1;
+          cx.restore();
+        }
+      }
     }
     if (tw.level > 0) { cx.font = 'bold ' + Math.floor(CELL * 0.16) + 'px Anybody,sans-serif'; cx.fillStyle = '#fbbf24'; cx.fillText('★'.repeat(Math.min(tw.level, 5)), tx + CELL / 2, ty + CELL - 2); }
   });
