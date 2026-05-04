@@ -1,23 +1,24 @@
 'use strict';
-import { state } from './main.js';
+import { state, STEAM_ROWS } from './main.js';
 import { createGrid } from './grid.js';
 
 const PAD = 6; // Playable bounds margin
 
-function genLakes(cols, rows) {
+function _genLakeInZone(cols, yMin, yMax, limitBase) {
   let x = PAD + Math.floor(Math.random() * (cols - 2 * PAD));
-  let y = PAD + Math.floor(Math.random() * (rows - 2 * PAD));
+  let y = yMin + Math.floor(Math.random() * (yMax - yMin));
+  if (state.grid[y][x].type !== 'empty') return;
   state.grid[y][x].type = 'water';
 
-  let q = [{ x: x, y: y }];
+  let q = [{ x, y }];
   let count = 1;
-  let limit = 16 + Math.floor(Math.random() * 10);
+  let limit = limitBase + Math.floor(Math.random() * 8);
   while (q.length > 0 && limit > 0) {
     const curr = q.shift();
     limit--;
     [[-1,0],[1,0],[0,-1],[0,1]].sort(() => Math.random() - .5).forEach(([dx, dy]) => {
       const nx = curr.x + dx, ny = curr.y + dy;
-      if (nx >= PAD && nx < cols - PAD && ny >= PAD && ny < rows - PAD && state.grid[ny][nx].type === 'empty') {
+      if (nx >= PAD && nx < cols - PAD && ny >= yMin && ny < yMax && state.grid[ny][nx].type === 'empty') {
         if (count < 10 || Math.random() < 0.35) {
           state.grid[ny][nx].type = 'water';
           q.push({ x: nx, y: ny });
@@ -28,8 +29,17 @@ function genLakes(cols, rows) {
   }
 }
 
+function genLakes(cols, rows) {
+  const stoneYMin = PAD + STEAM_ROWS;
+  const stoneYMax = rows - PAD;
+  _genLakeInZone(cols, stoneYMin, stoneYMax, 14); // stone age lake
+  _genLakeInZone(cols, PAD + 1, PAD + STEAM_ROWS - 1, 10); // upper forest lake
+}
+
 export function buildPath() {
   const { COLS, ROWS } = state;
+  const STONE_Y_MIN = PAD + STEAM_ROWS; // stone age zone starts here
+  const STONE_Y_MAX = ROWS - PAD;       // stone age zone ends here (exclusive)
   state.grid = createGrid(COLS, ROWS);
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
@@ -38,7 +48,13 @@ export function buildPath() {
       }
     }
   }
+  // Generate lakes while upper rows are still empty, then seal them as forest
   genLakes(COLS, ROWS);
+  for (let r = PAD; r < PAD + STEAM_ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (state.grid[r][c].type === 'empty') state.grid[r][c].type = 'forest';
+    }
+  }
   // Predetermine world-gen choices
   if (!state.worldGenChoices) state.worldGenChoices = {};
   if (!state.worldGenChoices.wave10Blueprint) {
@@ -59,19 +75,19 @@ export function buildPath() {
   }
   state.path = []; state.pathSet.clear();
   const vis = new Set();
-  const innerRows = ROWS - 2 * PAD;
+  const stoneRows = STONE_Y_MAX - STONE_Y_MIN; // 12 rows in stone age zone
   const innerCols = COLS - 2 * PAD;
-  let px = PAD, py = PAD + Math.max(1, Math.min(Math.floor(innerRows * 0.3), innerRows - 2));
+  let px = PAD, py = STONE_Y_MIN + Math.max(1, Math.min(Math.floor(stoneRows * 0.3), stoneRows - 2));
   state.path.push({ x: px, y: py }); vis.add(px + ',' + py);
   let seg = 0, maxS = Math.max(4, Math.floor(innerCols * 0.30)), lastV = 0;
 
-  while (px < COLS - PAD - 1 && state.path.length < innerCols * innerRows * 0.65) {
+  while (px < COLS - PAD - 1 && state.path.length < innerCols * stoneRows * 0.65) {
     if (seg >= maxS || (Math.random() < 0.15 && seg > 3)) {
       const vd = lastV === 1 ? -1 : lastV === -1 ? 1 : (Math.random() < 0.5 ? 1 : -1);
-      const vl = Math.max(4, Math.floor(4 + Math.random() * Math.min(12, Math.floor(innerRows * 0.6))));
+      const vl = Math.max(4, Math.floor(4 + Math.random() * Math.min(12, Math.floor(stoneRows * 0.6))));
       for (let i = 0; i < vl; i++) {
         const ny = py + vd;
-        if (ny < PAD + 1 || ny >= ROWS - PAD - 1 || vis.has(px + ',' + ny)) break;
+        if (ny < STONE_Y_MIN + 1 || ny >= STONE_Y_MAX - 1 || vis.has(px + ',' + ny)) break;
         py = ny; state.path.push({ x: px, y: py }); vis.add(px + ',' + py);
       }
       lastV = vd; seg = 0; maxS = Math.max(4, Math.floor(4 + Math.random() * innerCols * 0.25));
@@ -83,17 +99,17 @@ export function buildPath() {
       let escaped = false;
       for (const dy of (Math.random() < 0.5 ? [1, -1] : [-1, 1])) {
         const ny = py + dy;
-        if (ny >= PAD + 1 && ny < ROWS - PAD - 1 && !vis.has(px + ',' + ny)) { py = ny; state.path.push({ x: px, y: py }); vis.add(px + ',' + py); escaped = true; break; }
+        if (ny >= STONE_Y_MIN + 1 && ny < STONE_Y_MAX - 1 && !vis.has(px + ',' + ny)) { py = ny; state.path.push({ x: px, y: py }); vis.add(px + ',' + py); escaped = true; break; }
       }
       if (!escaped) break;
       seg = 0;
     }
   }
   while (px < COLS - PAD - 1) { px++; if (!vis.has(px + ',' + py)) { state.path.push({ x: px, y: py }); vis.add(px + ',' + py); } }
-  if (state.path.length < 5) { state.path = []; for (let c = PAD; c < COLS - PAD; c++) state.path.push({ x: c, y: PAD + Math.floor(innerRows / 2) }); }
+  if (state.path.length < 5) { state.path = []; for (let c = PAD; c < COLS - PAD; c++) state.path.push({ x: c, y: STONE_Y_MIN + Math.floor(stoneRows / 2) }); }
   const cl = [state.path[0]];
   for (let i = 1; i < state.path.length; i++) { if (state.path[i].x !== state.path[i-1].x || state.path[i].y !== state.path[i-1].y) cl.push(state.path[i]); }
-  state.path = cl.filter(p => p.x >= PAD && p.x < COLS - PAD && p.y >= PAD && p.y < ROWS - PAD);
+  state.path = cl.filter(p => p.x >= PAD && p.x < COLS - PAD && p.y >= STONE_Y_MIN && p.y < STONE_Y_MAX);
   
   if (state.path.length > 0) {
     const start = state.path[0];

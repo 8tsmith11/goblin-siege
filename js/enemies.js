@@ -197,20 +197,22 @@ export function genWave(w) {
       (state._pendingBSen ??= new Set()).add('patient_watcher');
       state.watcherAppeared = true;
       bus.emit('watcherAppeared');
-      const corners = [
-        { x: 1, y: 1 }, { x: state.COLS - 2, y: 1 },
-        { x: 1, y: state.ROWS - 2 }, { x: state.COLS - 2, y: state.ROWS - 2 }
-      ];
-      const corner = corners[Math.floor(Math.random() * corners.length)];
+      // Start on the first path tile (left edge of path) — always valid
+      const corner = state.path[0] ?? { x: state.COLS >> 1, y: state.ROWS >> 1 };
       const numPts = 6;
-      const watcherPoints = [];
-      for (let i = 0; i < numPts; i++) {
-        // Keep 3 tiles from edge so watcher stays in the visible playfield
-        watcherPoints.push({
-          x: 3 + Math.random() * (state.COLS - 7),
-          y: 3 + Math.random() * (state.ROWS - 7),
-        });
+      const validTiles = [];
+      for (let gy = 0; gy < state.ROWS; gy++) {
+        for (let gx = 0; gx < state.COLS; gx++) {
+          const t = getCell(gx, gy)?.type;
+          if (t === 'empty' || t === 'path') validTiles.push({ x: gx, y: gy });
+        }
       }
+      // Fisher-Yates shuffle then take first numPts
+      for (let i = validTiles.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [validTiles[i], validTiles[j]] = [validTiles[j], validTiles[i]];
+      }
+      const watcherPoints = validTiles.slice(0, numPts);
       q.push({
         tp: 'boss', hp: watchHP, mhp: watchHP,
         spd: 0.28, sz: 1.2, rew: 40, clr: '#7c3aed', em: '🔮', drops: [],

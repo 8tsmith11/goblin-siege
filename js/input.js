@@ -103,7 +103,7 @@ function handleGroundLoot(c) {
 }
 
 function tryPlaceTower(c, ex) {
-  if (ex || !canPlace(c.x, c.y)) {
+  if (ex || !canPlace(c.x, c.y, state.sel?.key)) {
     state.sel = null; hideTT(); state.ttTower = null; panelU();
     if (ex) { showTT(ex, c.px, c.py); }
     else if (state.pathSet?.has(c.x + ',' + c.y)) { showTip("Path tile — towers go on dark squares."); }
@@ -146,7 +146,7 @@ function tryPlaceTower(c, ex) {
     tw = {
       type: state.sel.key, x: c.x, y: c.y, level: 0, cd: 0, _buffed: false, _rateBuff: 1,
       dmg: def?.dmg || 0, range: def?.range || 0, rate: def?.rate || 60,
-      splash: def?.splash || 0, slow: def?.slow || 0, pierce: def?.pierce || 0, chain: def?.chain || 0,
+      splash: def?.splash || 0, slow: def?.slow || 0, pierce: def?.pierce || 0, chain: def?.chain || 0, chainRange: def?.chainRange || 0,
       stun: 0, poison: null, blind: false, bloodlust: false, blizzard: false, seeInvis: false,
       chainStun: 0, megaSpeed: false, frenzy: false, disabledWave: -1,
       ownedSkills: {},
@@ -158,6 +158,10 @@ function tryPlaceTower(c, ex) {
     if (tw.type === 'hoard') { tw.stored = 0; }
     if (tw.type === 'stockpile') { tw.slots = [null, null, null, null]; tw.mode = 'storage'; }
     if (tw.type === 'workbench') { tw.craftQueue = null; tw.selectedRecipe = null; tw.inv = {}; }
+    if (tw.type === 'furnace') { tw.inv = {}; }
+    if (tw.type === 'water_pump') { tw.fluid = { type: 'water', amount: 0 }; tw.fluidMax = 10; }
+    if (tw.type === 'pipe') { tw.fluid = { type: null, amount: 0 }; tw.fluidMax = 10; }
+    if (tw.type === 'steam_boiler') { tw.inputSide = 'W'; tw.outputSide = 'E'; tw.waterFluid = { type: 'water', amount: 0 }; tw.steamFluid = { type: 'steam', amount: 0 }; tw.woodStock = 0; }
     if (tw.type === 'ceasefire_flag') { tw.raised = false; }
     if (tw.type === 'lab') { tw.obsRange = TD.lab.obsRange + (state.researchUnlocks?.lab_radius || 0); }
     if (tw.type === 'monkey') {
@@ -171,7 +175,10 @@ function tryPlaceTower(c, ex) {
       });
     }
     state.towers.push(tw);
-    const tc = getCell(c.x, c.y); tc.type = 'tower'; tc.content = tw;
+    const tc = getCell(c.x, c.y);
+    // water_pump sits on water tile — preserve 'water' type for visual continuity
+    if (tw.type !== 'water_pump') tc.type = 'tower';
+    tc.content = tw;
     state.bSen.add(tw.type);
   });
   sfxPlace();

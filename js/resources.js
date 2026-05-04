@@ -1,5 +1,5 @@
 'use strict';
-import { state, getCell } from './main.js';
+import { state, getCell, STEAM_ROWS } from './main.js';
 import { sfxMine } from './audio.js';
 import { mkGain, hudU, addToInventory } from './ui.js';
 import { HOARD_LEVELS } from './data.js';
@@ -11,10 +11,15 @@ export const _itemRegistry = {}; // maps itemId -> { icon, name }
 // Each entry is one collectable resource that exists in the player's inventory.
 // Add new resources here — the HUD and save system pick them up automatically.
 export const RTYPES = {
-  stone: { icon: '🪨', name: 'Stone', clr: '#94a3b8' },
-  wood: { icon: '🪵', name: 'Wood', clr: '#92400e' },
-  dust: { icon: '🔮', name: 'Dust', clr: '#a855f7' }
+  stone:         { icon: '🪨', name: 'Stone',         clr: '#94a3b8' },
+  wood:          { icon: '🪵', name: 'Wood',          clr: '#92400e' },
+  dust:          { icon: '🔮', name: 'Dust',          clr: '#a855f7' },
+  knowing_bloom: { icon: '🪻', name: 'Knowing Bloom', clr: '#a78bfa' },
+  iron_ore:      { icon: '🟤', name: 'Iron Ore',      clr: '#7c5123', steamOnly: true },
+  iron_ingot:    { icon: '⬜', name: 'Iron Ingot',    clr: '#cbd5e1', steamOnly: true },
 };
+// Resources that are always visible in HUD (others hidden until first pickup)
+export const BASE_RESOURCES = new Set(['stone', 'wood', 'dust']);
 
 // Returns { icon, name } for any item type — RTYPE or crafted item.
 export function getItemDef(type) {
@@ -30,18 +35,22 @@ export function getItemDef(type) {
 // wobble    — animation duration in ticks
 // cooldown  — ticks before the node can be clicked again
 export const NTYPES = {
-  stone: { resource: 'stone', count: 3, chance: 0.20, yield: 1, wobble: 8, cooldown: 12 },
+  stone:    { resource: 'stone',    count: 3, chance: 0.20, yield: 1, wobble: 8,  cooldown: 12 },
+  iron_ore: { resource: 'iron_ore', count: 1, chance: 0.30, yield: 1, wobble: 10, cooldown: 20 },
 };
 
 // ─── Placement ────────────────────────────────────────────────────────────
 export function placeNodes() {
-  const { grid, COLS, ROWS, pathSet } = state;
+  const { COLS, ROWS, pathSet } = state;
+  const PAD = 6;
+  const STONE_Y_MIN = PAD + STEAM_ROWS; // stone age zone starts here (row 18)
   const used = new Set();
   const nodes = [];
   for (const [type, nt] of Object.entries(NTYPES)) {
     const grass = [];
-    const PAD = 6;
-    for (let y = PAD; y < ROWS - PAD; y++) {
+    const yMin = STONE_Y_MIN;
+    const yMax = ROWS - PAD;
+    for (let y = yMin; y < yMax; y++) {
       for (let x = PAD; x < COLS - PAD; x++) {
         const k = x + ',' + y;
         if (!pathSet.has(k) && !used.has(k) && getCell(x, y)?.type === 'empty') grass.push({ x, y });
@@ -76,12 +85,17 @@ export function updateNodes() {
 export function clickNode(node) {
   if (node.cd > 0) return;
   const nt = NTYPES[node.type];
+  if (nt.resource === 'iron_ore' && state.age !== 'steam') {
+    import('./feed.js').then(m => m.addFeed('obs', '⚙️ Iron ore. Requires Steam Age to harvest.'));
+    return;
+  }
   const rt = RTYPES[nt.resource];
   node.wobbleTick = nt.wobble;
   node.cd = nt.cooldown;
   sfxMine();
   if (Math.random() < nt.chance) {
     state.resources[nt.resource] = (state.resources[nt.resource] || 0) + nt.yield;
+    state._seenResources?.add(nt.resource);
     mkGain(node.x * state.CELL + state.CELL / 2, node.y * state.CELL + state.CELL / 2,
       rt.icon, nt.yield, rt.clr);
     hudU();
@@ -89,8 +103,41 @@ export function clickNode(node) {
 }
 
 // ─── Rendering (called inside world camera transform) ─────────────────────
+function _drawIronOreNode(cx, wx, wy, CELL, locked) {
+  const s = CELL * 0.32;
+  cx.save();
+  cx.translate(wx, wy);
+  // Dark rocky base
+  cx.beginPath();
+  cx.moveTo(-s * 0.6, s * 0.5);
+  cx.lineTo(-s * 0.9, 0);
+  cx.lineTo(-s * 0.5, -s * 0.7);
+  cx.lineTo(s * 0.1, -s * 0.9);
+  cx.lineTo(s * 0.8, -s * 0.5);
+  cx.lineTo(s * 0.9, s * 0.2);
+  cx.lineTo(s * 0.4, s * 0.7);
+  cx.closePath();
+  cx.fillStyle = locked ? '#3a2a1a' : '#5c3318';
+  cx.fill();
+  cx.strokeStyle = locked ? '#4a3a2a' : '#8b4a1e';
+  cx.lineWidth = 1;
+  cx.stroke();
+  if (!locked) {
+    // Ore veins (reddish-brown flecks)
+    for (const [ox, oy, or2] of [[-0.2, -0.3, 0.15], [0.3, 0.1, 0.12], [-0.1, 0.2, 0.1]]) {
+      cx.beginPath();
+      cx.ellipse(ox * s * 2, oy * s * 2, or2 * s, or2 * s * 0.7, 0.4, 0, Math.PI * 2);
+      cx.fillStyle = '#c0581a';
+      cx.globalAlpha = 0.7;
+      cx.fill();
+    }
+  }
+  cx.globalAlpha = 1;
+  cx.restore();
+}
+
 export function renderNodes() {
-  const { cx, nodes, CELL, grid } = state;
+  const { cx, nodes, CELL } = state;
   if (!nodes.length) return;
   cx.textAlign = 'center';
   cx.textBaseline = 'middle';
@@ -98,8 +145,29 @@ export function renderNodes() {
   const fs = Math.round(CELL * 0.55);
   cx.font = fs + 'px serif';
   for (const n of nodes) {
-    if (getCell(n.x, n.y)?.type === 'tower') continue; // hidden under a tower
+    if (getCell(n.x, n.y)?.type === 'tower') continue;
     const wx = n.x * CELL + CELL / 2, wy = n.y * CELL + CELL / 2;
+    if (n.type === 'iron_ore') {
+      const locked = state.age !== 'steam';
+      if (n.wobbleTick > 0) {
+        cx.save();
+        cx.translate(wx, wy);
+        cx.rotate(Math.sin(n.wobbleTick * 1.4) * 0.06);
+        _drawIronOreNode(cx, 0, 0, CELL, locked);
+        cx.restore();
+      } else {
+        _drawIronOreNode(cx, wx, wy, CELL, locked);
+      }
+      // Lock indicator
+      if (locked) {
+        cx.save();
+        cx.font = Math.round(CELL * 0.28) + 'px serif';
+        cx.globalAlpha = 0.7;
+        cx.fillText('🔒', wx + CELL * 0.3, wy - CELL * 0.3);
+        cx.restore();
+      }
+      continue;
+    }
     const icon = RTYPES[NTYPES[n.type].resource].icon;
     if (n.wobbleTick > 0) {
       cx.save();
@@ -133,6 +201,7 @@ export function canTileAccept(gx, gy, type) {
   }
   const dustOk = type === 'dust' && state.researchUnlocks?.dust_courier;
   if (tw?.type === 'workbench') return (!!RTYPES[type] || dustOk) && (tw.inv?.[type] || 0) < 20;
+  if (tw?.type === 'furnace') return (type === 'iron_ore' || type === 'wood') && (tw.inv?.[type] || 0) < 20;
   const stacks = cell.stacks;
   if (!stacks) return true;
   return stacks.some(s => !s) || stacks.some(s => s && (!type || s.type === type) && s.count < 64);
@@ -182,6 +251,14 @@ export function dropItem(cx, cy, type) {
     return true;
   }
   if (tw?.type === 'workbench' && (RTYPES[type] || (type === 'dust' && state.researchUnlocks?.dust_courier))) {
+    if (!tw.inv) tw.inv = {};
+    if ((tw.inv[type] || 0) >= 20) return false;
+    tw.inv[type] = (tw.inv[type] || 0) + 1;
+    const rt = RTYPES[type];
+    if (rt) mkGain(cx * state.CELL + state.CELL / 2, cy * state.CELL + state.CELL / 2, rt.icon, 1, rt.clr);
+    return true;
+  }
+  if (tw?.type === 'furnace' && (type === 'iron_ore' || type === 'wood')) {
     if (!tw.inv) tw.inv = {};
     if ((tw.inv[type] || 0) >= 20) return false;
     tw.inv[type] = (tw.inv[type] || 0) + 1;
@@ -258,6 +335,33 @@ export function renderStacks() {
           continue;
         }
 
+        // Custom canvas icons for new resources
+        if (stack.type === 'iron_ore') {
+          _drawIronOreNode(cx, basex, basey, CELL * 0.7, false);
+          continue;
+        }
+        if (stack.type === 'iron_ingot') {
+          cx.save();
+          const iw = CELL * 0.3, ih = CELL * 0.16;
+          const grad = cx.createLinearGradient(basex - iw/2, basey - ih/2, basex - iw/2, basey + ih/2);
+          grad.addColorStop(0, '#e2e8f0'); grad.addColorStop(0.4, '#94a3b8'); grad.addColorStop(1, '#64748b');
+          cx.fillStyle = grad;
+          cx.beginPath();
+          cx.roundRect(basex - iw/2, basey - ih/2, iw, ih, 2);
+          cx.fill();
+          cx.strokeStyle = '#cbd5e1'; cx.lineWidth = 0.5; cx.stroke();
+          cx.restore();
+          if (stack.count > 1) {
+            cx.save();
+            cx.font = '900 ' + Math.floor(CELL * 0.18) + 'px sans-serif';
+            cx.strokeStyle = '#000'; cx.lineWidth = 2;
+            cx.strokeText('x' + stack.count, basex + CELL * 0.15, basey + CELL * 0.15);
+            cx.fillStyle = '#fff';
+            cx.fillText('x' + stack.count, basex + CELL * 0.15, basey + CELL * 0.15);
+            cx.restore();
+          }
+          continue;
+        }
         const icon = RTYPES[stack.type]?.icon ?? _itemRegistry[stack.type]?.icon ?? '❓';
         cx.save();
         cx.translate(basex, basey);
