@@ -138,8 +138,8 @@ function _drawIronOreNode(cx, wx, wy, CELL, locked) {
   cx.lineWidth = 1;
   cx.stroke();
   if (!locked) {
-    // Brown rust spots
-    for (const [ox, oy, r, ang] of [[-0.25, -0.2, 0.13, 0.3], [0.25, 0.05, 0.11, -0.5], [-0.05, 0.25, 0.09, 0.8], [0.1, -0.45, 0.08, 0.1]]) {
+    // Brown rust spots (larger)
+    for (const [ox, oy, r, ang] of [[-0.25, -0.2, 0.22, 0.3], [0.28, 0.08, 0.19, -0.5], [-0.05, 0.28, 0.16, 0.8], [0.12, -0.42, 0.14, 0.1]]) {
       cx.beginPath();
       cx.ellipse(ox * s * 2, oy * s * 2, r * s * 1.3, r * s * 0.75, ang, 0, Math.PI * 2);
       cx.fillStyle = '#7c4a1e';
@@ -187,6 +187,16 @@ function _drawIronIngot(cx, wx, wy, CELL) {
   cx.stroke();
   cx.globalAlpha = 1;
   cx.restore();
+}
+
+// Returns an inline <canvas> data-URL for iron_ore or iron_ingot HUD icons
+export function getResourceIconDataUrl(type, size = 20) {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = size;
+  const cx = cv.getContext('2d');
+  if (type === 'iron_ore') _drawIronOreNode(cx, size / 2, size / 2, size, false);
+  else if (type === 'iron_ingot') _drawIronIngot(cx, size / 2, size / 2, size);
+  return cv.toDataURL();
 }
 
 export function renderNodes() {

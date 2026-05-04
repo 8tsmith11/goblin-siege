@@ -31,6 +31,10 @@ import { buildMonkeyTT } from './ui-monkey.js';
 let _ttPx = 0, _ttPy = 0;
 function refreshTT(tw) { hudU(); panelU(); showTT(tw, _ttPx, _ttPy); }
 
+const _LIVE_TT_TYPES = new Set(['furnace','steam_boiler','water_pump']);
+let _liveInterval = null;
+export function clearLiveRefresh() { if (_liveInterval) { clearInterval(_liveInterval); _liveInterval = null; } }
+
 const SORT_OPTIONS = ['all', 'obs', 'npc', 'translations', 'boss', 'research', 'event', 'weather'];
 const SORT_LABELS  = { all: 'All', obs: '🔮 Observations', npc: '👤 NPC', translations: '👺 Translations', boss: '👑 Boss', research: '🔬 Research', event: '🎉 Events', weather: '🌤️ Weather' };
 let _labNoteSort = 'all';
@@ -202,6 +206,10 @@ export function showTT(tw, px, py) {
   _ttPx = px; _ttPy = py;
   hideTdesc();
   state.ttTower = tw;
+  clearLiveRefresh();
+  if (_LIVE_TT_TYPES.has(tw.type)) {
+    _liveInterval = setInterval(() => { if (state.ttTower === tw) refreshTT(tw); else clearLiveRefresh(); }, 400);
+  }
   const el = document.getElementById('tt');
   const isH = tw.type === 'hoard', def = TD[tw.type];
   document.getElementById('ttT').textContent = (isH ? 'Hoard Pile' : def?.name || tw.type) + (tw.level > 0 ? ' ★' + tw.level : '');

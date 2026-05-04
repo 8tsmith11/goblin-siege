@@ -1,6 +1,6 @@
 'use strict';
 import { state, startGame, startWave, startPrep, resetGame, _ΨΔ } from './main.js';
-import { RTYPES } from './resources.js';
+import { RTYPES, BASE_RESOURCES, getResourceIconDataUrl } from './resources.js';
 import { TD, ETYPES } from './data.js';
 import { SP, castSpell } from './spells.js';
 import { renderSk } from './skills.js';
@@ -8,6 +8,7 @@ import { BESTIARY, getScribeLogs } from './bestiary.js';
 import { sfxPlace, iA } from './audio.js';
 import { addFeed } from './feed.js';
 import { isBossWave, waveComposition } from './enemies.js';
+import { clearLiveRefresh } from './ui-tower.js';
 
 function _waveComposition(w) {
   const parts = waveComposition(w);
@@ -18,7 +19,7 @@ function _waveComposition(w) {
 }
 
 // ── Sub-module re-exports (keeps external import sites unchanged) ──────────────
-export { showTT, refreshActiveTT } from './ui-tower.js';
+export { showTT, refreshActiveTT, clearLiveRefresh } from './ui-tower.js';
 export { showResearch, refreshResearch, initResearchUI, resetResPos, getRPos, setRPos } from './ui-research.js';
 export { initInventoryUI, addToInventory } from './ui-inventory.js';
 import { activateArtifact } from './ui-inventory.js';
@@ -34,7 +35,8 @@ export function hudU() {
   if (phase === 'prep') {
     wlEl.textContent = '⚔ Prepare · ' + Math.ceil(prepTicks / 60) + 's';
   } else {
-    wlEl.textContent = phase === 'active' ? 'Wave ' + wave + ' · ' + l + ' left' : 'Wave ' + wave;
+    const _ageLabel = state.age === 'steam' ? ' · Steam Age 🔥' : '';
+  wlEl.textContent = phase === 'active' ? 'Wave ' + wave + ' · ' + l + ' left' + _ageLabel : 'Wave ' + wave + _ageLabel;
   }
   // Wave makeup — shows to the right of Start button during prep only
   const makeupEl = document.getElementById('waveMakeup');
@@ -55,11 +57,21 @@ export function hudU() {
   state.updatePipPanel?.();
   const hRes = document.getElementById('hRes');
   if (hRes) {
-    const rtKeys = Object.keys(RTYPES);
-    if (hRes.children.length !== rtKeys.length) {
-      hRes.innerHTML = Object.entries(RTYPES).map(([k, r]) =>
-        `<div class="hi" data-res="${k}">${r.icon}<span class="v" style="color:${r.clr}">${state.resources[k] || 0}</span></div>`
-      ).join('');
+    // Track which resources have been acquired; always show base resources + dev mode
+    if (!state._seenResources) state._seenResources = new Set(BASE_RESOURCES);
+    for (const [k] of Object.entries(RTYPES)) {
+      if ((state.resources[k] || 0) > 0) state._seenResources.add(k);
+    }
+    const rtKeys = Object.keys(RTYPES).filter(k => state._devMode || state._seenResources.has(k));
+    const curKeys = Array.from(hRes.querySelectorAll('[data-res]')).map(el => el.dataset.res);
+    if (JSON.stringify(curKeys) !== JSON.stringify(rtKeys)) {
+      hRes.innerHTML = rtKeys.map(k => {
+        const r = RTYPES[k];
+        const iconHtml = (k === 'iron_ore' || k === 'iron_ingot')
+          ? `<img src="${getResourceIconDataUrl(k, 18)}" style="width:18px;height:18px;vertical-align:middle;image-rendering:pixelated">`
+          : r.icon;
+        return `<div class="hi" data-res="${k}">${iconHtml}<span class="v" style="color:${r.clr}">${state.resources[k] || 0}</span></div>`;
+      }).join('');
     } else {
       for (const el of hRes.children) {
         const k = el.dataset.res;
@@ -328,7 +340,7 @@ export function mkGain(px, py, icon, amount, clr) {
   p.tmr = setTimeout(() => { p.el.style.display = 'none'; fltGPool.push(p); }, 1900);
 }
 
-export function hideTT() { document.getElementById('tt').style.display = 'none'; }
+export function hideTT() { document.getElementById('tt').style.display = 'none'; clearLiveRefresh(); }
 
 // ── Welcome / patch notes ─────────────────────────────────────────────────────
 function mdToHtml(md) {

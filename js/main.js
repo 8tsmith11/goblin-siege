@@ -19,7 +19,7 @@ import { render, invalidateBg, clearFogParticles } from './render.js';
 import { ARTIFACTS } from './artifacts.js';
 import { triggerEvent } from './events.js';
 import { sfxBoss, sfxWave, sfxKill, sfxHit, startHum, stopHum, startHum2, stopHum2, isSoundOn, sfxWatcherScreech, speak, resetMusic } from './audio.js';
-import { hudU, showOv, hideOv, showBanner, showBL, showResearchPop, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, resetResPos, initInventoryUI, initCraftUI, showLedger, refreshActiveTT } from './ui.js';
+import { hudU, showOv, hideOv, showBanner, showBL, showResearchPop, panelU, hideTT, mkF, mkGain, initTabs, showWelcome, initBestiaryUI, initResearchUI, refreshResearch, resetResPos, initInventoryUI, initCraftUI, showLedger } from './ui.js';
 import { initInput, updateCameraKeys } from './input.js';
 import { autoSave, clearSave, exportSave, initSaveUI, hasSave, loadGame } from './save.js';
 import { placeNodes, updateNodes } from './resources.js';
@@ -765,8 +765,6 @@ function loop(timestamp) {
   while (_accum >= TICK_MS) { update(); _accum -= TICK_MS; }
   render(); updateNpcBubble();
   if (state.ticks - lastP > 10) { panelU(); lastP = state.ticks; }
-  const _liveTT = state.ttTower?.type;
-  if (_liveTT && ['furnace','steam_boiler','water_pump'].includes(_liveTT) && state.ticks % 20 === 0) refreshActiveTT();
   requestAnimationFrame(loop);
 }
 
