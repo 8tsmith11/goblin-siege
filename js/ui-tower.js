@@ -456,26 +456,28 @@ export function showTT(tw, px, py) {
     a.appendChild(infoDiv);
   }
   if (tw.type === 'inline_pump') {
-    // Side config identical to boiler
-    const sideDiv = document.createElement('div');
-    sideDiv.style.cssText = 'width:100%;display:flex;gap:4px;flex-wrap:wrap;margin-bottom:2px';
-    for (const side of ['N','E','S','W']) {
-      const isIn = tw.inputSide === side, isOut = tw.outputSide === side;
-      const label = isIn ? 'In' : isOut ? 'Out' : 'None';
-      const btn = document.createElement('button');
-      btn.className = 'ttb tts2';
-      btn.style.cssText = 'font-size:9px;padding:2px 6px';
-      btn.textContent = side + ': ' + label;
-      btn.onclick = e => {
-        e.stopPropagation();
-        if (!isIn && !isOut) { tw.inputSide = side; }
-        else if (isIn) { tw.inputSide = null; tw.outputSide = side; }
-        else { tw.outputSide = null; }
-        refreshTT(tw);
-      };
-      sideDiv.appendChild(btn);
-    }
-    a.appendChild(sideDiv);
+    // Rotate cycles through the two axis orientations: W→E and N→S
+    const _orientations = [['W','E'],['N','S'],['E','W'],['S','N']];
+    const curIdx = _orientations.findIndex(([i,o]) => tw.inputSide === i && tw.outputSide === o);
+    const orientLabel = tw.inputSide + '→' + tw.outputSide;
+    const rotRow = document.createElement('div');
+    rotRow.style.cssText = 'width:100%;display:flex;align-items:center;gap:6px;margin-bottom:2px';
+    const lbl = document.createElement('span');
+    lbl.style.cssText = 'font-size:10px;color:#94a3b8';
+    lbl.textContent = orientLabel;
+    const btn = document.createElement('button');
+    btn.className = 'ttb tts2';
+    btn.textContent = '↻ Rotate';
+    btn.onclick = e => {
+      e.stopPropagation();
+      const next = _orientations[(curIdx + 1) % _orientations.length];
+      tw.inputSide = next[0]; tw.outputSide = next[1];
+      rebuildFluidConnections();
+      refreshTT(tw);
+    };
+    rotRow.appendChild(lbl);
+    rotRow.appendChild(btn);
+    a.appendChild(rotRow);
   }
   if (tw.type === 'workbench') {
     const inv = tw.inv || {};
