@@ -3,7 +3,7 @@ import { state, _ΨΔ, clampCam, minZoom, getCell, setCell } from './main.js';
 import { bus } from './bus.js';
 import { iA, sfxPlace, sfxLizard, speak } from './audio.js';
 import { TD } from './data.js';
-import { spawnBees } from './support.js';
+import { spawnBees, rebuildFluidConnections } from './support.js';
 import { canPlace, invalidateBg } from './render.js';
 import { showTT, hideTT, showTip, showBanner, panelU, hudU, mkGain, addToInventory } from './ui.js';
 import { clickNode, RTYPES, dropItem } from './resources.js';
@@ -255,6 +255,8 @@ function tryPlaceTower(c, ex) {
   sfxPlace();
   if (tw.type === 'beehive') spawnBees(tw);
   if (tw.type === 'lizard') { sfxLizard(); showBanner('🦎 "' + TD.lizard.voiceLine + '"'); speak(TD.lizard.voiceLine); }
+  const _fluidTypes = new Set(['pipe','steam_boiler','steam_engine','inline_pump','tank','water_pump']);
+  if (_fluidTypes.has(tw.type)) rebuildFluidConnections();
 
   // Remove any resource node on this tile
   state.nodes = state.nodes?.filter(n => !(n.x === c.x && n.y === c.y)) ?? [];

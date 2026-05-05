@@ -28,7 +28,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 #tabs{display:flex;border-bottom:1px solid #1e293b}
 .tab{flex:1;padding:6px 0;text-align:center;font-size:11px;font-weight:700;color:var(--dim);cursor:pointer;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid transparent;transition:all .12s}
 .tab.on{color:var(--accent);border-bottom-color:var(--accent)}
-#pc{display:flex;flex-direction:row;gap:4px;padding:5px;overflow-x:auto;overflow-y:hidden;min-height:90px;align-items:flex-start;scrollbar-width:thin;scrollbar-color:#2a3550 transparent}
+#pc{display:flex;flex-direction:row;gap:4px;padding:5px;overflow-x:auto;overflow-y:hidden;height:94px;align-items:flex-start;scrollbar-width:thin;scrollbar-color:#2a3550 transparent}
 #pc::-webkit-scrollbar{height:4px}#pc::-webkit-scrollbar-track{background:transparent}#pc::-webkit-scrollbar-thumb{background:#2a3550;border-radius:2px}
 .ib{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:91px;width:91px;height:82px;background:var(--card);border:2px solid #2a3550;border-radius:8px;cursor:pointer;transition:all .1s;padding:6px 4px;flex-shrink:0}
 .ib.sel{border-color:var(--accent);box-shadow:0 0 10px var(--accentG)}.ib:active{transform:scale(.96)}.ib.off{opacity:.35;pointer-events:none}

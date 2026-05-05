@@ -185,7 +185,7 @@ function renderPip() {
       state.resources[it.type]--;
       _ΨΔ(() => { state.gold += it.price; });
       renderPip();
-      hudU();
+      hudU(); panelU();
     });
     row.appendChild(lbl);
     row.appendChild(btn);
@@ -203,7 +203,7 @@ function renderPip() {
     _ΨΔ(() => { state.gold -= LUMBER_AXE.cost; });
     state.pip.axeQty = (state.pip.axeQty ?? LUMBER_AXE.toolQty) - 1;
     addToInventory('consumables', { id: LUMBER_AXE.id, icon: LUMBER_AXE.icon, name: LUMBER_AXE.name, desc: LUMBER_AXE.desc, rarity: LUMBER_AXE.rarity, output: 'consumable' });
-    renderPip(); hudU();
+    renderPip(); hudU(); panelU();
   }, 'Out of stock'));
 
   const cStock = state.pip.cStock || [];
@@ -216,7 +216,7 @@ function renderPip() {
         _ΨΔ(() => { state.gold -= item.cost; });
         item.qty--;
         addToInventory('consumables', { id: item.id, icon: item.icon, name: item.name, desc: item.desc, rarity: item.rarity, output: 'consumable' });
-        renderPip(); hudU();
+        renderPip(); hudU(); panelU();
       }, 'Out of stock'));
     }
   }
@@ -250,7 +250,7 @@ function renderPip() {
       _ΨΔ(() => { state.gold -= art.cost; });
       state.pip.aSold[art.id] = true;
       addToInventory('artifacts', { id: art.id, icon: art.icon, name: art.name, rarity: art.rarity, desc: art.desc });
-      renderPip(); hudU();
+      renderPip(); hudU(); panelU();
       showBanner('✨ ' + art.name + ' acquired!');
     }));
   }

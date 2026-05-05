@@ -16,7 +16,7 @@ function _showObsLog() {
   el.onclick = e => { if (e.target === el) el.style.display = 'none'; };
 }
 import { TD, TOWER_SKILLS, HOARD_LEVELS, HOARD_UPGS } from './data.js';
-import { spawnBees } from './support.js';
+import { spawnBees, rebuildFluidConnections } from './support.js';
 import { showTowerSkill } from './skills.js';
 import { sfxPlace } from './audio.js';
 import { RECIPES, removeAugment } from './craft.js';
@@ -665,6 +665,8 @@ function doSell(tw, val) {
   state.towers = state.towers.filter(x => x !== tw);
   state.bees = state.bees.filter(b => b.hive !== tw);
   _cleanupMonkeysForSoldTile(tw.x, tw.y);
+  const _fluidTypes = new Set(['pipe','steam_boiler','steam_engine','inline_pump','tank','water_pump']);
+  if (_fluidTypes.has(tw.type)) rebuildFluidConnections();
 }
 
 function _cleanupMonkeysForSoldTile(sx, sy) {

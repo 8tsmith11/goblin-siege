@@ -763,8 +763,13 @@ function loop(timestamp) {
     cam.panY = cam.focalY - cam.focalSy / cam.zoom;
     clampCam();
   }
-  while (_accum >= TICK_MS) { update(); _accum -= TICK_MS; }
-  render(); updateNpcBubble();
+  try {
+    while (_accum >= TICK_MS) { update(); _accum -= TICK_MS; }
+    render(); updateNpcBubble();
+  } catch (e) {
+    console.error('[goblin-siege] loop error:', e);
+    _accum = 0;
+  }
   if (state.ticks - lastP > 10) { panelU(); lastP = state.ticks; }
   requestAnimationFrame(loop);
 }

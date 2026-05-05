@@ -255,7 +255,11 @@ export function clearSave() { localStorage.removeItem(_K); }
 
 export function exportSave() {
   const d = _build();
-  if (d) localStorage.setItem(_K, _pack(d));
+  if (d) {
+    const packed = _pack(d);
+    // Only overwrite autosave if not mid-wave — preserve the last wave-complete checkpoint
+    if (state.phase !== 'active') localStorage.setItem(_K, packed);
+  }
   const stored = localStorage.getItem(_K);
   if (!stored) { showBanner('⚠️ Nothing to export'); return; }
   const blob = new Blob([stored], { type: 'application/octet-stream' });

@@ -366,18 +366,31 @@ export function updateFluids() {
     }
   }
 
-  // Step 2: Steam boiler — consume water + wood → steam, flood steam to ALL adjacent pipes
+  // Step 2: Steam boiler — consume water → steam (wood consumed once per wave at wave start)
   for (const tw of towers) {
     if (tw.type !== 'steam_boiler') continue;
     if (!tw.waterFluid) tw.waterFluid = { type: 'water', amount: 0 };
     if (!tw.steamFluid) tw.steamFluid = { type: 'steam', amount: 0 };
     if (!tw.woodStock) tw.woodStock = 0;
-    // Convert water + wood → steam (improved rates: 0.03 steam/tick, 2 boilers sustain 1 engine)
-    if (tw.waterFluid.amount > 0.1 && tw.woodStock > 0) {
-      const rate = 0.02;
-      tw.waterFluid.amount = Math.max(0, tw.waterFluid.amount - rate);
-      tw.woodStock = Math.max(0, tw.woodStock - rate * 0.75);
-      tw.steamFluid.amount = Math.min(10, tw.steamFluid.amount + rate * 1.5);
+    // Consume wood once at the start of each wave (or prep phase)
+    const BOILER_WOOD_PER_WAVE = 3;
+    if (state.phase !== 'idle' && tw.lastFuelWave !== state.wave) {
+      tw.lastFuelWave = state.wave;
+      if (tw.woodStock >= BOILER_WOOD_PER_WAVE) {
+        tw.woodStock -= BOILER_WOOD_PER_WAVE;
+        tw.fuelActive = true;
+      } else if (tw.woodStock > 0) {
+        tw.woodStock = 0;
+        tw.fuelActive = true;
+      } else {
+        tw.fuelActive = false;
+      }
+    }
+    // Produce steam at 0.09/tick (supports 2 engines at 0.04 each) while fueled + has water
+    if (tw.fuelActive && tw.waterFluid.amount > 0.1) {
+      const rate = 0.09;
+      tw.waterFluid.amount = Math.max(0, tw.waterFluid.amount - rate * 0.5);
+      tw.steamFluid.amount = Math.min(10, tw.steamFluid.amount + rate);
     }
     // Push steam into ALL adjacent pipes (boiler connects in all directions)
     if (tw.steamFluid.amount > 0) {
@@ -415,6 +428,37 @@ export function updateFluids() {
   }
 }
 
+// ─── Fluid connection graph ───────────────────────────────────────────────────
+
+export function rebuildFluidConnections() {
+  const { towers } = state;
+  // Clear existing steam source assignments
+  for (const tw of towers) {
+    if (tw.type === 'steam_engine') tw._steamSource = null;
+  }
+  // BFS outward from each boiler through pipes and engines
+  for (const boiler of towers) {
+    if (boiler.type !== 'steam_boiler') continue;
+    const visited = new Set([boiler]);
+    const q = [boiler];
+    while (q.length) {
+      const cur = q.shift();
+      for (const [, [dx, dy]] of Object.entries(_SIDE_D)) {
+        const nbr = getCell(cur.x + dx, cur.y + dy)?.content;
+        if (!nbr || visited.has(nbr)) continue;
+        if (nbr.type === 'pipe' || nbr.type === 'inline_pump') {
+          visited.add(nbr);
+          q.push(nbr);
+        } else if (nbr.type === 'steam_engine') {
+          visited.add(nbr);
+          if (!nbr._steamSource) nbr._steamSource = boiler;
+          q.push(nbr);
+        }
+      }
+    }
+  }
+}
+
 // ─── Torque system ────────────────────────────────────────────────────────────
 
 function _torqueNeighbors(tw) {
@@ -436,41 +480,13 @@ export function updateTorque() {
     if (tw.type === 'steam_engine') { tw.torqueActive = false; }
   }
 
-  // Each steam engine: consume steam from adjacent boiler or steam pipe, output torque
+  // Each steam engine: consume steam from pre-computed source (set by rebuildFluidConnections)
   for (const tw of towers) {
     if (tw.type !== 'steam_engine') continue;
     const steamRate = TD.steam_engine?.steamRate || 0.04;
-    let steamSrc = null;
-    // Check adjacent boiler first (direct connection)
-    for (const [, [dx, dy]] of Object.entries(_SIDE_D)) {
-      const nbr = getCell(tw.x + dx, tw.y + dy)?.content;
-      if (nbr?.type === 'steam_boiler' && (nbr.steamFluid?.amount || 0) >= steamRate) { steamSrc = nbr; break; }
-    }
-    // Also accept steam from adjacent pipes — BFS back to find a boiler to deduct from
-    if (!steamSrc) {
-      for (const [, [dx, dy]] of Object.entries(_SIDE_D)) {
-        const nbr = getCell(tw.x + dx, tw.y + dy)?.content;
-        if (nbr?.type === 'pipe' && nbr.fluidType === 'steam') {
-          // BFS through steam pipes to find a boiler with enough steam
-          const visited = new Set([nbr]);
-          const q = [nbr];
-          while (q.length && !steamSrc) {
-            const cur = q.shift();
-            for (const { tw: pnbr } of _fluidNeighbors(cur)) {
-              if (visited.has(pnbr)) continue;
-              visited.add(pnbr);
-              if (pnbr.type === 'steam_boiler' && (pnbr.steamFluid?.amount || 0) >= steamRate) {
-                steamSrc = pnbr; break;
-              }
-              if (pnbr.type === 'pipe' && pnbr.fluidType === 'steam') q.push(pnbr);
-            }
-          }
-          if (steamSrc) break;
-        }
-      }
-    }
-    if (steamSrc) {
-      steamSrc.steamFluid.amount = Math.max(0, steamSrc.steamFluid.amount - steamRate);
+    const src = tw._steamSource;
+    if (src && (src.steamFluid?.amount || 0) >= steamRate) {
+      src.steamFluid.amount = Math.max(0, src.steamFluid.amount - steamRate);
       tw.torqueActive = true;
     }
   }
@@ -555,7 +571,7 @@ export function updateTorque() {
           e.hp -= tw.dmg || TD.butcher.dmg;
         }
       }
-      tw.cd = Math.max(1, Math.round(60 / (spinRate * tw.blades * 10)));
+      tw.cd = Math.max(1, Math.round((Math.PI * 2) / spinRate / tw.blades));
     }
     if (tw.cd > 0) tw.cd--;
   }
@@ -591,7 +607,8 @@ export function updateInlinePumps() {
       // pipes are conduits; pump pulls conceptually from its network
       srcAmount = 10; srcType = inNbr.fluidType;
     }
-    if (!srcType || srcAmount <= 0) continue;
+    if (!srcType || srcAmount <= 0) { tw.fluidType = null; continue; }
+    tw.fluidType = srcType;
 
     const rate = TD.inline_pump?.fluidRate || 0.2;
     // Push to tank or pipe on output side

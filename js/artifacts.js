@@ -58,7 +58,7 @@ export const ARTIFACTS = [
     flavor: '"It\'s a pause."',
     cost: 0,
     active: true,
-    cooldownWaves: 8,
+    cooldownWaves: 3,
     pipShop: false,
   },
   {
