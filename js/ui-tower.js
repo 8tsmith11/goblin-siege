@@ -21,7 +21,7 @@ import { showTowerSkill } from './skills.js';
 import { sfxPlace } from './audio.js';
 import { RECIPES, removeAugment } from './craft.js';
 import { getFeedLog, FEED_TYPES } from './feed.js';
-import { dropItem, RTYPES, getItemDef, _itemRegistry } from './resources.js';
+import { dropItem, RTYPES, resIconHtml, getItemDef, _itemRegistry } from './resources.js';
 import { hudU, panelU, hideTT, hideTdesc, showOv, hideOv, showBanner, syncPause } from './ui.js';
 import { addToInventory, openInventoryForAugment } from './ui-inventory.js';
 import { showResearch } from './ui-research.js';
@@ -295,7 +295,7 @@ export function showTT(tw, px, py) {
       let costStr = '💰' + upg.c;
       for (const [r, n] of Object.entries(upg.rs)) {
         if ((state.resources[r] || 0) < n) afford = false;
-        costStr += ' ' + (RTYPES[r]?.icon || r) + n;
+        costStr += ' ' + (RTYPES[r] ? resIconHtml(r) : r) + n;
       }
       const nextHl = HOARD_LEVELS[tw.level + 1];
       addTTB(a, `⬆ ${costStr} → cap${nextHl.cap} ${nextHl.m.toFixed(1)}x`, 'ttu', afford, () => {
@@ -429,7 +429,9 @@ export function showTT(tw, px, py) {
   if (tw.type === 'butcher') {
     const infoDiv = document.createElement('div');
     infoDiv.style.cssText = 'width:100%;font-size:10px;color:#94a3b8;margin-bottom:4px';
-    infoDiv.innerHTML = '🔪 Blades: <b>' + (tw.blades || 3) + '</b>  🔧 Gear ratio: <b>' + (tw.gearRatio || 2) + '</b><br>⚡ Spin: <b>' + ((tw.spinRate || 0).toFixed(3)) + '</b> rad/tick';
+    const _spinCap = tw.hasGearTrain ? 0.22 : 0.15;
+    const _torqUsed = tw.spinRate > 0 ? Math.round((tw.spinRate / (0.08 * (tw.gearRatio || 2))) * 10) : 0;
+    infoDiv.innerHTML = '🔪 Blades: <b>' + (tw.blades || 3) + '</b>  🔧 Gear ratio: <b>' + (tw.gearRatio || 2) + '</b><br>⚡ Spin: <b>' + ((tw.spinRate || 0).toFixed(3)) + '</b>/<b>' + _spinCap.toFixed(3) + '</b>  ⚙️ Torque draw: <b>' + _torqUsed + '</b>';
     a.appendChild(infoDiv);
     // Gear ratio controls
     const gearRow = document.createElement('div');

@@ -246,6 +246,22 @@
       "x": 480,
       "y": 1200
     },
+    "blade_works": {
+      "name": "Blade Works",
+      "icon": "🔪",
+      "cost": {
+        "dust": 30
+      },
+      "waves": 3,
+      "unlocks": "butcher",
+      "prereqs": [
+        "the_forge"
+      ],
+      "desc": "Forges spinning blade assemblies from iron.",
+      "tooltip": "Unlocks the Inhumane Wheel — a torque-powered spinning blade support.",
+      "x": 360,
+      "y": 1200
+    },
     "automation": {
       "name": "AI Automation",
       "icon": "🤖",

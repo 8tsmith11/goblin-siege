@@ -302,9 +302,13 @@ export function applyUnlock(node) {
       state.researchUnlocks.dust_courier = true;
       break;
     }
+    case 'butcher': {
+      state.unlockedTowers?.add('butcher');
+      break;
+    }
     case 'steam_age': {
       state.age = 'steam';
-      for (const k of ['furnace','water_pump','pipe','steam_boiler','steam_engine','pulley','belt','butcher','tank','inline_pump']) state.unlockedTowers?.add(k);
+      for (const k of ['furnace','water_pump','pipe','steam_boiler','steam_engine','pulley','belt','tank','inline_pump']) state.unlockedTowers?.add(k);
       import('./feed.js').then(m => m.addFeed('obs', '🔥 The Forge burns. Steam Age has begun.'));
       import('./resources.js').then(m => m.spawnIronOreNode());
       state.forgeAnnounce = { tick: state.ticks };

@@ -1,6 +1,6 @@
 'use strict';
 import { state } from './main.js';
-import { RTYPES } from './resources.js';
+import { RTYPES, resIconHtml } from './resources.js';
 import { RECIPES, cancelCraft, selectRecipe } from './craft.js';
 import { hudU, syncPause } from './ui.js';
 
@@ -32,7 +32,7 @@ export function renderCraftPanel() {
     lbl.dataset.wbRes = k;
     lbl.dataset.twX = tw.x;
     lbl.dataset.twY = tw.y;
-    lbl.textContent = rt.icon + ' ' + (inv[k] || 0);
+    lbl.innerHTML = resIconHtml(k) + ' ' + (inv[k] || 0);
     wrap.appendChild(lbl);
     const have = state.resources[k] || 0;
     if (have > 0) {
@@ -96,7 +96,7 @@ export function renderCraftPanel() {
     div.className = 'craft-recipe' + (isSelected ? ' craft-recipe-selected' : '');
     const costParts = Object.entries(recipe.cost).map(([r, n]) => {
       const rt = RTYPES[r];
-      return `${rt ? rt.icon : r}×${n}`;
+      return `${rt ? resIconHtml(r) : r}×${n}`;
     }).join('  ');
     div.innerHTML = `
       <div class="craft-recipe-icon">${recipe.icon}</div>

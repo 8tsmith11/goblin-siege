@@ -423,7 +423,7 @@ function update() {
     if (progress >= 1.5) gw.active = false;
   }
   // Knowing bloom growth from activated gems
-  if (state.ticks % 1800 === 1) {
+  if (state.ticks % 3600 === 1) {
     for (const tw of state.towers) {
       if (tw.type !== 'resonating_gem' || !tw._activated) continue;
       const candidates = [];

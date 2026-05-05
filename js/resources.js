@@ -208,6 +208,14 @@ export function patchIronIcons() {
   RTYPES.iron_ingot.icon = getResourceIconDataUrl('iron_ingot', 20);
 }
 
+// Returns safe HTML for a resource icon — wraps data-URL icons in <img>, passes emoji through
+export function resIconHtml(key, size = 20) {
+  const icon = RTYPES[key]?.icon || '';
+  return icon.startsWith('data:')
+    ? `<img src="${icon}" style="width:${size}px;height:${size}px;vertical-align:middle;image-rendering:pixelated">`
+    : icon;
+}
+
 export function renderNodes() {
   const { cx, nodes, CELL } = state;
   if (!nodes.length) return;

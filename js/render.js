@@ -386,12 +386,22 @@ export function render() {
     if (tw.type === 'pipe') {
       const px2 = tw.x * CELL, py2 = tw.y * CELL;
       const pcx = px2 + CELL / 2, pcy = py2 + CELL / 2;
-      const _pFT = new Set(['pipe','water_pump','steam_boiler','tank','inline_pump']);
+      const _pFT = new Set(['pipe','water_pump','steam_boiler','tank','inline_pump','steam_engine']);
+      const myFluid = tw.fluidType || null;
+      // Pipes of different (non-null) fluid types don't connect visually
+      function _pipeConnects(nbr) {
+        if (!nbr || !_pFT.has(nbr.type)) return false;
+        if (nbr.type === 'pipe') {
+          const nf = nbr.fluidType || null;
+          if (myFluid && nf && myFluid !== nf) return false;
+        }
+        return true;
+      }
       const conn = {
-        N: _pFT.has(getCell(tw.x, tw.y - 1)?.content?.type),
-        S: _pFT.has(getCell(tw.x, tw.y + 1)?.content?.type),
-        E: _pFT.has(getCell(tw.x + 1, tw.y)?.content?.type),
-        W: _pFT.has(getCell(tw.x - 1, tw.y)?.content?.type),
+        N: _pipeConnects(getCell(tw.x, tw.y - 1)?.content),
+        S: _pipeConnects(getCell(tw.x, tw.y + 1)?.content),
+        E: _pipeConnects(getCell(tw.x + 1, tw.y)?.content),
+        W: _pipeConnects(getCell(tw.x - 1, tw.y)?.content),
       };
       const anyConn = conn.N || conn.S || conn.E || conn.W;
       const fluidType = tw.fluidType;
@@ -478,31 +488,66 @@ export function render() {
     if (tw.type === 'butcher') {
       const tx2 = tw.x * CELL, ty2 = tw.y * CELL;
       const pcx = tx2 + CELL / 2, pcy = ty2 + CELL / 2;
+      const spinning = tw.spinRate > 0;
       cx.save();
-      cx.fillStyle = tw.spinRate > 0 ? '#1a0505' : '#111';
+      cx.fillStyle = spinning ? '#1a0505' : '#111';
       cx.fillRect(tx2 + 2, ty2 + 2, CELL - 4, CELL - 4);
-      cx.strokeStyle = tw.spinRate > 0 ? '#ef4444' : '#555'; cx.lineWidth = 1.5;
+      cx.strokeStyle = spinning ? '#ef4444' : '#555'; cx.lineWidth = 1.5;
       cx.strokeRect(tx2 + 2, ty2 + 2, CELL - 4, CELL - 4);
       const blades = tw.blades || 3;
-      const reach = (tw.range || tw.bladeLen || 0.58) * CELL;
+      // Mastery: blades grow with spin
+      const spinFrac = tw._masteryButcher ? Math.min(1, (tw.spinRate || 0) / 0.15) : 1;
+      const baseReach = (tw.range || 1.2) * CELL;
+      const reach = tw._masteryButcher ? baseReach * (0.85 + 0.35 * spinFrac) : baseReach;
       const rot = tw.rotation || 0;
       // Blade range circle (faint)
       cx.beginPath(); cx.arc(pcx, pcy, reach, 0, Math.PI * 2);
       cx.strokeStyle = 'rgba(239,68,68,0.15)'; cx.lineWidth = 1; cx.stroke();
-      // Blades
+      // Blades — proper blade shape: wide base tapering to sharp point
       for (let i = 0; i < blades; i++) {
         const a = rot + (i / blades) * Math.PI * 2;
         cx.save();
         cx.translate(pcx, pcy); cx.rotate(a);
-        cx.fillStyle = tw.spinRate > 0 ? '#f87171' : '#6b7280';
+        // Blade body
+        cx.fillStyle = spinning ? '#f87171' : '#6b7280';
         cx.beginPath();
-        cx.moveTo(0, -2.5); cx.lineTo(reach, -2); cx.lineTo(reach, 2); cx.lineTo(0, 2.5);
+        cx.moveTo(4, -4);           // base wide
+        cx.lineTo(reach * 0.55, -3.5);
+        cx.quadraticCurveTo(reach * 0.82, -2.8, reach, 0); // curved edge to tip
+        cx.quadraticCurveTo(reach * 0.82, 1.5, reach * 0.55, 1.8);
+        cx.lineTo(4, 2.5);           // base narrow back
+        cx.closePath(); cx.fill();
+        // Edge highlight
+        if (spinning) {
+          cx.strokeStyle = '#fca5a5'; cx.lineWidth = 0.8;
+          cx.beginPath();
+          cx.moveTo(4, -4);
+          cx.lineTo(reach * 0.55, -3.5);
+          cx.quadraticCurveTo(reach * 0.82, -2.8, reach, 0);
+          cx.stroke();
+        }
+        cx.restore();
+      }
+      // Gear Train visual
+      if (tw.hasGearTrain) {
+        const gR = CELL * 0.13;
+        const teeth = 8;
+        cx.save(); cx.translate(pcx, pcy); cx.rotate(rot * 1.5);
+        cx.fillStyle = spinning ? '#fbbf24' : '#78716c';
+        cx.beginPath();
+        for (let i = 0; i < teeth * 2; i++) {
+          const ta = (i / (teeth * 2)) * Math.PI * 2;
+          const tr = i % 2 === 0 ? gR * 1.35 : gR;
+          i === 0 ? cx.moveTo(Math.cos(ta) * tr, Math.sin(ta) * tr) : cx.lineTo(Math.cos(ta) * tr, Math.sin(ta) * tr);
+        }
         cx.closePath(); cx.fill();
         cx.restore();
       }
-      // Axle
-      cx.beginPath(); cx.arc(pcx, pcy, CELL * 0.1, 0, Math.PI * 2);
-      cx.fillStyle = '#374151'; cx.fill();
+      // Axle hub
+      cx.beginPath(); cx.arc(pcx, pcy, CELL * 0.11, 0, Math.PI * 2);
+      cx.fillStyle = '#1f2937'; cx.fill();
+      cx.strokeStyle = spinning ? '#f97316' : '#6b7280'; cx.lineWidth = 1.5;
+      cx.beginPath(); cx.arc(pcx, pcy, CELL * 0.11, 0, Math.PI * 2); cx.stroke();
       cx.restore();
       return;
     }
@@ -536,37 +581,51 @@ export function render() {
       return;
     }
 
-    // Inline pump: pipe-style with valve symbol
+    // Inline pump: directional pipe — two arms (input→output) with arrow hub
     if (tw.type === 'inline_pump') {
       const tx2 = tw.x * CELL, ty2 = tw.y * CELL;
       const pcx = tx2 + CELL / 2, pcy = ty2 + CELL / 2;
-      const _ipFT = new Set(['pipe','water_pump','steam_boiler','tank','inline_pump']);
-      const conn = {
-        N: _ipFT.has(getCell(tw.x, tw.y - 1)?.content?.type),
-        S: _ipFT.has(getCell(tw.x, tw.y + 1)?.content?.type),
-        E: _ipFT.has(getCell(tw.x + 1, tw.y)?.content?.type),
-        W: _ipFT.has(getCell(tw.x - 1, tw.y)?.content?.type),
-      };
-      const anyConn = conn.N || conn.S || conn.E || conn.W;
+      const inSide  = tw.inputSide  || 'W';
+      const outSide = tw.outputSide || 'E';
+      const _SD = { N:[0,-1], S:[0,1], E:[1,0], W:[-1,0] };
+      const [idx, idy] = _SD[inSide];
+      const [odx, ody] = _SD[outSide];
+      const armW = CELL * 0.26, halfArm = armW / 2;
       const pipeClr = '#4b5563';
-      const armW = CELL * 0.26;
+      const hubClr  = '#1e3a5f';
       cx.save();
       cx.fillStyle = pipeClr;
-      if (!anyConn || conn.N) cx.fillRect(pcx - armW/2, ty2, armW, CELL / 2);
-      if (!anyConn || conn.S) cx.fillRect(pcx - armW/2, pcy, armW, CELL / 2);
-      if (!anyConn || conn.E) cx.fillRect(pcx, pcy - armW/2, CELL / 2, armW);
-      if (!anyConn || conn.W) cx.fillRect(tx2, pcy - armW/2, CELL / 2, armW);
+      // Input arm
+      if (idx === -1) cx.fillRect(tx2, pcy - halfArm, CELL / 2, armW);
+      else if (idx === 1) cx.fillRect(pcx, pcy - halfArm, CELL / 2, armW);
+      else if (idy === -1) cx.fillRect(pcx - halfArm, ty2, armW, CELL / 2);
+      else cx.fillRect(pcx - halfArm, pcy, armW, CELL / 2);
+      // Output arm
+      if (odx === -1) cx.fillRect(tx2, pcy - halfArm, CELL / 2, armW);
+      else if (odx === 1) cx.fillRect(pcx, pcy - halfArm, CELL / 2, armW);
+      else if (ody === -1) cx.fillRect(pcx - halfArm, ty2, armW, CELL / 2);
+      else cx.fillRect(pcx - halfArm, pcy, armW, CELL / 2);
       // Hub
       const hubR = CELL * 0.22;
       cx.beginPath(); cx.arc(pcx, pcy, hubR, 0, Math.PI * 2);
-      cx.fillStyle = '#374151'; cx.fill();
-      // Valve symbol (X with circle)
-      cx.strokeStyle = '#9ca3af'; cx.lineWidth = 1.5;
-      cx.beginPath(); cx.arc(pcx, pcy, hubR * 0.7, 0, Math.PI * 2); cx.stroke();
+      cx.fillStyle = hubClr; cx.fill();
+      cx.strokeStyle = '#3b82f6'; cx.lineWidth = 1.5;
+      cx.beginPath(); cx.arc(pcx, pcy, hubR, 0, Math.PI * 2); cx.stroke();
+      // Arrow pointing from input side → output side
+      const arrowAngle = Math.atan2(ody, odx);
+      const aLen = hubR * 0.6, aHead = hubR * 0.38;
+      const ax1 = pcx + Math.cos(arrowAngle + Math.PI) * aLen * 0.6;
+      const ay1 = pcy + Math.sin(arrowAngle + Math.PI) * aLen * 0.6;
+      const ax2 = pcx + Math.cos(arrowAngle) * aLen;
+      const ay2 = pcy + Math.sin(arrowAngle) * aLen;
+      cx.strokeStyle = '#60a5fa'; cx.lineWidth = 2;
+      cx.beginPath(); cx.moveTo(ax1, ay1); cx.lineTo(ax2, ay2); cx.stroke();
+      cx.fillStyle = '#60a5fa';
       cx.beginPath();
-      cx.moveTo(pcx - hubR*0.5, pcy - hubR*0.5); cx.lineTo(pcx + hubR*0.5, pcy + hubR*0.5);
-      cx.moveTo(pcx + hubR*0.5, pcy - hubR*0.5); cx.lineTo(pcx - hubR*0.5, pcy + hubR*0.5);
-      cx.stroke();
+      cx.moveTo(ax2 + Math.cos(arrowAngle) * aHead, ay2 + Math.sin(arrowAngle) * aHead);
+      cx.lineTo(ax2 + Math.cos(arrowAngle + 2.4) * aHead * 0.7, ay2 + Math.sin(arrowAngle + 2.4) * aHead * 0.7);
+      cx.lineTo(ax2 + Math.cos(arrowAngle - 2.4) * aHead * 0.7, ay2 + Math.sin(arrowAngle - 2.4) * aHead * 0.7);
+      cx.closePath(); cx.fill();
       cx.restore();
       return;
     }
@@ -724,29 +783,51 @@ export function render() {
 
   // Belt rendering — drawn after towers so belts appear on top
   if (state.belts?.length) {
-    const pulleyR = CELL * 0.32; // visual radius of pulley wheel
+    const pulleyR = CELL * 0.32;
     for (const b of state.belts) {
       const x1 = b.fromX * CELL + CELL / 2, y1 = b.fromY * CELL + CELL / 2;
       const x2 = b.toX   * CELL + CELL / 2, y2 = b.toY   * CELL + CELL / 2;
       const angle = Math.atan2(y2 - y1, x2 - x1);
       const perp = angle + Math.PI / 2;
       const dx = Math.cos(perp) * pulleyR, dy = Math.sin(perp) * pulleyR;
-      // Two parallel lines (top and bottom of belt)
-      cx.strokeStyle = '#44403c'; cx.lineWidth = 3; cx.globalAlpha = 0.9;
-      cx.beginPath(); cx.moveTo(x1 + dx, y1 + dy); cx.lineTo(x2 + dx, y2 + dy); cx.stroke();
-      cx.beginPath(); cx.moveTo(x1 - dx, y1 - dy); cx.lineTo(x2 - dx, y2 - dy); cx.stroke();
-      cx.globalAlpha = 1;
-      // Moving marker dots along belt
-      const dist = Math.hypot(x2 - x1, y2 - y1);
-      const phase = (state._torquePhase || 0) * 0.04; // speed from torque
-      const step = 24;
-      for (let t = (phase % step) / dist; t < 1; t += step / dist) {
-        const mx = x1 + (x2 - x1) * t, my = y1 + (y2 - y1) * t;
-        cx.beginPath(); cx.arc(mx, my, 2.5, 0, Math.PI * 2);
-        cx.fillStyle = '#a8a29e'; cx.fill();
+
+      // Torque-scaled dot speed: look up pulley torque at belt endpoints
+      const p1tw = getCell(b.fromX, b.fromY)?.content;
+      const p2tw = getCell(b.toX,   b.toY  )?.content;
+      const effectiveTorque = Math.max(p1tw?.torque || 0, p2tw?.torque || 0);
+      const beltSpeed = effectiveTorque > 0 ? (effectiveTorque / 10) * 0.05 : 0;
+      const beltPhase = (state._torquePhase || 0) * beltSpeed;
+
+      cx.save();
+      cx.globalAlpha = 0.9;
+      cx.strokeStyle = '#44403c'; cx.lineWidth = 3;
+
+      // Draw belt as a closed loop: two straight strips + wrap arcs at each pulley
+      cx.beginPath();
+      cx.moveTo(x1 + dx, y1 + dy);
+      cx.lineTo(x2 + dx, y2 + dy);
+      // Wrap arc at pulley B (far side away from A = clockwise from perp to -perp)
+      cx.arc(x2, y2, pulleyR, perp, perp - Math.PI, false);
+      cx.lineTo(x1 - dx, y1 - dy);
+      // Wrap arc at pulley A (far side away from B = counterclockwise from -perp to perp)
+      cx.arc(x1, y1, pulleyR, perp - Math.PI, perp, false);
+      cx.closePath();
+      cx.stroke();
+
+      // Moving rivets on top and bottom strips
+      if (beltSpeed > 0) {
+        const dist = Math.hypot(x2 - x1, y2 - y1);
+        const step = 22;
+        cx.fillStyle = '#a8a29e';
+        for (let t = (beltPhase % step) / dist; t < 1; t += step / dist) {
+          const bx = x1 + (x2 - x1) * t, by = y1 + (y2 - y1) * t;
+          cx.beginPath(); cx.arc(bx + dx, by + dy, 2, 0, Math.PI * 2); cx.fill();
+          cx.beginPath(); cx.arc(bx - dx, by - dy, 2, 0, Math.PI * 2); cx.fill();
+        }
       }
+      cx.restore();
     }
-    // Belt placement preview — show line from first pulley to mouse
+    // Belt placement preview
     if (state._beltStart) {
       const sx = state._beltStart.x * CELL + CELL / 2, sy = state._beltStart.y * CELL + CELL / 2;
       const mx = (state._mouseWorldX || sx), my = (state._mouseWorldY || sy);

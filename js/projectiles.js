@@ -1,4 +1,4 @@
-import { state } from './main.js';
+import { state, _ΨΔ } from './main.js';
 import { sfxHit } from './audio.js';
 import { mkF } from './ui.js';
 import { getP, freeProj, getBeam } from './pool.js';
@@ -54,7 +54,7 @@ export function updateProjectiles() {
         if (p.stun > 0 && !e.boss) e.stunned = Math.max(e.stunned, p.stun);
         if (p.blind) e.slow = Math.max(e.slow, 0.5);
         if (p.poison) e.poison = { dmg: p.poison.dmg, dur: p.poison.dur };
-        if (p.bloodlust && e.hp <= 0) state.lives = Math.min(state.maxLives || 3, state.lives + 1);
+        if (p.bloodlust && e.hp <= 0) _ΨΔ(() => { state.lives = Math.min(state.maxLives || 30, state.lives + 1); });
         p.hits.push(e);
         p.pierce--;
         for (let j = 0; j < 3; j++) {
@@ -142,7 +142,7 @@ export function updateProjectiles() {
         np.life = 10; np.clr = p.clr; np.sz = 2;
         particles.push(np);
       }
-      if (p.bloodlust && p.tgt.hp <= 0) state.lives = Math.min(state.maxLives || 3, state.lives + 1);
+      if (p.bloodlust && p.tgt.hp <= 0) _ΨΔ(() => { state.lives = Math.min(state.maxLives || 30, state.lives + 1); });
       if (p._beeHive && p.tgt.hp <= 0 && !(p._beeHive._beeFrenzyEnd > state.ticks)) p._beeHive._beeFrenzyEnd = (state.ticks || 0) + 120;
       freeProj(p); projectiles.splice(i, 1);
     } else {

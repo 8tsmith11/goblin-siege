@@ -1,6 +1,6 @@
 'use strict';
 import { state, startGame, startWave, startPrep, resetGame, _ΨΔ } from './main.js';
-import { RTYPES, BASE_RESOURCES, getResourceIconDataUrl } from './resources.js';
+import { RTYPES, BASE_RESOURCES, getResourceIconDataUrl, resIconHtml } from './resources.js';
 import { TD, ETYPES } from './data.js';
 import { SP, castSpell } from './spells.js';
 import { renderSk } from './skills.js';
@@ -68,7 +68,7 @@ export function hudU() {
       hRes.innerHTML = rtKeys.map(k => {
         const r = RTYPES[k];
         const iconHtml = (k === 'iron_ore' || k === 'iron_ingot')
-          ? `<img src="${getResourceIconDataUrl(k, 28)}" style="width:28px;height:28px;vertical-align:middle;image-rendering:pixelated">`
+          ? `<img src="${getResourceIconDataUrl(k, 36)}" style="width:36px;height:36px;vertical-align:middle;image-rendering:pixelated">`
           : r.icon;
         return `<div class="hi" data-res="${k}">${iconHtml}<span class="v" style="color:${r.clr}">${state.resources[k] || 0}</span></div>`;
       }).join('');
@@ -170,7 +170,7 @@ function showTdesc(key, btnEl) {
       if (isAgeLocked) { name = '???'; desc = 'This building requires a future age.'; }
       catCls = d.cat === 'tower' ? 'offense' : d.cat;
       catLabel = d.cat === 'support' ? 'Support' : 'Offense';
-      costVal = '💰' + d.cost + (d.resCost ? ' + Mats' : '');
+      costVal = (d.cost > 0 ? '💰' + d.cost : '') + (d.resCost ? (d.cost > 0 ? ' + Mats' : 'Mats') : '');
       if (!isAgeLocked && d.cat === 'tower') {
         stats = `DMG ${d.dmg} · RNG ${d.range} · CD ${d.rate}`;
         if (d.slow) stats += ` · Slow ${Math.floor(d.slow * 100)}%`;
@@ -235,11 +235,11 @@ export function panelU() {
       }
       const isAgeLocked = d.reqAge && state.age !== d.reqAge && state.age === 'stone';
       let afford = gold >= d.cost;
-      let costStr = '💰' + d.cost;
+      let costStr = d.cost > 0 ? '💰' + d.cost : '';
       if (d.resCost) {
         for (const [res, amt] of Object.entries(d.resCost)) {
           if ((state.resources[res] || 0) < amt) afford = false;
-          costStr += ' ' + (RTYPES[res]?.icon || '') + amt;
+          costStr += ' ' + resIconHtml(res) + amt;
         }
       }
       const el = mkIB(d.icon, isAgeLocked ? '???' : d.name, costStr, !isAgeLocked && afford, state.sel?.key === k, () => {

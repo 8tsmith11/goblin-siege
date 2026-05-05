@@ -302,7 +302,7 @@ export function updateSpiderMother() {
 }
 
 // ─── Fluid system ─────────────────────────────────────────────────────────────
-const _FLUID_TYPES = new Set(['water_pump','pipe','steam_boiler']);
+const _FLUID_TYPES = new Set(['water_pump','pipe','steam_boiler','tank','inline_pump','steam_engine']);
 const _SIDE_D = { N:[0,-1], S:[0,1], E:[1,0], W:[-1,0] };
 
 function _fluidNeighbors(tw) {
@@ -325,7 +325,8 @@ function _findContainers(start) {
       if (visited.has(nbr)) continue;
       visited.add(nbr);
       if (nbr.type === 'pipe') {
-        queue.push(nbr);
+        // Don't cross steam pipes with water BFS
+        if (!nbr.fluidType || nbr.fluidType === 'water') queue.push(nbr);
       } else {
         containers.push(nbr);
       }
@@ -346,7 +347,7 @@ export function updateFluids() {
 
     // Find all containers connected via pipes; push water to equalize
     const { visited, containers } = _findContainers(tw);
-    // Mark pipes as water-typed
+    // Mark empty pipes as water-typed (don't overwrite steam pipes)
     for (const p of visited) {
       if (p.type === 'pipe' && !p.fluidType) p.fluidType = 'water';
     }
@@ -365,33 +366,34 @@ export function updateFluids() {
     }
   }
 
-  // Step 2: Steam boiler — consume water + wood → steam, equalize steam with output pipes
+  // Step 2: Steam boiler — consume water + wood → steam, flood steam to ALL adjacent pipes
   for (const tw of towers) {
     if (tw.type !== 'steam_boiler') continue;
     if (!tw.waterFluid) tw.waterFluid = { type: 'water', amount: 0 };
     if (!tw.steamFluid) tw.steamFluid = { type: 'steam', amount: 0 };
     if (!tw.woodStock) tw.woodStock = 0;
-    // Convert water + wood → steam
+    // Convert water + wood → steam (improved rates: 0.03 steam/tick, 2 boilers sustain 1 engine)
     if (tw.waterFluid.amount > 0.1 && tw.woodStock > 0) {
       const rate = 0.02;
       tw.waterFluid.amount = Math.max(0, tw.waterFluid.amount - rate);
-      tw.woodStock = Math.max(0, tw.woodStock - rate * 0.5);
-      tw.steamFluid.amount = Math.min(10, tw.steamFluid.amount + rate * 0.8);
+      tw.woodStock = Math.max(0, tw.woodStock - rate * 0.75);
+      tw.steamFluid.amount = Math.min(10, tw.steamFluid.amount + rate * 1.5);
     }
-    // Push steam into connected output pipes (mark them steam-typed)
+    // Push steam into ALL adjacent pipes (boiler connects in all directions)
     if (tw.steamFluid.amount > 0) {
-      const outputSide = tw.outputSide || 'E';
-      const [odx, ody] = _SIDE_D[outputSide];
-      const outNbr = getCell(tw.x + odx, tw.y + ody)?.content;
-      if (outNbr?.type === 'pipe') {
-        outNbr.fluidType = 'steam';
-        // BFS to mark all connected pipes
-        const q = [outNbr]; const vs = new Set([outNbr]);
-        while (q.length) {
-          const cur = q.shift();
-          cur.fluidType = 'steam';
-          for (const { tw: nbr } of _fluidNeighbors(cur)) {
-            if (nbr.type === 'pipe' && !vs.has(nbr)) { vs.add(nbr); q.push(nbr); }
+      for (const [, [dx, dy]] of Object.entries(_SIDE_D)) {
+        const outNbr = getCell(tw.x + dx, tw.y + dy)?.content;
+        if (outNbr?.type === 'pipe' && (!outNbr.fluidType || outNbr.fluidType === 'steam')) {
+          // BFS to mark all connected empty/steam pipes as steam
+          const q = [outNbr]; const vs = new Set([outNbr]);
+          while (q.length) {
+            const cur = q.shift();
+            cur.fluidType = 'steam';
+            for (const { tw: nbr } of _fluidNeighbors(cur)) {
+              if (nbr.type === 'pipe' && !vs.has(nbr) && (!nbr.fluidType || nbr.fluidType === 'steam')) {
+                vs.add(nbr); q.push(nbr);
+              }
+            }
           }
         }
       }
@@ -434,17 +436,41 @@ export function updateTorque() {
     if (tw.type === 'steam_engine') { tw.torqueActive = false; }
   }
 
-  // Each steam engine: consume steam from adjacent boiler, output torque
+  // Each steam engine: consume steam from adjacent boiler or steam pipe, output torque
   for (const tw of towers) {
     if (tw.type !== 'steam_engine') continue;
-    // Find adjacent boiler with steam
+    const steamRate = TD.steam_engine?.steamRate || 0.04;
     let steamSrc = null;
+    // Check adjacent boiler first (direct connection)
     for (const [, [dx, dy]] of Object.entries(_SIDE_D)) {
       const nbr = getCell(tw.x + dx, tw.y + dy)?.content;
-      if (nbr?.type === 'steam_boiler' && (nbr.steamFluid?.amount || 0) > 0) { steamSrc = nbr; break; }
+      if (nbr?.type === 'steam_boiler' && (nbr.steamFluid?.amount || 0) >= steamRate) { steamSrc = nbr; break; }
     }
-    if (steamSrc && steamSrc.steamFluid.amount >= (TD.steam_engine?.steamRate || 0.04)) {
-      steamSrc.steamFluid.amount = Math.max(0, steamSrc.steamFluid.amount - (TD.steam_engine?.steamRate || 0.04));
+    // Also accept steam from adjacent pipes — BFS back to find a boiler to deduct from
+    if (!steamSrc) {
+      for (const [, [dx, dy]] of Object.entries(_SIDE_D)) {
+        const nbr = getCell(tw.x + dx, tw.y + dy)?.content;
+        if (nbr?.type === 'pipe' && nbr.fluidType === 'steam') {
+          // BFS through steam pipes to find a boiler with enough steam
+          const visited = new Set([nbr]);
+          const q = [nbr];
+          while (q.length && !steamSrc) {
+            const cur = q.shift();
+            for (const { tw: pnbr } of _fluidNeighbors(cur)) {
+              if (visited.has(pnbr)) continue;
+              visited.add(pnbr);
+              if (pnbr.type === 'steam_boiler' && (pnbr.steamFluid?.amount || 0) >= steamRate) {
+                steamSrc = pnbr; break;
+              }
+              if (pnbr.type === 'pipe' && pnbr.fluidType === 'steam') q.push(pnbr);
+            }
+          }
+          if (steamSrc) break;
+        }
+      }
+    }
+    if (steamSrc) {
+      steamSrc.steamFluid.amount = Math.max(0, steamSrc.steamFluid.amount - steamRate);
       tw.torqueActive = true;
     }
   }
@@ -514,7 +540,8 @@ export function updateTorque() {
       if (nbr?.type === 'pulley' && nbr.torque > 0) { available = nbr.torque; break; }
     }
 
-    const spinRate = available > 0 ? Math.min(0.15, (available / 10) * 0.08 * tw.gearRatio) : 0;
+    const spinCap = tw.hasGearTrain ? 0.22 : 0.15;
+    const spinRate = available > 0 ? Math.min(spinCap, (available / 10) * 0.08 * tw.gearRatio) : 0;
     tw.spinRate = spinRate;
     tw.rotation = (tw.rotation + spinRate) % (Math.PI * 2);
 

@@ -103,6 +103,38 @@ function handleGroundLoot(c) {
 }
 
 function tryPlaceTower(c, ex) {
+  // Belt placement must run first: target cells have existing towers (pulleys), so ex is truthy
+  if (state.sel?.key === 'belt') {
+    const target = getCell(c.x, c.y)?.content;
+    if (!target || target.type !== 'pulley') { showTip('Click a pulley to start a belt'); return; }
+    if (!state._beltStart) {
+      state._beltStart = { x: target.x, y: target.y };
+      showTip('Now click a second pulley');
+      return;
+    }
+    if (state._beltStart.x === target.x && state._beltStart.y === target.y) {
+      state._beltStart = null; showTip('Same pulley — cancelled'); return;
+    }
+    const fromKey = state._beltStart.x + ',' + state._beltStart.y;
+    const toKey = target.x + ',' + target.y;
+    const fromCount = state.belts.filter(b => (b.fromX+','+b.fromY) === fromKey || (b.toX+','+b.toY) === fromKey).length;
+    const toCount   = state.belts.filter(b => (b.fromX+','+b.fromY) === toKey   || (b.toX+','+b.toY) === toKey).length;
+    if (fromCount >= 3 || toCount >= 3) { showTip('Max 3 belts per pulley'); state._beltStart = null; return; }
+    if (state.gold < state.sel.cost) { showTip('Not enough gold!'); return; }
+    if (state.sel.resCost) {
+      for (const [res, amt] of Object.entries(state.sel.resCost)) {
+        if ((state.resources[res] || 0) < amt) { showTip('Need ' + res); return; }
+      }
+      for (const [res, amt] of Object.entries(state.sel.resCost)) state.resources[res] -= amt;
+    }
+    _ΨΔ(() => { state.gold -= state.sel.cost; });
+    if (!state.belts) state.belts = [];
+    state.belts.push({ fromX: state._beltStart.x, fromY: state._beltStart.y, toX: target.x, toY: target.y });
+    state._beltStart = null;
+    sfxPlace(); panelU(); hudU();
+    return;
+  }
+
   if (ex || !canPlace(c.x, c.y, state.sel?.key)) {
     state.sel = null; hideTT(); state.ttTower = null; panelU();
     if (ex) { showTT(ex, c.px, c.py); }

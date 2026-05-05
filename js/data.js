@@ -95,6 +95,13 @@ export const TOWER_SKILLS = {
     D: { name:'Brood Guard',     icon:'🕷️', desc:'3 spiderlings orbit the tower · latch onto nearby enemies · deal damage until enemy escapes', excludes:'C', cost:{dust:40,gold:80}, owned:false, req:'any', apply:tw=>{ tw.orbitalBrood=true; if (!tw._orbits) tw._orbits=[]; } },
     E: { name:'Mastery: Silk Throne', icon:'🕸️', desc:'+2nd web 10s into wave · web tiles briefly stun · +25% all stats', cost:{dust:60}, owned:false, req:'either_cd', apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.25); tw.range=Math.round(tw.range*1.25*10)/10; tw.rate=Math.max(1,Math.round(tw.rate*0.8)); tw._mastery=true; tw._silkThrone=true; } },
   },
+  butcher: {
+    A: { name:'Extra Blade',          icon:'🔪', desc:'4 blades instead of 3 · more consistent hit coverage',                      excludes:'B', cost:{dust:20,gold:40}, owned:false,              apply:tw=>{ tw.blades=4; } },
+    B: { name:'Sharpened',            icon:'⚔️', desc:'+60% damage per hit',                                                         excludes:'A', cost:{dust:20,gold:40}, owned:false,              apply:tw=>{ tw.dmg=Math.round(tw.dmg*1.6); } },
+    C: { name:'Gear Train',           icon:'⚙️', desc:'Adds visible gear · 1.5× spin cap · gear ratio +1',                          excludes:'D', cost:{dust:40,gold:80}, owned:false, req:'any',   apply:tw=>{ tw.hasGearTrain=true; tw.gearRatio=Math.min(4,(tw.gearRatio||2)+1); } },
+    D: { name:'Extended Reach',       icon:'📏', desc:'+0.5 range · +25% damage',                                                    excludes:'C', cost:{dust:40,gold:80}, owned:false, req:'any',   apply:tw=>{ tw.range=(tw.range||1.2)+0.5; tw.dmg=Math.round(tw.dmg*1.25); } },
+    E: { name:'Mastery: Flesh Grinder', icon:'💀', desc:'5 blades · blades grow as spin increases · +30% damage',                    cost:{dust:60},          owned:false, req:'either_cd', apply:tw=>{ tw.blades=5; tw.dmg=Math.round(tw.dmg*1.3); tw._masteryButcher=true; } },
+  },
   beehive: {
     A: { name:'Swarm Tactics',      icon:'🐝', desc:'+1 bee',                                                  excludes:'B', cost:{dust:20,gold:40},  owned:false,            apply:tw=>{ tw.beeCount=(tw.beeCount||3)+1; } },
     B: { name:'Venom Sting',        icon:'☠️', desc:'Bees apply poison (3 dmg/tick for 90 ticks)',              excludes:'A', cost:{dust:20,gold:40},  owned:false,            apply:tw=>{ tw.beeVenom=true; } },
