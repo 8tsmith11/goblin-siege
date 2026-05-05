@@ -410,6 +410,13 @@ export function render() {
         W: _pipeConnects(getCell(tw.x - 1, tw.y)?.content, 'W'),
       };
       const anyConn = conn.N || conn.S || conn.E || conn.W;
+      // For isolated pipes (no connections), still suppress arms toward inline pump perpendicular sides
+      function _armOk(dir, dx, dy) {
+        const nbr = getCell(tw.x + dx, tw.y + dy)?.content;
+        if (!nbr || nbr.type !== 'inline_pump') return true;
+        const from = _revDir[dir];
+        return nbr.inputSide === from || nbr.outputSide === from;
+      }
       const fluidType = tw.fluidType;
       const fluidClr = fluidType === 'water' ? '#60a5fa' : fluidType === 'steam' ? '#f0f4ff' : '#444';
       const pipeClr = '#4b5563';
@@ -417,10 +424,10 @@ export function render() {
       cx.save();
       cx.fillStyle = pipeClr;
       // Arms extend from cell edge to center
-      if (!anyConn || conn.N) cx.fillRect(pcx - armW/2, py2, armW, CELL / 2);
-      if (!anyConn || conn.S) cx.fillRect(pcx - armW/2, pcy, armW, CELL / 2);
-      if (!anyConn || conn.E) cx.fillRect(pcx, pcy - armW/2, CELL / 2, armW);
-      if (!anyConn || conn.W) cx.fillRect(px2, pcy - armW/2, CELL / 2, armW);
+      if (conn.N || (!anyConn && _armOk('N', 0, -1))) cx.fillRect(pcx - armW/2, py2, armW, CELL / 2);
+      if (conn.S || (!anyConn && _armOk('S', 0,  1))) cx.fillRect(pcx - armW/2, pcy, armW, CELL / 2);
+      if (conn.E || (!anyConn && _armOk('E', 1,  0))) cx.fillRect(pcx, pcy - armW/2, CELL / 2, armW);
+      if (conn.W || (!anyConn && _armOk('W', -1, 0))) cx.fillRect(px2, pcy - armW/2, CELL / 2, armW);
       // Hub circle at center (drawn on top, covers arm overlap)
       const hubR = CELL * 0.17;
       cx.beginPath(); cx.arc(pcx, pcy, hubR, 0, Math.PI * 2);
