@@ -772,7 +772,7 @@ export function render() {
       const p1tw = getCell(b.fromX, b.fromY)?.content;
       const p2tw = getCell(b.toX,   b.toY  )?.content;
       const effectiveTorque = Math.max(p1tw?.torque || 0, p2tw?.torque || 0);
-      const beltSpeed = effectiveTorque > 0 ? (effectiveTorque / 10) * 0.05 * pulleyR : 0;
+      const beltSpeed = effectiveTorque > 0 ? 0.02 * pulleyR : 0;
       const beltPhase = (state._torquePhase || 0) * beltSpeed;
 
       cx.save();

@@ -26,7 +26,7 @@ export const TD = {
   steam_engine:  { name:'Steam Engine', icon:'⚙️', clr:'#f97316', cost:100, resCost:{stone:8,iron_ingot:4}, cat:'support', reqAge:'steam', steamRate:0.04, torqueOut:10, desc:'Consumes steam → produces torque for connected pulleys.' },
   pulley:        { name:'Pulley',       icon:'🔘', clr:'#9ca3af', cost:20,  resCost:{iron_ingot:2},          cat:'support', reqAge:'steam', desc:'Spinning wheel. Transmits torque via belts. Up to 3 belt connections.' },
   belt:          { name:'Belt',         icon:'〰️', clr:'#78716c', cost:0,   resCost:{iron_ingot:1},           cat:'support', reqAge:'steam', desc:'Connects two pulleys. Click first pulley, then second to place.' },
-  butcher:       { name:'Inhumane Wheel', icon:'🔪', clr:'#ef4444', cost:80, resCost:{iron_ingot:4},           cat:'support', reqAge:'steam', dmg:30, range:1.5, blades:3, bladeLen:0.58, gearRatio:2, desc:'Spinning blades powered by torque. Damages enemies in range.' },
+  butcher:       { name:'Inhumane Wheel', icon:'🔪', clr:'#ef4444', cost:80, resCost:{iron_ingot:4},           cat:'support', reqAge:'steam', dmg:90, range:1.5, blades:3, bladeLen:0.58, gearRatio:2, desc:'Spinning blades powered by torque. Damages enemies in range.' },
   tank:          { name:'Tank',         icon:'🪣', clr:'#475569', cost:60,  resCost:{stone:4,iron_ingot:2},   cat:'support', reqAge:'steam', fluidMax:40, desc:'Stores fluid. Has a window showing contents.' },
   inline_pump:   { name:'Inline Pump',  icon:'🔄', clr:'#3b82f6', cost:40,  resCost:{iron_ingot:2},           cat:'support', reqAge:'steam', fluidRate:0.2, desc:'Pumps fluid along pipes. Place in-line; configure input/output sides.' },
 };

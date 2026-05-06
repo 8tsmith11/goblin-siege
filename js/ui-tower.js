@@ -423,7 +423,7 @@ export function showTT(tw, px, py) {
   if (tw.type === 'pulley') {
     const infoDiv = document.createElement('div');
     infoDiv.style.cssText = 'width:100%;font-size:10px;color:#94a3b8;margin-bottom:4px';
-    infoDiv.innerHTML = '⚙️ Torque: <b>' + (tw.torque || 0) + '</b>  🔗 Network size: <b>' + (tw.torqueNetworkSize || 1) + '</b>';
+    infoDiv.innerHTML = '⚙️ Torque: <b>' + (tw._torqueUsed || 0) + '</b>/<b>' + (tw._torqueTotal || 0) + '</b> used  🔗 Network: <b>' + (tw.torqueNetworkSize || 1) + '</b> pulley' + ((tw.torqueNetworkSize || 1) > 1 ? 's' : '');
     a.appendChild(infoDiv);
   }
   if (tw.type === 'butcher') {

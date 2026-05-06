@@ -586,6 +586,8 @@ export function updateTorque() {
     for (const p of cluster) {
       p.torque = totalTorque;
       p.torqueNetworkSize = cluster.length;
+      p._torqueUsed = consumed;
+      p._torqueTotal = totalTorque;
     }
   }
 
@@ -598,9 +600,8 @@ export function updateTorque() {
     if (!tw.gearRatio) tw.gearRatio = TD.butcher.gearRatio;
 
     const available = tw._availTorque || 0;
-    const torqueCost = tw.gearRatio * _BASE_TORQUE_PER_GEAR;
-    // Speed scales directly with available torque — more engines = faster spin
-    const spinRate = available > 0 ? (available / torqueCost) * 0.08 * tw.gearRatio : 0;
+    // Fixed speed per gear ratio — more torque enables spinning, higher gear = faster
+    const spinRate = available > 0 ? tw.gearRatio * 0.025 : 0;
     tw.spinRate = spinRate;
     tw.rotation = (tw.rotation + spinRate) % (Math.PI * 2);
 
@@ -623,7 +624,7 @@ export function updateTorque() {
   for (const tw of towers) {
     if (tw.type === 'pulley') {
       if (!tw.rotation) tw.rotation = 0;
-      const spinRate = tw.torque > 0 ? (tw.torque / 10) * 0.05 : 0;
+      const spinRate = tw.torque > 0 ? 0.02 : 0;
       tw.rotation = (tw.rotation + spinRate) % (Math.PI * 2);
       tw.spinRate = spinRate;
     }
