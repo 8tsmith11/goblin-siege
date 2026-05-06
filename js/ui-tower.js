@@ -666,6 +666,7 @@ function doSell(tw, val) {
   const sc = getCell(tw.x, tw.y); sc.type = 'empty'; sc.content = null;
   state.towers = state.towers.filter(x => x !== tw);
   state.bees = state.bees.filter(b => b.hive !== tw);
+  if (tw.type === 'pulley') state.belts = (state.belts || []).filter(b => !(b.fromX === tw.x && b.fromY === tw.y) && !(b.toX === tw.x && b.toY === tw.y));
   _cleanupMonkeysForSoldTile(tw.x, tw.y);
   const _fluidTypes = new Set(['pipe','steam_boiler','steam_engine','inline_pump','tank','water_pump']);
   if (_fluidTypes.has(tw.type)) rebuildFluidConnections();

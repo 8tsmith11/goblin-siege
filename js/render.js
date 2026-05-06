@@ -489,6 +489,13 @@ export function render() {
           state.particles.push({ x: gearX + (Math.random() - 0.5) * CELL * 0.4, y: topY, vx: (Math.random() - 0.5) * 0.5, vy: -0.7 - Math.random() * 0.6, life: 28 + Math.floor(Math.random() * 10), clr: 'rgba(220,232,255,0.55)', sz: 3 + Math.random() * 2 });
         }
       }
+      // Steam buffer bar at bottom of cell
+      const steamAmt = Math.min(1, (tw._steamSource?.steamFluid?.amount || 0) / 10);
+      const barW = CELL - 10, barH = 4;
+      const barX = tx2 + 5, barY = ty2 + CELL - 7;
+      cx.fillStyle = '#222'; cx.fillRect(barX, barY, barW, barH);
+      cx.fillStyle = steamAmt > 0.5 ? '#93c5fd' : steamAmt > 0.2 ? '#60a5fa' : '#3b82f6';
+      cx.fillRect(barX, barY, barW * steamAmt, barH);
       cx.restore();
       return;
     }
@@ -784,15 +791,20 @@ export function render() {
       cx.closePath();
       cx.stroke();
 
-      // Moving dots along belt centerline showing belt motion
+      // Moving dots along belt edges (both straight sides), always visible
       const dist = Math.hypot(x2 - x1, y2 - y1);
-      if (beltSpeed > 0 && dist > 0) {
+      if (dist > 0) {
         const step = 14;
-        cx.fillStyle = '#78716c';
+        cx.fillStyle = '#a8a29e';
         const phaseOffset = (beltPhase % step) / dist;
-        for (let t = phaseOffset; t < 1; t += step / dist) {
-          const bx = x1 + (x2 - x1) * t, by = y1 + (y2 - y1) * t;
-          cx.beginPath(); cx.arc(bx, by, 2.5, 0, Math.PI * 2); cx.fill();
+        // Top side: x1+dx → x2+dx
+        for (let t = phaseOffset % (step / dist); t < 1; t += step / dist) {
+          cx.beginPath(); cx.arc(x1 + dx + (x2 - x1) * t, y1 + dy + (y2 - y1) * t, 2, 0, Math.PI * 2); cx.fill();
+        }
+        // Bottom side: x2-dx → x1-dx (opposite direction)
+        const revOffset = 1 - (phaseOffset % (step / dist)) - step / dist;
+        for (let t = ((revOffset % (step / dist)) + (step / dist)) % (step / dist); t < 1; t += step / dist) {
+          cx.beginPath(); cx.arc(x2 - dx + (x1 - x2) * t, y2 - dy + (y1 - y2) * t, 2, 0, Math.PI * 2); cx.fill();
         }
       }
       cx.restore();
