@@ -345,31 +345,43 @@ export function updateFluids() {
     tw.fluid.amount = Math.min(10, (tw.fluid.amount || 0) + (TD.water_pump?.fluidRate || 0.3));
     tw.fluid.type = 'water';
 
-    // Find all containers connected via pipes; push water to boilers only
+    // Find all containers connected via pipes; push water to boilers and tanks
     const { visited, containers } = _findContainers(tw);
-    // Mark empty pipes as water-typed (don't overwrite steam pipes)
-    for (const p of visited) {
-      if (p.type === 'pipe' && !p.fluidType) p.fluidType = 'water';
-    }
-    // Push water from pump to connected boilers proportionally by deficit
-    const boilers = containers.filter(c => c.type === 'steam_boiler');
-    if (boilers.length > 0 && tw.fluid.amount > 0) {
-      const boilerMax = 10;
-      const totalDeficit = boilers.reduce((s, b) => s + Math.max(0, boilerMax - (b.waterFluid?.amount || 0)), 0);
+    for (const p of visited) if (p.type === 'pipe' && !p.fluidType) p.fluidType = 'water';
+    const targets = containers.filter(c => c.type === 'steam_boiler' || c.type === 'tank');
+    if (targets.length > 0 && tw.fluid.amount > 0) {
+      const _wMax = t => t.type === 'tank' ? (t.fluidMax || 40) : 10;
+      const _wAmt = t => t.type === 'tank' ? (t.fluid?.amount || 0) : (t.waterFluid?.amount || 0);
+      const _wAdd = (t, v) => {
+        if (t.type === 'tank') { if (!t.fluid) t.fluid = { type:'water', amount:0 }; t.fluid.amount = Math.min(_wMax(t), t.fluid.amount + v); t.fluid.type = 'water'; }
+        else { if (!t.waterFluid) t.waterFluid = { type:'water', amount:0 }; t.waterFluid.amount = Math.min(_wMax(t), t.waterFluid.amount + v); }
+      };
+      const totalDeficit = targets.reduce((s, t) => s + Math.max(0, _wMax(t) - _wAmt(t)), 0);
       if (totalDeficit > 0) {
         const pushTotal = Math.min(tw.fluid.amount, totalDeficit);
-        for (const b of boilers) {
-          if (!b.waterFluid) b.waterFluid = { type: 'water', amount: 0 };
-          const deficit = Math.max(0, boilerMax - b.waterFluid.amount);
-          b.waterFluid.amount = Math.min(boilerMax, b.waterFluid.amount + pushTotal * (deficit / totalDeficit));
-        }
+        for (const t of targets) { const deficit = Math.max(0, _wMax(t) - _wAmt(t)); _wAdd(t, pushTotal * (deficit / totalDeficit)); }
         tw.fluid.amount = Math.max(0, tw.fluid.amount - pushTotal);
       }
-      // Equalize water among boilers only (not pump)
-      if (boilers.length > 1) {
-        const avg = boilers.reduce((s, b) => s + (b.waterFluid?.amount || 0), 0) / boilers.length;
-        for (const b of boilers) b.waterFluid.amount = avg;
+    }
+  }
+
+  // Step 1b: Tanks push water to connected boilers proportionally by deficit
+  for (const tw of towers) {
+    if (tw.type !== 'tank') continue;
+    if (!tw.fluid || tw.fluid.type !== 'water' || tw.fluid.amount <= 0) continue;
+    const { containers } = _findContainers(tw);
+    const boilers = containers.filter(c => c.type === 'steam_boiler');
+    if (boilers.length === 0) continue;
+    const boilerMax = 10;
+    const totalDeficit = boilers.reduce((s, b) => s + Math.max(0, boilerMax - (b.waterFluid?.amount || 0)), 0);
+    if (totalDeficit > 0) {
+      const pushTotal = Math.min(tw.fluid.amount, totalDeficit);
+      for (const b of boilers) {
+        if (!b.waterFluid) b.waterFluid = { type:'water', amount:0 };
+        const deficit = Math.max(0, boilerMax - b.waterFluid.amount);
+        b.waterFluid.amount = Math.min(boilerMax, b.waterFluid.amount + pushTotal * (deficit / totalDeficit));
       }
+      tw.fluid.amount = Math.max(0, tw.fluid.amount - pushTotal);
     }
   }
 
@@ -586,12 +598,9 @@ export function updateTorque() {
     if (!tw.gearRatio) tw.gearRatio = TD.butcher.gearRatio;
 
     const available = tw._availTorque || 0;
-    const spinCap = tw.hasGearTrain ? 0.22 : 0.15;
     const torqueCost = tw.gearRatio * _BASE_TORQUE_PER_GEAR;
-    // Higher gear ratio = faster spin when torque is available
-    const spinRate = available > 0
-      ? Math.min(spinCap, (available / torqueCost) * 0.08 * tw.gearRatio)
-      : 0;
+    // Speed scales directly with available torque — more engines = faster spin
+    const spinRate = available > 0 ? (available / torqueCost) * 0.08 * tw.gearRatio : 0;
     tw.spinRate = spinRate;
     tw.rotation = (tw.rotation + spinRate) % (Math.PI * 2);
 

@@ -1,7 +1,7 @@
 'use strict';
 import { state, _ΨΔ, clampCam, startPrep, getCell } from './main.js';
 import { TOWER_SKILLS } from './data.js';
-import { spawnBees } from './support.js';
+import { spawnBees, rebuildFluidConnections } from './support.js';
 import { hudU, panelU, showBanner, showOv, hideOv, hideTT, resetResPos, getRPos, setRPos } from './ui.js';
 import { getFeedLog, restoreFeed } from './feed.js';
 import { reinitMonkeys } from './monkeys.js';
@@ -220,6 +220,7 @@ function _apply(d) {
   state.seedStone = d._ss || null;
   state.belts = d._belts || [];
   state.ceasefire = state.towers.some(t => t.type === 'ceasefire_flag' && t.raised);
+  rebuildFluidConnections();
   state.sel = null; state.ttTower = null; state.gameOver = false;
   state.started = true; state.wave = d._w; state.phase = 'idle';
   state.ticks = 0; state.prepTicks = 0;

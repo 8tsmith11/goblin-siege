@@ -429,9 +429,8 @@ export function showTT(tw, px, py) {
   if (tw.type === 'butcher') {
     const infoDiv = document.createElement('div');
     infoDiv.style.cssText = 'width:100%;font-size:10px;color:#94a3b8;margin-bottom:4px';
-    const _spinCap = tw.hasGearTrain ? 0.22 : 0.15;
-    const _torqUsed = tw.spinRate > 0 ? Math.round((tw.spinRate / (0.08 * (tw.gearRatio || 2))) * 10) : 0;
-    infoDiv.innerHTML = '🔪 Blades: <b>' + (tw.blades || 3) + '</b>  🔧 Gear ratio: <b>' + (tw.gearRatio || 2) + '</b><br>⚡ Spin: <b>' + ((tw.spinRate || 0).toFixed(3)) + '</b>/<b>' + _spinCap.toFixed(3) + '</b>  ⚙️ Torque draw: <b>' + _torqUsed + '</b>';
+    const _torqDraw = ((tw.gearRatio || 2) * 5);
+    infoDiv.innerHTML = '🔪 Blades: <b>' + (tw.blades || 3) + '</b>  🔧 Gear ratio: <b>' + (tw.gearRatio || 2) + '</b><br>⚡ Spin: <b>' + ((tw.spinRate || 0).toFixed(3)) + '</b>  ⚙️ Torque cost: <b>' + _torqDraw + '</b>';
     a.appendChild(infoDiv);
     // Gear ratio controls
     const gearRow = document.createElement('div');
@@ -532,7 +531,7 @@ export function showTT(tw, px, py) {
       }
     }
   }
-  if (TOWER_SKILLS[tw.type] && state.researchUnlocks?.tower_skills) { addTTB(a, '⚡Skill', 'ttc', true, () => { showTowerSkill(tw); hideTT(); state.ttTower = null; }); }
+  if (TOWER_SKILLS[tw.type] && (state.researchUnlocks?.tower_skills || tw.type === 'butcher')) { addTTB(a, '⚡Skill', 'ttc', true, () => { showTowerSkill(tw); hideTT(); state.ttTower = null; }); }
   const upgSpent = (TOWER_UPGS[tw.type] || []).slice(0, tw.level || 0).reduce((s, u) => s + u.cost, 0);
   const sv = Math.floor((def.cost + upgSpent) * 0.5);
   addTTB(a, 'Sell +💰' + sv, 'ttl', true, () => {
@@ -647,6 +646,13 @@ const TOWER_UPGS = {
     { name:'+0.5 Range',            cost: 195, apply: tw => { tw.range += 0.5; } },
     { name:'+0.5 Range',            cost: 280, apply: tw => { tw.range += 0.5; } },
     { name:'+1 Range',              cost: 400, apply: tw => { tw.range += 1; } },
+  ],
+  butcher: [
+    { name:'+8 DMG',                cost: 60,  apply: tw => { tw.dmg += 8; } },
+    { name:'+0.5 Range',            cost: 95,  apply: tw => { tw.range = +((tw.range + 0.5).toFixed(1)); } },
+    { name:'+1 Blade',              cost: 140, apply: tw => { tw.blades = (tw.blades || 3) + 1; } },
+    { name:'+15 DMG',               cost: 200, apply: tw => { tw.dmg += 15; } },
+    { name:'+0.6 Range  +10 DMG',   cost: 290, apply: tw => { tw.range = +((tw.range + 0.6).toFixed(1)); tw.dmg += 10; } },
   ],
 };
 

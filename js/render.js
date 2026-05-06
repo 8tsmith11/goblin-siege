@@ -784,27 +784,35 @@ export function render() {
       cx.moveTo(x1 + dx, y1 + dy);
       cx.lineTo(x2 + dx, y2 + dy);
       // Wrap arc at pulley B — clockwise sweeps far side of B (away from A)
-      cx.arc(x2, y2, pulleyR, perp, perp - Math.PI, false);
+      cx.arc(x2, y2, pulleyR, perp, perp - Math.PI, true);
       cx.lineTo(x1 - dx, y1 - dy);
       // Wrap arc at pulley A — counterclockwise sweeps far side of A (away from B)
       cx.arc(x1, y1, pulleyR, perp - Math.PI, perp, true);
       cx.closePath();
       cx.stroke();
 
-      // Moving dots along belt edges (both straight sides), always visible
+      // Moving dots along full belt perimeter (straight segments + pulley arcs), always visible
       const dist = Math.hypot(x2 - x1, y2 - y1);
       if (dist > 0) {
-        const step = 14;
+        const R = pulleyR;
+        const totalPerim = 2 * dist + 2 * Math.PI * R;
+        const beltPoint = s => {
+          if (s < dist) { const t = s / dist; return [x1 + dx + (x2-x1)*t, y1 + dy + (y2-y1)*t]; }
+          s -= dist;
+          if (s < Math.PI * R) { const u = s / R; return [x2 + Math.cos(perp - u) * R, y2 + Math.sin(perp - u) * R]; }
+          s -= Math.PI * R;
+          if (s < dist) { const t = s / dist; return [x2 - dx + (x1-x2)*t, y2 - dy + (y1-y2)*t]; }
+          s -= dist;
+          const u = s / R;
+          return [x1 + Math.cos(perp - Math.PI - u) * R, y1 + Math.sin(perp - Math.PI - u) * R];
+        };
+        const step = 48;
         cx.fillStyle = '#a8a29e';
-        const phaseOffset = (beltPhase % step) / dist;
-        // Top side: x1+dx → x2+dx
-        for (let t = phaseOffset % (step / dist); t < 1; t += step / dist) {
-          cx.beginPath(); cx.arc(x1 + dx + (x2 - x1) * t, y1 + dy + (y2 - y1) * t, 2, 0, Math.PI * 2); cx.fill();
-        }
-        // Bottom side: x2-dx → x1-dx (opposite direction)
-        const revOffset = 1 - (phaseOffset % (step / dist)) - step / dist;
-        for (let t = ((revOffset % (step / dist)) + (step / dist)) % (step / dist); t < 1; t += step / dist) {
-          cx.beginPath(); cx.arc(x2 - dx + (x1 - x2) * t, y2 - dy + (y1 - y2) * t, 2, 0, Math.PI * 2); cx.fill();
+        const offset = ((totalPerim - beltPhase % totalPerim) % totalPerim);
+        const nDots = Math.ceil(totalPerim / step) + 1;
+        for (let i = 0; i < nDots; i++) {
+          const [bx, by] = beltPoint((offset + i * step) % totalPerim);
+          cx.beginPath(); cx.arc(bx, by, 2, 0, Math.PI * 2); cx.fill();
         }
       }
       cx.restore();
