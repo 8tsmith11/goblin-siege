@@ -106,7 +106,14 @@ function tryPlaceTower(c, ex) {
   // Belt placement must run first: target cells have existing towers (pulleys), so ex is truthy
   if (state.sel?.key === 'belt') {
     const target = getCell(c.x, c.y)?.content;
-    if (!target || target.type !== 'pulley') { showTip('Click a pulley to start a belt'); return; }
+    if (!target || target.type !== 'pulley') {
+      if (state._beltStart) {
+        state._beltStart = null; showTip('Belt cancelled');
+      } else {
+        state._beltStart = null; state.sel = null; panelU();
+      }
+      return;
+    }
     if (!state._beltStart) {
       state._beltStart = { x: target.x, y: target.y };
       showTip('Now click a second pulley');
@@ -169,7 +176,14 @@ function tryPlaceTower(c, ex) {
   // Belt: two-click placement between pulleys
   if (state.sel.key === 'belt') {
     const target = getCell(c.x, c.y)?.content;
-    if (!target || target.type !== 'pulley') { showTip('Click a pulley to start a belt'); return; }
+    if (!target || target.type !== 'pulley') {
+      if (state._beltStart) {
+        state._beltStart = null; showTip('Belt cancelled');
+      } else {
+        state._beltStart = null; state.sel = null; panelU();
+      }
+      return;
+    }
     if (!state._beltStart) {
       state._beltStart = { x: target.x, y: target.y };
       showTip('Now click a second pulley');
@@ -506,6 +520,8 @@ export function initInput() {
   document.addEventListener('keydown', e => {
     const nav = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'];
     if (nav.includes(e.key)) e.preventDefault();
+    if (e.key === 'Escape' && state._beltStart) { state._beltStart = null; panelU(); return; }
+    if (e.key === 'Escape' && state.sel?.key === 'belt') { state.sel = null; panelU(); return; }
     if (e.key === 'Escape' && state.sel?.type === 'tile_pick') { state.sel = null; panelU(); return; }
     if (e.key === 'Escape' && (state.sel?.type === 'augment_pick' || state.sel?.type === 'consumable_pick' || state.sel?.type === 'forest_clear' || state.sel?.type === 'relocate_source' || state.sel?.type === 'relocate_dest')) { state.sel = null; return; }
     keysDown.add(e.key);

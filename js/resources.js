@@ -158,7 +158,7 @@ function _drawIronOreNode(cx, wx, wy, CELL, locked) {
 }
 
 function _drawIronIngot(cx, wx, wy, CELL) {
-  const iw = CELL * 0.42, ih = CELL * 0.22;
+  const iw = CELL * 0.52, ih = CELL * 0.28;
   cx.save();
   cx.translate(wx, wy);
   // Trapezoidal bar shape (wider at bottom)
@@ -204,8 +204,8 @@ let _iconsPatched = false;
 export function patchIronIcons() {
   if (_iconsPatched) return;
   _iconsPatched = true;
-  RTYPES.iron_ore.icon = getResourceIconDataUrl('iron_ore', 20);
-  RTYPES.iron_ingot.icon = getResourceIconDataUrl('iron_ingot', 20);
+  RTYPES.iron_ore.icon = getResourceIconDataUrl('iron_ore', 28);
+  RTYPES.iron_ingot.icon = getResourceIconDataUrl('iron_ingot', 28);
 }
 
 // Returns safe HTML for a resource icon — wraps data-URL icons in <img>, passes emoji through

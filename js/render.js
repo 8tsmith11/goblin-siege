@@ -493,56 +493,20 @@ export function render() {
       return;
     }
 
-    // Butcher: spinning blades
+    // Butcher: cell background + hub only — blades rendered after stacks so they appear on top of ground items
     if (tw.type === 'butcher') {
       const tx2 = tw.x * CELL, ty2 = tw.y * CELL;
       const pcx = tx2 + CELL / 2, pcy = ty2 + CELL / 2;
-      const spinning = tw.spinRate > 0;
       cx.save();
-      cx.fillStyle = '#111';
+      cx.fillStyle = tw._mastery ? '#1a0d30' : '#111';
       cx.fillRect(tx2 + 2, ty2 + 2, CELL - 4, CELL - 4);
-      cx.strokeStyle = '#555'; cx.lineWidth = 1.5;
+      cx.strokeStyle = tw._mastery ? '#a855f7' : '#555'; cx.lineWidth = tw._mastery ? 2.5 : 1.5;
       cx.strokeRect(tx2 + 2, ty2 + 2, CELL - 4, CELL - 4);
-      const blades = tw.blades || 3;
-      // Mastery: blades grow with spin
-      const spinFrac = tw._masteryButcher ? Math.min(1, (tw.spinRate || 0) / 0.15) : 1;
-      const baseReach = (tw.range || 1.2) * CELL;
-      const reach = tw._masteryButcher ? baseReach * (0.85 + 0.35 * spinFrac) : baseReach;
-      const rot = tw.rotation || 0;
-      // Blades — asymmetric kitchen-knife shape: curved leading edge, flat trailing edge
-      for (let i = 0; i < blades; i++) {
-        const a = rot + (i / blades) * Math.PI * 2;
-        cx.save();
-        cx.translate(pcx, pcy); cx.rotate(a);
-        cx.fillStyle = '#6b7280';
-        cx.beginPath();
-        cx.moveTo(3, -3);                                           // base, leading edge
-        cx.quadraticCurveTo(reach * 0.55, -5.5, reach, 0);         // curved leading edge
-        cx.lineTo(reach * 0.5, 1.5);                                // flat trailing edge start
-        cx.lineTo(3, 2);                                            // base, trailing edge
-        cx.closePath(); cx.fill();
-        cx.restore();
-      }
-      // Gear Train visual (no color change)
-      if (tw.hasGearTrain) {
-        const gR = CELL * 0.13;
-        const teeth = 8;
-        cx.save(); cx.translate(pcx, pcy); cx.rotate(rot * 1.5);
-        cx.fillStyle = '#78716c';
-        cx.beginPath();
-        for (let i = 0; i < teeth * 2; i++) {
-          const ta = (i / (teeth * 2)) * Math.PI * 2;
-          const tr = i % 2 === 0 ? gR * 1.35 : gR;
-          i === 0 ? cx.moveTo(Math.cos(ta) * tr, Math.sin(ta) * tr) : cx.lineTo(Math.cos(ta) * tr, Math.sin(ta) * tr);
-        }
-        cx.closePath(); cx.fill();
-        cx.restore();
-      }
-      // Axle hub (no color change)
-      cx.beginPath(); cx.arc(pcx, pcy, CELL * 0.11, 0, Math.PI * 2);
+      cx.beginPath(); cx.arc(pcx, pcy, CELL * 0.18, 0, Math.PI * 2);
       cx.fillStyle = '#1f2937'; cx.fill();
       cx.strokeStyle = '#6b7280'; cx.lineWidth = 1.5;
-      cx.beginPath(); cx.arc(pcx, pcy, CELL * 0.11, 0, Math.PI * 2); cx.stroke();
+      cx.beginPath(); cx.arc(pcx, pcy, CELL * 0.18, 0, Math.PI * 2); cx.stroke();
+      if (tw.level > 0) { cx.font = 'bold ' + Math.floor(CELL * 0.16) + 'px Anybody,sans-serif'; cx.fillStyle = '#fbbf24'; cx.textAlign = 'center'; cx.textBaseline = 'alphabetic'; cx.fillText('★'.repeat(Math.min(tw.level, 5)), pcx, ty2 + CELL - 2); }
       cx.restore();
       return;
     }
@@ -782,17 +746,26 @@ export function render() {
   if (state.belts?.length) {
     const pulleyR = CELL * 0.32;
     for (const b of state.belts) {
-      const x1 = b.fromX * CELL + CELL / 2, y1 = b.fromY * CELL + CELL / 2;
-      const x2 = b.toX   * CELL + CELL / 2, y2 = b.toY   * CELL + CELL / 2;
+      const rx1 = b.fromX * CELL + CELL / 2, ry1 = b.fromY * CELL + CELL / 2;
+      const rx2 = b.toX   * CELL + CELL / 2, ry2 = b.toY   * CELL + CELL / 2;
+
+      // Canonicalize endpoint order so perpendicular direction is consistent
+      let x1, y1, x2, y2;
+      if (rx1 > rx2 || (rx1 === rx2 && ry1 > ry2)) {
+        x1 = rx2; y1 = ry2; x2 = rx1; y2 = ry1;
+      } else {
+        x1 = rx1; y1 = ry1; x2 = rx2; y2 = ry2;
+      }
+
       const angle = Math.atan2(y2 - y1, x2 - x1);
       const perp = angle + Math.PI / 2;
       const dx = Math.cos(perp) * pulleyR, dy = Math.sin(perp) * pulleyR;
 
-      // Torque-scaled dot speed: look up pulley torque at belt endpoints
+      // Torque-scaled belt speed: linear velocity = angular velocity × pulley radius
       const p1tw = getCell(b.fromX, b.fromY)?.content;
       const p2tw = getCell(b.toX,   b.toY  )?.content;
       const effectiveTorque = Math.max(p1tw?.torque || 0, p2tw?.torque || 0);
-      const beltSpeed = effectiveTorque > 0 ? (effectiveTorque / 10) * 0.05 : 0;
+      const beltSpeed = effectiveTorque > 0 ? (effectiveTorque / 10) * 0.05 * pulleyR : 0;
       const beltPhase = (state._torquePhase || 0) * beltSpeed;
 
       cx.save();
@@ -811,25 +784,15 @@ export function render() {
       cx.closePath();
       cx.stroke();
 
-      // Moving bar segments on each outer strip
+      // Moving dots along belt centerline showing belt motion
       const dist = Math.hypot(x2 - x1, y2 - y1);
       if (beltSpeed > 0 && dist > 0) {
-        const step = 20;
+        const step = 14;
         cx.fillStyle = '#78716c';
-        for (let t = (beltPhase % step) / dist; t < 1; t += step / dist) {
+        const phaseOffset = (beltPhase % step) / dist;
+        for (let t = phaseOffset; t < 1; t += step / dist) {
           const bx = x1 + (x2 - x1) * t, by = y1 + (y2 - y1) * t;
-          // Bar on top strip
-          cx.save();
-          cx.translate(bx + dx, by + dy);
-          cx.rotate(angle);
-          cx.fillRect(-2, -pulleyR * 0.38, 4, pulleyR * 0.76);
-          cx.restore();
-          // Bar on bottom strip
-          cx.save();
-          cx.translate(bx - dx, by - dy);
-          cx.rotate(angle);
-          cx.fillRect(-2, -pulleyR * 0.38, 4, pulleyR * 0.76);
-          cx.restore();
+          cx.beginPath(); cx.arc(bx, by, 2.5, 0, Math.PI * 2); cx.fill();
         }
       }
       cx.restore();
@@ -880,6 +843,54 @@ export function render() {
 
   // Stacks (items on ground)
   renderStacks();
+
+  // Butcher blades — rendered after stacks so blades appear above ground items
+  for (const tw of towers) {
+    if (tw.type !== 'butcher') continue;
+    const tx2 = tw.x * CELL, ty2 = tw.y * CELL;
+    const pcx = tx2 + CELL / 2, pcy = ty2 + CELL / 2;
+    const blades = tw.blades || 3;
+    const spinFrac = tw._masteryButcher ? Math.min(1, (tw.spinRate || 0) / 0.15) : 1;
+    const baseReach = (tw.range || 1.5) * CELL;
+    const reach = tw._masteryButcher ? baseReach * (0.85 + 0.35 * spinFrac) : baseReach;
+    const rot = tw.rotation || 0;
+    cx.save();
+    // Blades — asymmetric knife shape: curved leading edge, flat trailing edge
+    for (let i = 0; i < blades; i++) {
+      const a = rot + (i / blades) * Math.PI * 2;
+      cx.save();
+      cx.translate(pcx, pcy); cx.rotate(a);
+      cx.fillStyle = '#6b7280';
+      cx.beginPath();
+      cx.moveTo(4, -5);
+      cx.quadraticCurveTo(reach * 0.55, -9, reach, 0);
+      cx.lineTo(reach * 0.5, 4);
+      cx.lineTo(4, 5);
+      cx.closePath(); cx.fill();
+      cx.restore();
+    }
+    // Gear Train visual
+    if (tw.hasGearTrain) {
+      const gR = CELL * 0.19;
+      const teeth = 8;
+      cx.save(); cx.translate(pcx, pcy); cx.rotate(rot * 1.5);
+      cx.fillStyle = '#78716c';
+      cx.beginPath();
+      for (let i = 0; i < teeth * 2; i++) {
+        const ta = (i / (teeth * 2)) * Math.PI * 2;
+        const tr = i % 2 === 0 ? gR * 1.35 : gR;
+        i === 0 ? cx.moveTo(Math.cos(ta) * tr, Math.sin(ta) * tr) : cx.lineTo(Math.cos(ta) * tr, Math.sin(ta) * tr);
+      }
+      cx.closePath(); cx.fill();
+      cx.restore();
+    }
+    // Re-draw hub on top of blades
+    cx.beginPath(); cx.arc(pcx, pcy, CELL * 0.18, 0, Math.PI * 2);
+    cx.fillStyle = '#1f2937'; cx.fill();
+    cx.strokeStyle = '#6b7280'; cx.lineWidth = 1.5;
+    cx.beginPath(); cx.arc(pcx, pcy, CELL * 0.18, 0, Math.PI * 2); cx.stroke();
+    cx.restore();
+  }
 
   // Monkeys — hidden while boosting (monkey "disappears" into the target building)
   for (const tw of towers) {

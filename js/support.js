@@ -345,23 +345,30 @@ export function updateFluids() {
     tw.fluid.amount = Math.min(10, (tw.fluid.amount || 0) + (TD.water_pump?.fluidRate || 0.3));
     tw.fluid.type = 'water';
 
-    // Find all containers connected via pipes; push water to equalize
+    // Find all containers connected via pipes; push water to boilers only
     const { visited, containers } = _findContainers(tw);
     // Mark empty pipes as water-typed (don't overwrite steam pipes)
     for (const p of visited) {
       if (p.type === 'pipe' && !p.fluidType) p.fluidType = 'water';
     }
-    // Equalize water across pump + boiler water buffers
-    const waterNodes = [tw, ...containers.filter(c => c.type === 'steam_boiler')];
-    const waterAmounts = waterNodes.map(n => n.type === 'water_pump' ? n.fluid.amount : (n.waterFluid?.amount || 0));
-    const totalWater = waterAmounts.reduce((a, b) => a + b, 0);
-    const avg = totalWater / waterNodes.length;
-    for (const n of waterNodes) {
-      if (n.type === 'water_pump') {
-        n.fluid.amount = avg;
-      } else {
-        if (!n.waterFluid) n.waterFluid = { type: 'water', amount: 0 };
-        n.waterFluid.amount = avg;
+    // Push water from pump to connected boilers proportionally by deficit
+    const boilers = containers.filter(c => c.type === 'steam_boiler');
+    if (boilers.length > 0 && tw.fluid.amount > 0) {
+      const boilerMax = 10;
+      const totalDeficit = boilers.reduce((s, b) => s + Math.max(0, boilerMax - (b.waterFluid?.amount || 0)), 0);
+      if (totalDeficit > 0) {
+        const pushTotal = Math.min(tw.fluid.amount, totalDeficit);
+        for (const b of boilers) {
+          if (!b.waterFluid) b.waterFluid = { type: 'water', amount: 0 };
+          const deficit = Math.max(0, boilerMax - b.waterFluid.amount);
+          b.waterFluid.amount = Math.min(boilerMax, b.waterFluid.amount + pushTotal * (deficit / totalDeficit));
+        }
+        tw.fluid.amount = Math.max(0, tw.fluid.amount - pushTotal);
+      }
+      // Equalize water among boilers only (not pump)
+      if (boilers.length > 1) {
+        const avg = boilers.reduce((s, b) => s + (b.waterFluid?.amount || 0), 0) / boilers.length;
+        for (const b of boilers) b.waterFluid.amount = avg;
       }
     }
   }
@@ -417,13 +424,21 @@ export function updateFluids() {
   for (const tw of towers) {
     if (tw.type !== 'steam_boiler') continue;
     const cell = getCell(tw.x, tw.y);
-    if (!cell?.stacks) continue;
-    for (let i = 0; i < 4; i++) {
-      const s = cell.stacks[i];
-      if (s?.type === 'wood') {
-        tw.woodStock = Math.min(50, (tw.woodStock || 0) + s.count);
-        cell.stacks[i] = null;
+    if (cell?.stacks) {
+      for (let i = 0; i < 4; i++) {
+        const s = cell.stacks[i];
+        if (s?.type === 'wood') {
+          tw.woodStock = Math.min(50, (tw.woodStock || 0) + s.count);
+          cell.stacks[i] = null;
+        }
       }
+    }
+    // Mid-wave startup: if wood just arrived and boiler is inactive, start immediately
+    if (!tw.fuelActive && tw.woodStock > 0 && state.phase !== 'idle') {
+      const BOILER_WOOD_PER_WAVE = 3;
+      tw.woodStock -= tw.woodStock >= BOILER_WOOD_PER_WAVE ? BOILER_WOOD_PER_WAVE : tw.woodStock;
+      tw.fuelActive = true;
+      tw.lastFuelWave = state.wave; // prevent double-consumption at next wave boundary
     }
   }
 }
@@ -461,6 +476,9 @@ export function rebuildFluidConnections() {
 
 // ─── Torque system ────────────────────────────────────────────────────────────
 
+// Torque cost per gear ratio unit: default butcher (gearRatio=2) costs 10 = 1 engine
+const _BASE_TORQUE_PER_GEAR = 5;
+
 function _torqueNeighbors(tw) {
   const result = [];
   for (const [, [dx, dy]] of Object.entries(_SIDE_D)) {
@@ -474,10 +492,11 @@ export function updateTorque() {
   const { towers, belts } = state;
   if (!belts) return;
 
-  // Reset torque on all pulleys and engines
+  // Reset torque on all pulleys, engines, and butchers
   for (const tw of towers) {
     if (tw.type === 'pulley') tw.torque = 0;
-    if (tw.type === 'steam_engine') { tw.torqueActive = false; }
+    if (tw.type === 'steam_engine') tw.torqueActive = false;
+    if (tw.type === 'butcher') tw._availTorque = 0;
   }
 
   // Each steam engine: consume steam from pre-computed source (set by rebuildFluidConnections)
@@ -535,13 +554,30 @@ export function updateTorque() {
       }
     }
 
+    // Greedy torque allocation to butchers in this cluster
+    const clusterButchers = [];
+    for (const p of cluster) {
+      for (const [, [dx, dy]] of Object.entries(_SIDE_D)) {
+        const nbr = getCell(p.x + dx, p.y + dy)?.content;
+        if (nbr?.type === 'butcher' && !clusterButchers.includes(nbr)) clusterButchers.push(nbr);
+      }
+    }
+    let consumed = 0;
+    for (const b of clusterButchers) {
+      const cost = (b.gearRatio || 2) * _BASE_TORQUE_PER_GEAR;
+      if (consumed + cost <= totalTorque) {
+        b._availTorque = totalTorque - consumed;
+        consumed += cost;
+      }
+    }
+
     for (const p of cluster) {
       p.torque = totalTorque;
       p.torqueNetworkSize = cluster.length;
     }
   }
 
-  // Butcher: consume torque, spin, attack enemies in range
+  // Butcher: spin and attack enemies using pre-allocated torque
   for (const tw of towers) {
     if (tw.type !== 'butcher') continue;
     if (!tw.rotation) tw.rotation = 0;
@@ -549,25 +585,23 @@ export function updateTorque() {
     if (!tw.bladeLen) tw.bladeLen = TD.butcher.bladeLen;
     if (!tw.gearRatio) tw.gearRatio = TD.butcher.gearRatio;
 
-    // Find adjacent pulley with torque
-    let available = 0;
-    for (const [, [dx, dy]] of Object.entries(_SIDE_D)) {
-      const nbr = getCell(tw.x + dx, tw.y + dy)?.content;
-      if (nbr?.type === 'pulley' && nbr.torque > 0) { available = nbr.torque; break; }
-    }
-
+    const available = tw._availTorque || 0;
     const spinCap = tw.hasGearTrain ? 0.22 : 0.15;
-    const spinRate = available > 0 ? Math.min(spinCap, (available / 10) * 0.08 * tw.gearRatio) : 0;
+    const torqueCost = tw.gearRatio * _BASE_TORQUE_PER_GEAR;
+    // Higher gear ratio = faster spin when torque is available
+    const spinRate = available > 0
+      ? Math.min(spinCap, (available / torqueCost) * 0.08 * tw.gearRatio)
+      : 0;
     tw.spinRate = spinRate;
     tw.rotation = (tw.rotation + spinRate) % (Math.PI * 2);
 
     if (spinRate > 0 && (!tw.cd || tw.cd <= 0)) {
       const { CELL, enemies } = state;
       const reach = (tw.range || tw.bladeLen || 0.58) * CELL;
-      const cx = tw.x * CELL + CELL / 2, cy = tw.y * CELL + CELL / 2;
+      const bx = tw.x * CELL + CELL / 2, by = tw.y * CELL + CELL / 2;
       for (const e of enemies) {
         if (e.dead) continue;
-        if (Math.hypot(e.x * CELL + CELL / 2 - cx, e.y * CELL + CELL / 2 - cy) <= reach) {
+        if (Math.hypot(e.x * CELL + CELL / 2 - bx, e.y * CELL + CELL / 2 - by) <= reach) {
           e.hp -= tw.dmg || TD.butcher.dmg;
         }
       }
