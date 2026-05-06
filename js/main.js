@@ -475,7 +475,17 @@ function update() {
     const _showDeath = () => showOv('💀 Game Over', 'Survived ' + state.wave + ' waves!', 'Restart Run', true,
       () => showOv('Restart run?', 'All progress will be lost.', 'Confirm Restart', false,
         () => { resetGame(); startGame(); }, _showDeath, 'Go Back'),
-      _hasSv ? () => { loadGame(); hideOv(); startPrep(); } : null,
+      _hasSv ? () => {
+        loadGame(); hideOv();
+        const _nextW = state.wave + 1;
+        bus.emit('trigger', { type: 'wave_prep', wave: _nextW });
+        sfxWave();
+        const _sc = getScribeEntry(state.wave, state);
+        if (_sc) { addFeed('npc', 'The scribe has written in the journal.'); showBanner('📓 The scribe has written in the journal.'); }
+        showBanner('✅ Wave ' + state.wave + ' Complete!');
+        _updateBossStrip(_nextW);
+        startPrep();
+      } : null,
       _hasSv ? 'Retry Wave' : null
     );
     _showDeath(); return;

@@ -1,6 +1,5 @@
 'use strict';
 import { state, _ΨΔ } from './main.js';
-import { autoSave } from './save.js';
 import { showTip, syncPause, panelU } from './ui.js';
 import { RARITY_COLORS } from './artifacts.js';
 import { applyAugment } from './craft.js';
@@ -471,5 +470,4 @@ export function addToInventory(section, item) {
   inv.seenSections[section] = true;
   syncInvBtn();
   if (section === 'consumables') panelU();
-  autoSave();
 }
