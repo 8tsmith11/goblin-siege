@@ -4,6 +4,7 @@ import { invalidateBg } from './render.js';
 import { bus } from './bus.js';
 import { addFeed } from './feed.js';
 import { isBossWave } from './enemies.js';
+import { autoSave } from './save.js';
 
 // ─── NPC speech data ──────────────────────────────────────────────────────────
 
@@ -67,6 +68,7 @@ const NPC_LINES = {
           state.researchUnlocks['ceasefire_flag_bp_recipe'] = 1;
           dropLoot(npc.x, npc.y, 'blueprints', { id: 'ceasefire_flag_bp', icon: '🟦', bpOverlay: '🏳️', name: 'Ceasefire Flag Blueprint', unlocks: 'ceasefire_flag' });
           dropLoot(npc.x, npc.y, 'blueprints', { id: 'seed_stone_bp', icon: '🟦', bpOverlay: '🪨', name: 'Seed Stone Blueprint', desc: 'Unlocks the Seed Stone recipe at any Workbench.', recipeUnlock: 'seed_stone_recipe' });
+          autoSave();
         }, 9500);
       }
     },

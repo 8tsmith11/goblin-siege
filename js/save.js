@@ -57,7 +57,7 @@ function _build() {
   }
   return {
     _ν: 1, _w: state.wave, _r: state.gold, _h: state.lives,
-    _t: state.towers.map(_st), _g: state.grid, _a: state.path, ts,
+    _t: state.towers.map(_st), _g: state.grid.map(row => row.map(({ content: _c, ...cell }) => cell)), _a: state.path, ts,
     _va: state.volcanoActive,
     _no: state.nodes.map(n => ({ type: n.type, x: n.x, y: n.y })),
     _bSen: Array.from(state.bSen || ['sleepy_door']),
